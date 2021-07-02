@@ -29,7 +29,7 @@ class Ui_session_display(object):
         session_display.setFont(font)
         session_display.setWindowTitle("")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/icons/Adobex Iconic Photoshop.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(":/icons/icons/brush.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         session_display.setWindowIcon(icon)
         session_display.setStyleSheet("background: rgb(24,43,59)")
         self.verticalLayout = QtWidgets.QVBoxLayout(session_display)

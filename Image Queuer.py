@@ -1,17 +1,20 @@
 import os, sys
+
+from PyQt5.uic.uiparser import QtWidgets
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 from pathlib import Path
 import shelve
 import random
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QFile, QTextStream
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QTableWidgetItem, QWidget, QTreeView, QListView, QAbstractItemView, QDialog
 from PyQt5.QtTest import QTest
 import resources_config
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
-
+#TODO
+#fix column sorting in the schedule table by converting the strings to ints
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -134,14 +137,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.set_number_of_images.setValue(0)
         self.set_minutes.setValue(0)
         self.set_seconds.setValue(0)
-        self.entry_table.setSortingEnabled(False)
         row = self.entry_table.rowCount()
         self.entry_table.insertRow(row)
         for i, n in enumerate(entry):
             e = QTableWidgetItem(str(n))
             e.setTextAlignment(4)
             self.entry_table.setItem(row, i, e)
-        self.entry_table.setSortingEnabled(True)
 
     def remove_row(self):
         row = self.entry_table.currentRow()
@@ -157,8 +158,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if row == 0:
             return
         self.entry_table.setCurrentCell(row,0)
-        self.entry_table.sortItems(0)
         for column in range(self.entry_table.columnCount()):
+            if column == 0:
+                continue
             current, above = QTableWidgetItem(self.entry_table.item(row,column).text()),QTableWidgetItem(self.entry_table.item(row-1,column).text())
             current.setTextAlignment(4)
             above.setTextAlignment(4)
@@ -171,8 +173,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if row == self.entry_table.rowCount() - 1:
             return
         self.entry_table.setCurrentCell(row,0)
-        self.entry_table.sortItems(0)
         for column in range(self.entry_table.columnCount()):
+            if column == 0:
+                continue
             current, below = QTableWidgetItem(self.entry_table.item(row,column).text()), QTableWidgetItem(self.entry_table.item(row+1,column).text())
             current.setTextAlignment(4)
             below.setTextAlignment(4)
@@ -284,7 +287,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def load(self):
         preset_name = self.preset_loader_box.currentText()
         if preset_name not in [*self.presets]:
-            # self.selected_items.setText(f'whoops small bug!')
             self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
             self.preset_loader_box.clearEditText()
             self.remove_rows()
@@ -293,14 +295,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.presets[preset_name] 
         rows = list(self.presets[preset_name].keys())
         columns = list(self.presets[preset_name][0])
-        self.entry_table.setSortingEnabled(False)
         for row in range(len(rows)):
             self.entry_table.insertRow(row)
             for column in range(len(columns)):
                 item = QTableWidgetItem(self.presets[preset_name][row][column])
                 item.setTextAlignment(4)
                 self.entry_table.setItem(row, column, item)
-        self.entry_table.setSortingEnabled(True)
         
     #endregion
     #endregion
@@ -551,7 +551,6 @@ class SessionDisplay(QWidget, Ui_session_display):
     def restart_timer(self):
         self.time_seconds = int(self.schedule[self.entry['current']][2])
     #endregion
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     view = MainApp()
