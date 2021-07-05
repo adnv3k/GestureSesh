@@ -1,5 +1,4 @@
 import os, sys
-
 from PyQt5.uic.uiparser import QtWidgets
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 from pathlib import Path
@@ -13,8 +12,6 @@ import resources_config
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
-#TODO
-#fix column sorting in the schedule table by converting the strings to ints
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -22,7 +19,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         #region init for user input
         self.session_schedule = {}
         self.has_break = False
-        self.valid_file_types = ['bmp','jpg','jpeg','png']
+        self.valid_file_types = ['.bmp','.jpg','.jpeg','.png']
         self.add_folder.clicked.connect(self.open_folder)
         self.schedule = []
         self.add_entry.clicked.connect(self.append_schedule)
@@ -60,22 +57,31 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def open_folder(self):
-        selected_dir = QFileDialog().getExistingDirectory()
-        if selected_dir == '':
-            self.selected_items.setText(f'0 folder(s) added!')
-            QTest.qWait(3000)
+        #subclassed QFileDialog
+        selected_dir = FileDialog() 
+        if selected_dir.exec():
+            # example of result
+            #['D:/Files/Documents/Programming/Projects/Image Displayer/image_displayer/atest2', 'D:/Files/Documents/Programming/Projects/Image Displayer/image_displayer/atest1']
+            total_valid_files = 0
+            total_invalid_files = 0
+            self.selected_items.clear()
+            for dir in selected_dir.selectedFiles():
+                checked_files = self.check_files(os.listdir(dir))
+                total_valid_files += len(checked_files['valid_files'])
+                total_invalid_files += len(checked_files['invalid_files'])
+                if dir not in self.selected_items_dict['folders']:
+                    self.selected_items_dict['folders'].append(dir)
+                for file in checked_files['valid_files']:
+                    self.selected_items_dict['files'].append(f'{dir}/{file}')
+            self.selected_items.append(f'{total_valid_files} file(s) added from {len(selected_dir.selectedFiles())} folders!')
+            if total_invalid_files > 0:
+                self.selected_items.append(f'{total_invalid_files} file(s) not added. Supported file types: {", ".join(self.valid_file_types)}. Does not add folders.')
+                QTest.qWait(3000)
+            QTest.qWait(4000)
             self.display_status()
             return
-        checked_files = self.check_files(os.listdir(selected_dir))
-        if selected_dir not in self.selected_items_dict['folders']:
-            self.selected_items_dict['folders'].append(selected_dir)
-        for file in checked_files['valid_files']:
-            self.selected_items_dict['files'].append(f'{selected_dir}/{file}')
-        self.selected_items.setText(f'{len(self.selected_items_dict["files"])} file(s) from {os.path.basename(selected_dir)} added!')
-        if len(checked_files['invalid_files']) > 0:
-            self.selected_items.append(f'{len(checked_files["invalid_files"])} file(s) not added. Supported file types: {", ".join(self.valid_file_types)}. Does not add folders.')
-            QTest.qWait(6000)
-        QTest.qWait(3000)
+        self.selected_items.setText(f'0 folder(s) added!')
+        QTest.qWait(2000)
         self.display_status()
 
     def remove_items(self):
@@ -88,7 +94,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def check_files(self, files):
         res = {'valid_files':[],'invalid_files':[]}
         for file in files:
-            if file[-3:] not in self.valid_file_types :
+            if file[-4:] not in self.valid_file_types :
                 res['invalid_files'].append(file)
             else:
                 res['valid_files'].append(file)
@@ -96,9 +102,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def remove_dupes(self):
         self.duplicates = []
-        for file in self.selected_items_dict['files']:
-            while self.selected_items_dict['files'].count(file) > 1:
-                self.duplicates.append(self.selected_items_dict['files'].pop(self.selected_items_dict['files'].index(file)))
+        files = []
+
+        i = len(self.selected_items_dict['files'])
+        while i > 0:
+            i -= 1
+            if os.path.basename(self.selected_items_dict['files'][i]) in files:
+                self.duplicates.append(self.selected_items_dict['files'].pop(i))
+            else:
+                files.append(os.path.basename(self.selected_items_dict['files'][i]))
+        
         self.selected_items.setText(f'Removed {len(self.duplicates)} duplicates!')
         QTest.qWait(2000)
         self.display_status()
@@ -186,6 +199,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def remove_rows(self):
         for i in range(self.entry_table.rowCount()):
             self.entry_table.removeRow(0)
+
     
     def randomize_items(self):
         copy = self.selected_items_dict['files'].copy()
@@ -357,7 +371,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             return
         self.selected_items.setText(f'Not enough files for the specified schedule. Add more files or decrease total amount of images in schedule.')
         QTest.qWait(4000)
-        self.display_status
+        self.display_status()
         return False
 
     def remove_breaks(self):
@@ -406,6 +420,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.next_image.clicked.connect(self.load_next_image)
         self.restart.clicked.connect(self.restart_timer)
         self.stop_session.clicked.connect(self.close)
+        
     def closeEvent(self, event):
         self.timer.stop()
         self.closed.emit()
@@ -551,6 +566,17 @@ class SessionDisplay(QWidget, Ui_session_display):
     def restart_timer(self):
         self.time_seconds = int(self.schedule[self.entry['current']][2])
     #endregion
+
+#Subclass to enable multifolder selection.
+class FileDialog(QFileDialog):
+    def __init__(self, *args, **kwargs):
+        super(FileDialog,self).__init__(*args, **kwargs)
+        self.setOption(QFileDialog.DontUseNativeDialog, True)
+        self.setFileMode(QFileDialog.Directory)
+        self.setOption(QFileDialog.ShowDirsOnly, True)
+        self.findChildren(QListView)[0].setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.findChildren(QTreeView)[0].setSelectionMode(QAbstractItemView.ExtendedSelection)
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     view = MainApp()
