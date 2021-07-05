@@ -2,7 +2,7 @@
 Image Queuer is a GUI app that displays image files based on a user defined schedule. A session will display images, maintaining their original aspect ratio, according to the schedule with image navigation that maintains its respective schedule configuration. 
 
 # Usage
-No installation needed. Either zips include a standalone exe. 
+No installation needed. Either zip includes a standalone exe. 
 
 ## Hotkeys
 ### Navigation Bar: 
