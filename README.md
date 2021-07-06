@@ -21,6 +21,9 @@ GUI created using PyQt5.
 
 # Contact
 If you have any suggestions or issues, any input is appreciated!
+
 Email: adnv3k@gmail.com
+
 Any support is appreciated!
+
 https://www.paypal.com/donate?hosted_button_id=TL97W8RXVNARC
