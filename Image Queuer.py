@@ -12,6 +12,14 @@ import resources_config
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
+#v0.3.2
+#Number of Images spinbox now accepts 999999999
+#Display text for recent load now shows that a recent profile was loaded
+#Schedule now will display Total images and duration
+#File extension bug
+#Reformatted time display
+#Fixed bug when removing last entry
+
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -27,6 +35,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.move_entry_up.clicked.connect(self.move_up)
         self.move_entry_down.clicked.connect(self.move_down)
         self.reset_table.clicked.connect(self.remove_rows)
+        self.total_time = 0
+        self.total_images = 0
         self.init_preset()
         self.save_preset.clicked.connect(self.save)
         self.delete_preset.clicked.connect(self.delete)
@@ -37,10 +47,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.randomize_selection.clicked.connect(self.randomize_items)
         self.clear_items.clicked.connect(self.remove_items)
         self.load_recent()
+        self.entry_table.itemChanged.connect(self.update_total)
         #endregion
 
         """
-        crtl will do self.__view.configdict[key] = userconfig
+        ctrl will do self.__view.configdict[key] = userconfig
         setting values for MainApp so that it can start session with its variables
         """
     #region Functions for user input
@@ -94,7 +105,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def check_files(self, files):
         res = {'valid_files':[],'invalid_files':[]}
         for file in files:
-            if file[-4:] not in self.valid_file_types :
+
+            if file[-4:].lower() not in self.valid_file_types :
                 res['invalid_files'].append(file)
             else:
                 res['valid_files'].append(file)
@@ -103,7 +115,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def remove_dupes(self):
         self.duplicates = []
         files = []
-
         i = len(self.selected_items_dict['files'])
         while i > 0:
             i -= 1
@@ -134,7 +145,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             if self.is_valid_session() == False:
                 return
             self.display_status()
-
+            self.selected_items.append(f'Recent selection and preset loaded!')
+            self.update_total()
 
     #endregion
 
@@ -152,19 +164,27 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.set_seconds.setValue(0)
         row = self.entry_table.rowCount()
         self.entry_table.insertRow(row)
-        for i, n in enumerate(entry):
-            e = QTableWidgetItem(str(n))
-            e.setTextAlignment(4)
-            self.entry_table.setItem(row, i, e)
+        for column, n in enumerate(entry):
+            item = QTableWidgetItem(str(n))
+            item.setTextAlignment(4)
+            self.entry_table.setItem(row, column, item)
+        self.update_total()
 
     def remove_row(self):
         row = self.entry_table.currentRow()
+        if row == self.entry_table.rowCount()-1:
+            last = True
         self.entry_table.removeRow(row)
         for i in range(row, self.entry_table.rowCount()):
-            e = QTableWidgetItem(str(i+1))
-            e.setTextAlignment(4)
-            self.entry_table.setItem(i, 0, e)
-        self.entry_table.setCurrentCell(row,0)
+            item = QTableWidgetItem(str(i+1))
+            item.setTextAlignment(4)
+            self.entry_table.setItem(i,0,item)
+        try:
+            if last == True:
+                self.entry_table.setCurrentCell(row-1,0)
+        except:
+            self.entry_table.setCurrentCell(row,0)
+        self.update_total()
     
     def move_up(self):
         row = self.entry_table.currentRow()
@@ -196,11 +216,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.entry_table.setItem(row,column,below)
         self.entry_table.setCurrentCell(row+1,0)
     
+    #Clears the schedule of its entries
     def remove_rows(self):
         for i in range(self.entry_table.rowCount()):
             self.entry_table.removeRow(0)
+        self.update_total()
 
-    
     def randomize_items(self):
         copy = self.selected_items_dict['files'].copy()
         randomized_items = []
@@ -212,6 +233,49 @@ class MainApp(QMainWindow, Ui_MainWindow):
         QTest.qWait(2000)
         self.display_status()
 
+    def update_total(self):
+        if self.total_table.rowCount() < 1:
+            self.total_table.insertRow(0)
+        total = QTableWidgetItem('Total')
+        total.setTextAlignment(4)
+        self.total_table.setItem(0,0,total)
+        #number of images
+        self.total_images = 0
+        for row in range(self.entry_table.rowCount()):
+            try:
+                self.total_images += int(self.entry_table.item(row,1).text())
+            except:
+                return
+        total_images = QTableWidgetItem(str(self.total_images))
+        total_images.setTextAlignment(4)
+        self.total_table.setItem(0,1,total_images)
+
+        #total time
+        self.total_time = 0
+        for row in range(self.entry_table.rowCount()):
+            try:
+                self.total_time += int(self.entry_table.item(row,2).text())
+            except:
+                return        
+        total_time = QTableWidgetItem(self.format_seconds(self.total_time))
+        total_time.setTextAlignment(4)
+        self.total_table.setItem(0,2,total_time)
+
+    def format_seconds(self, sec):
+        hr = int(sec/3600)
+        self.hr_list = list(str(hr))
+        if len(self.hr_list) == 1 or self.hr_list[0] == "0":
+            self.hr_list.insert(0,'0')
+
+        min = int((sec/3600 - hr) * 60)
+        self.min_list = list(str(min))
+        if len(self.min_list) == 1 or self.min_list[0] == "0":
+            self.min_list.insert(0,'0')
+            
+        self.sec = list(str(int((((sec/3600 - hr) * 60) - min) * 60)))
+        if len(self.sec) == 1 or self.sec[0] == "0":
+            self.sec.insert(0,'0')
+        return f'{self.hr_list[0]}{self.hr_list[1]}:{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}'
     #endregion
     
     #region Presets
@@ -241,6 +305,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             if p not in self.preset_names:
                 self.preset_names.append(p)
         self.preset_loader_box.addItems(self.preset_names)
+        self.update_total()
 
     def save(self):
         if self.entry_table.rowCount() == 0:
@@ -256,19 +321,21 @@ class MainApp(QMainWindow, Ui_MainWindow):
             QTest.qWait(5500)
             self.display_status()
             return
-
         tmppreset = {}
+
         #get table entries
         for row in range(self.entry_table.rowCount()):
             tmppreset[row] = []
             for column in range(self.entry_table.columnCount()):
                 tmppreset[row].append(self.entry_table.item(row,column).text())
+
         #save preset to file
         os.chdir(r'.\presets')
         preset = shelve.open('preset')
         preset[preset_name] = tmppreset
         preset.close()
         os.chdir(r'..\\')
+
         #load preset to new name
         self.selected_items.setText(f'{preset_name} saved!')
         if self.preset_loader_box.currentText() not in [*self.presets]:
@@ -405,6 +472,14 @@ class SessionDisplay(QWidget, Ui_session_display):
         super().__init__()
         self.setupUi(self)
         self.schedule = schedule
+        # self.setWindowFlags(
+        #     QtCore.Qt.Window |
+        #     QtCore.Qt.CustomizeWindowHint |
+        #     QtCore.Qt.WindowTitleHint |
+        #     QtCore.Qt.WindowMinMaxButtonsHint |
+        #     QtCore.Qt.WindowCloseButtonHint |
+        #     QtCore.Qt.WindowStaysOnTopHint
+        #     )
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.countdown)
         self.timer.start(500)
@@ -535,25 +610,30 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.time_seconds -= 0.5
 
     def update_timer_display(self):
-        min = int(self.time_seconds/60)
+        hr = int(self.time_seconds/3600)
+        self.hr_list = list(str(hr))
+        if len(self.hr_list) == 1 or self.hr_list[0] == "0":
+            self.hr_list.insert(0,'0')
+
+        min = int((self.time_seconds/3600 - hr) * 60)
         self.min_list = list(str(min))
         if len(self.min_list) == 1 or self.min_list[0] == "0":
             self.min_list.insert(0,'0')
-        self.sec = list(str(int(self.time_seconds-(min*60))))
+            
+        self.sec = list(str(int((((self.time_seconds/3600 - hr) * 60) - min) * 60)))
         if len(self.sec) == 1 or self.sec[0] == "0":
             self.sec.insert(0,'0')
-        if self.timer.isActive() == False:
-            self.timer_display.setText(f'Paused {self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
-            return
-        self.timer_display.setText(f'{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
 
+        return self.timer_display.setText(f'{self.hr_list[0]}{self.hr_list[1]}:{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
+        
     def pause(self):
         if self.timer.isActive() == True:
             self.timer.stop()
-            self.timer_display.setText(f'Paused {self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
+            self.timer_display.setText(f'Paused {self.hr_list[0]}{self.hr_list[1]}:{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
+            QTest.qWait(20)
         else:
-            self.timer_display.setText(f'{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
-            self.timer.start()
+            self.timer_display.setText(f'{self.hr_list[0]}{self.hr_list[1]}:{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
+            self.timer.start(500)
 
     def add_30_seconds(self):
         self.time_seconds += 30
