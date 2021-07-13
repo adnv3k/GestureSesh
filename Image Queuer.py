@@ -12,13 +12,14 @@ import resources_config
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
-#v0.3.2
-#Number of Images spinbox now accepts 999999999
-#Display text for recent load now shows that a recent profile was loaded
-#Schedule now will display Total images and duration
-#File extension bug
-#Reformatted time display
-#Fixed bug when removing last entry
+# v0.3.2
+# Number of Images spinbox now accepts 999999999
+# Display text for recent load now shows that a recent profile was loaded
+# Schedule now will display Total images and duration
+# File extension bug
+# Reformatted time display
+# Fixed bug when removing last entry
+# *quickfix bug in total display
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -254,7 +255,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.total_time = 0
         for row in range(self.entry_table.rowCount()):
             try:
-                self.total_time += int(self.entry_table.item(row,2).text())
+                if int(self.entry_table.item(row,1).text()) > 0:
+                    self.total_time += int(self.entry_table.item(row,2).text())*int(self.entry_table.item(row,1).text())
+                else:
+                    self.total_time += int(self.entry_table.item(row,2).text())
             except:
                 return        
         total_time = QTableWidgetItem(self.format_seconds(self.total_time))
