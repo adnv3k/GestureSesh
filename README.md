@@ -18,3 +18,12 @@ Next Image | Right Arrow Key
 Current supported file types: .bmp, .jpg, .jpeg, .png. Settings are stored using the shelve module, and are saved in the folders 'presets' and 'recent' as .bak, .dat, and .dir files. These folders are saved in the same directory as Image Queuer.exe. The most recent images and schedule used will be automatically loaded when reopening Image Queuer.exe. 
 
 GUI created using PyQt5. 
+
+# Contact
+If you have any suggestions or issues, any input is appreciated!
+
+Email: adnv3k@gmail.com
+
+Any support is appreciated!
+
+https://www.paypal.com/donate?hosted_button_id=TL97W8RXVNARC
