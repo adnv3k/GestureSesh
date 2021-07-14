@@ -5,7 +5,7 @@ from pathlib import Path
 import shelve
 import random
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import QFile, QTextStream
+from PyQt5.QtCore import QFile, QTextStream, QTime
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QTableWidgetItem, QWidget, QTreeView, QListView, QAbstractItemView, QDialog
 from PyQt5.QtTest import QTest
 import resources_config
@@ -13,13 +13,16 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
 # v0.3.2
-# Number of Images spinbox now accepts 999999999
-# Display text for recent load now shows that a recent profile was loaded
-# Schedule now will display Total images and duration
-# File extension bug
-# Reformatted time display
-# Fixed bug when removing last entry
-# *quickfix bug in total display
+# Minor updates
+# Number of Images box now accepts 999999999 max images (if needed, double click the item in the table to edit the number to one greater than 999999999)
+# Display text for recent load now reflects that a recent profile was loaded
+# Total images and duration now shown
+# Fixed file extension bug
+# Reformatted time display to include hours
+# Fixed selection bug when removing last entry
+# Some tooltips revised
+# *quickfix total wasn't showing the right total
+# *quickfix either move entry button would cause a crash when no entry was selected
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -195,7 +198,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
         for column in range(self.entry_table.columnCount()):
             if column == 0:
                 continue
-            current, above = QTableWidgetItem(self.entry_table.item(row,column).text()),QTableWidgetItem(self.entry_table.item(row-1,column).text())
+            try:
+                current, above = QTableWidgetItem(self.entry_table.item(row,column).text()),QTableWidgetItem(self.entry_table.item(row-1,column).text())
+            except:
+                self.selected_items.append('\nSelect a row in the table!')
+                QTest.qWait(2000)
+                self.display_status()
+                return
             current.setTextAlignment(4)
             above.setTextAlignment(4)
             self.entry_table.setItem(row,column,above)
@@ -210,7 +219,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
         for column in range(self.entry_table.columnCount()):
             if column == 0:
                 continue
-            current, below = QTableWidgetItem(self.entry_table.item(row,column).text()), QTableWidgetItem(self.entry_table.item(row+1,column).text())
+            try:
+                current, below = QTableWidgetItem(self.entry_table.item(row,column).text()), QTableWidgetItem(self.entry_table.item(row+1,column).text())
+            except:
+                self.selected_items.append('\nSelect a row in the table!')
+                QTest.qWait(2000)
+                self.display_status()
+                return
             current.setTextAlignment(4)
             below.setTextAlignment(4)
             self.entry_table.setItem(row+1,column,current)
@@ -435,8 +450,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 continue
             else:
                 self.selected_items.setText(f'{os.path.basename(file)} not found!')
-                self.selected_items.append(f'Location or name of file has been changed.')
-                self.selected_items.append(f'Add "{os.path.basename(file)}" to this directory {os.path.dirname(file)}.')
+                self.selected_items.append(f'Has the location or name of file has been changed?')
+                self.selected_items.append(f'Make sure "{os.path.basename(file)}" is at this directory {os.path.dirname(file)}.')
+                # QTest.qWait(5000)
+                # self.display_status()
                 return False
         if self.total_scheduled_images <= len(self.selected_items_dict['files']):
             return
