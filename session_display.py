@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\ui\display_session.ui'
+# Form implementation generated from reading ui file '.\display_session.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -20,7 +20,7 @@ class Ui_session_display(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(session_display.sizePolicy().hasHeightForWidth())
         session_display.setSizePolicy(sizePolicy)
-        session_display.setMinimumSize(QtCore.QSize(750, 700))
+        session_display.setMinimumSize(QtCore.QSize(955, 700))
         session_display.setMaximumSize(QtCore.QSize(16777215, 16777215))
         font = QtGui.QFont()
         font.setPointSize(15)

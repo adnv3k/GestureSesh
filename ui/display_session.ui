@@ -18,7 +18,7 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>750</width>
+    <width>955</width>
     <height>700</height>
    </size>
   </property>
@@ -40,7 +40,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="resources/resources_config.qrc">
-    <normaloff>:/icons/icons/Adobex Iconic Photoshop.ico</normaloff>:/icons/icons/Adobex Iconic Photoshop.ico</iconset>
+    <normaloff>:/icons/icons/brush.png</normaloff>:/icons/icons/brush.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">background: rgb(24,43,59)</string>
@@ -185,7 +185,7 @@
          </property>
          <property name="icon">
           <iconset resource="resources/resources_config.qrc">
-           <normaloff>:/icons/icons/arrow left.ico</normaloff>:/icons/icons/arrow left.ico</iconset>
+           <normaloff>:/icons/icons/arrow left.png</normaloff>:/icons/icons/arrow left.png</iconset>
          </property>
          <property name="iconSize">
           <size>
@@ -226,7 +226,7 @@
          </property>
          <property name="icon">
           <iconset resource="resources/resources_config.qrc">
-           <normaloff>:/icons/icons/Pause.ico</normaloff>:/icons/icons/Pause.ico</iconset>
+           <normaloff>:/icons/icons/Pause.png</normaloff>:/icons/icons/Pause.png</iconset>
          </property>
          <property name="iconSize">
           <size>
@@ -267,7 +267,7 @@
          </property>
          <property name="icon">
           <iconset resource="resources/resources_config.qrc">
-           <normaloff>:/icons/icons/Square.ico</normaloff>:/icons/icons/Square.ico</iconset>
+           <normaloff>:/icons/icons/Square.png</normaloff>:/icons/icons/Square.png</iconset>
          </property>
          <property name="iconSize">
           <size>
@@ -308,7 +308,7 @@
          </property>
          <property name="icon">
           <iconset resource="resources/resources_config.qrc">
-           <normaloff>:/icons/icons/arrow right.ico</normaloff>:/icons/icons/arrow right.ico</iconset>
+           <normaloff>:/icons/icons/arrow right.png</normaloff>:/icons/icons/arrow right.png</iconset>
          </property>
          <property name="iconSize">
           <size>
@@ -723,7 +723,7 @@ p, li { white-space: pre-wrap; }
            </property>
            <property name="icon">
             <iconset resource="resources/resources_config.qrc">
-             <normaloff>:/icons/icons/restart.ico</normaloff>:/icons/icons/restart.ico</iconset>
+             <normaloff>:/icons/icons/restart.png</normaloff>:/icons/icons/restart.png</iconset>
            </property>
            <property name="iconSize">
             <size>

@@ -1,63 +1,67 @@
 import os, sys
-from PyQt5.uic.uiparser import QtWidgets
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 from pathlib import Path
 import shelve
 import random
 from PyQt5 import QtCore, QtGui
+from PyQt5.uic.uiparser import QtWidgets
 from PyQt5.QtCore import QFile, QTextStream, QTime
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QTableWidgetItem, QWidget, QTreeView, QListView, QAbstractItemView, QDialog
 from PyQt5.QtTest import QTest
 import resources_config
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
+from check_update import Version
 
-# v0.3.2
-# Minor updates
-# Number of Images box now accepts 999999999 max images (if needed, double click the item in the table to edit the number to one greater than 999999999)
-# Display text for recent load now reflects that a recent profile was loaded
-# Total images and duration now shown
-# Fixed file extension bug
-# Reformatted time display to include hours
-# Fixed selection bug when removing last entry
-# Some tooltips revised
-# *quickfix total wasn't showing the right total
-# *quickfix either move entry button would cause a crash when no entry was selected
+current_version = '0.3.3'
+# Minor update
+# Update notices will now be displayed. 
+# Bug fixes
+# Timer no longer cut off when resizing the session window.
+# Missing files will now be removed from the selection, and will need to be re-added.
+# Total now displays properly on start.
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
         #region init for user input
+        self.setWindowTitle(f'Reference Practice v{current_version}')
         self.session_schedule = {}
         self.has_break = False
         self.valid_file_types = ['.bmp','.jpg','.jpeg','.png']
-        self.add_folder.clicked.connect(self.open_folder)
         self.schedule = []
+        self.total_time = 0
+        self.total_images = 0
+        self.selected_items_dict = {'folders':[],'files':[]}
+        self.current_version = current_version
+        
+        # Buttons for selection
+        self.add_folder.clicked.connect(self.open_folder)
         self.add_entry.clicked.connect(self.append_schedule)
         self.remove_entry.clicked.connect(self.remove_row)
         self.move_entry_up.clicked.connect(self.move_up)
         self.move_entry_down.clicked.connect(self.move_down)
         self.reset_table.clicked.connect(self.remove_rows)
-        self.total_time = 0
-        self.total_images = 0
-        self.init_preset()
+
+        # Buttons for preset
         self.save_preset.clicked.connect(self.save)
         self.delete_preset.clicked.connect(self.delete)
         self.preset_loader_box.currentIndexChanged.connect(self.load)
         self.dialog_buttons.accepted.connect(self.start_session)
-        self.selected_items_dict = {'folders':[],'files':[]}
+
+        # Buttons for table
         self.remove_duplicates.clicked.connect(self.remove_dupes)
         self.randomize_selection.clicked.connect(self.randomize_items)
         self.clear_items.clicked.connect(self.remove_items)
+
+        self.init_preset() 
         self.load_recent()
         self.entry_table.itemChanged.connect(self.update_total)
+
+        self.check_version()
         #endregion
 
-        """
-        ctrl will do self.__view.configdict[key] = userconfig
-        setting values for MainApp so that it can start session with its variables
-        """
     #region Functions for user input
     #region Select Items
     def open_files(self):
@@ -67,7 +71,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.selected_items.setText(f'{len(checked_files["valid_files"])} file(s) added!')
         if len(checked_files['invalid_files']) > 0:
             self.selected_items.append(f'{len(checked_files["invalid_files"])} file(s) not added. Supported file types: {", ".join(self.valid_file_types)}.')
-            QTest.qWait(4000)
+            QTest.qWait(2000)
         QTest.qWait(3000)
         self.display_status()
 
@@ -135,22 +139,31 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.selected_items.setText(f'{len(self.selected_items_dict["files"])} total files added with {len(self.selected_items_dict["folders"])} folder(s).')
     
     def load_recent(self):
-        if os.path.exists(r'.\recent') == True:
-            os.chdir(r'.\recent')
-            self.selected_items_dict = {}
-            r = shelve.open('recent')
-            keys = list(r['recent'].keys())
-            for key in keys:
-                self.selected_items_dict[key] = r['recent'][key]
-            self.preset_loader_box.setCurrentIndex(r['recent_preset'])
-            r.close()
-            os.chdir(r'..\\')
-            self.remove_breaks()
-            if self.is_valid_session() == False:
+        if os.path.exists(r'.\recent'):
+            try:
+                os.chdir(r'.\recent')
+                self.selected_items_dict = {}
+                r = shelve.open('recent')
+                keys = list(r['recent'].keys())
+                for key in keys:
+                    self.selected_items_dict[key] = r['recent'][key]
+                self.preset_loader_box.setCurrentIndex(r['recent_preset'])
+                r.close()
+                os.chdir(r'..\\')
+            except:
+                print('load_recent error')
+                print(os.getcwd())
+                os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
                 return
+
+
+            self.remove_breaks()
             self.display_status()
             self.selected_items.append(f'Recent selection and preset loaded!')
             self.update_total()
+            if not self.is_valid_session():
+                return
+                
 
     #endregion
 
@@ -184,7 +197,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             item.setTextAlignment(4)
             self.entry_table.setItem(i,0,item)
         try:
-            if last == True:
+            if last:
                 self.entry_table.setCurrentCell(row-1,0)
         except:
             self.entry_table.setCurrentCell(row,0)
@@ -250,12 +263,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def update_total(self):
+        # Adds a row for total if it's empty
         if self.total_table.rowCount() < 1:
             self.total_table.insertRow(0)
+
         total = QTableWidgetItem('Total')
         total.setTextAlignment(4)
         self.total_table.setItem(0,0,total)
-        #number of images
+
+        # Number of images
         self.total_images = 0
         for row in range(self.entry_table.rowCount()):
             try:
@@ -300,22 +316,30 @@ class MainApp(QMainWindow, Ui_MainWindow):
     #region Presets
     def init_preset(self):
         self.presets = {}
-        if os.path.exists(r'.\presets') == False:
+        # If the presets folder does not exist in file directory, then create it and create shelve files there
+        if not os.path.exists(r'.\presets'):
             os.mkdir(r'.\presets')
             os.chdir(r'.\presets')
             preset = shelve.open('preset')
             preset.close()
             os.chdir(r'..\\')
             return
+        # Load data from preset files then update presets  
         else:
-            os.chdir(r'.\presets')
-            p = shelve.open('preset')
-            preset_list = list(p.keys())
-            for preset in preset_list:
-                self.presets[preset] = p[preset]
-            p.close()
-            os.chdir(r'..\\')
-            self.update_presets()
+            try:
+                os.chdir(r'.\presets')
+                p = shelve.open('preset')
+                preset_list = list(p.keys())
+                for preset in preset_list:
+                    self.presets[preset] = p[preset]
+                p.close()
+                os.chdir(r'..\\')
+                self.update_presets()
+            except:
+                print('init_preset error')
+                print(os.getcwd())
+                os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
+                return
 
     def update_presets(self):
         self.preset_loader_box.clear()
@@ -336,7 +360,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         preset_name = self.preset_loader_box.currentText()
 
         if preset_name == '':
-            self.selected_items.setText(f'Cannot save empty name!')
+            self.selected_items.setText(f'Cannot save an empty name!')
             QTest.qWait(5500)
             self.display_status()
             return
@@ -369,7 +393,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def delete(self):
         preset_name = self.preset_loader_box.currentText()
         if preset_name == '':
-            self.selected_items.setText(f'Cannot delete empty field!')
+            self.selected_items.setText(f'Cannot delete an empty field!')
             QTest.qWait(4000)
             self.display_status()
             return
@@ -412,7 +436,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """
         self.grab_schedule()
 
-        if self.is_valid_session() == False:
+        if not self.is_valid_session():
             return
 
         if len(self.session_schedule) == 0:
@@ -421,9 +445,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.display_status()
             return
 
+        #saves to recent folder
         self.save_to_recent()
 
-        if self.has_break == True:
+        if self.has_break:
             #add break image at appropriate index
             current_index = 0
             for entry in [*self.session_schedule]:
@@ -441,23 +466,29 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def is_valid_session(self):
+        # Count scheduled images
         self.total_scheduled_images = 0
         for entry in [*self.session_schedule]:
             self.total_scheduled_images += int(self.session_schedule[entry][1])
+        
+        # Check if file exists
         for file in self.selected_items_dict['files']:
             file_path = Path(file)
             if file_path.is_file():
                 continue
             else:
+                self.selected_items_dict['files'].remove(file)
                 self.selected_items.setText(f'{os.path.basename(file)} not found!')
-                self.selected_items.append(f'Has the location or name of file has been changed?')
-                self.selected_items.append(f'Make sure "{os.path.basename(file)}" is at this directory {os.path.dirname(file)}.')
-                # QTest.qWait(5000)
-                # self.display_status()
+                self.selected_items.append(f'Has the location or file name been changed?')
+                self.selected_items.append(f'Image removed from selection. {len(self.selected_items_dict["files"])} total files.')
+                self.selected_items.append(f'Previous directory: \n{os.path.dirname(file)}')
                 return False
+
+        # Check if there are enough selected images for the schedule
         if self.total_scheduled_images <= len(self.selected_items_dict['files']):
-            return
-        self.selected_items.setText(f'Not enough files for the specified schedule. Add more files or decrease total amount of images in schedule.')
+            return True
+
+        self.selected_items.setText(f'Not enough images selected. Add more images, or schedule fewer images.')
         QTest.qWait(4000)
         self.display_status()
         return False
@@ -477,7 +508,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def save_to_recent(self):
         self.recent = {}
-        if os.path.exists(r'.\recent') == False:
+        if not os.path.exists(r'.\recent'):
             os.mkdir(r'.\recent')
         os.chdir(r'.\recent')
         f = shelve.open('recent')
@@ -486,6 +517,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
         f.close()
         os.chdir(r'..\\')
     #endregion
+    #region Updates
+    def check_version(self):
+        check = Version(self.current_version)
+        if check.is_newest():
+            return
+        update_type = check.update_type()
+        self.selected_items.append(f'\n{update_type} update available!')
+        content = check.content()
+        self.selected_items.append(f'v{check.newest_version}\n{content}')
 
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()
@@ -648,7 +688,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         return self.timer_display.setText(f'{self.hr_list[0]}{self.hr_list[1]}:{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
         
     def pause(self):
-        if self.timer.isActive() == True:
+        if self.timer.isActive():
             self.timer.stop()
             self.timer_display.setText(f'Paused {self.hr_list[0]}{self.hr_list[1]}:{self.min_list[0]}{self.min_list[1]}:{self.sec[0]}{self.sec[1]}')
             QTest.qWait(20)
