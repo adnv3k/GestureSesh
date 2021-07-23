@@ -15,10 +15,12 @@ from session_display import Ui_session_display
 from check_update import Version
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
-CURRENT_VERSION = '0.3.5'
-# TODO default presets
-# TODO recent folders (like presets)
-# TODO item selection per entry
+CURRENT_VERSION = '0.3.4'
+# Contrast on buttons now WCAG AAA
+# New hotkeys added: Ctrl+Enter: start session, Esc: close window, Enter: add entry, F: open files... full list in the README
+# Randomization will now be handled as a toggle, and will be loaded up along with the recent session settings
+# BUGFIX break.png now adequately handled
+# Some code housekeeping
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
