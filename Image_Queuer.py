@@ -15,13 +15,10 @@ from session_display import Ui_session_display
 from check_update import Version
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
-CURRENT_VERSION = '0.3.4'
-# Contrast on buttons now WCAG AAA
-# New hotkeys added: Ctrl+Enter: start session, Esc: close window, Enter: add entry, F: open files... full list in the README
-# Randomization will now be handled as a toggle, and will be loaded up along with the recent session
-# BUGFIX break.png now adequately handled
-# Some code housekeeping
-
+CURRENT_VERSION = '0.3.5'
+# TODO default presets
+# TODO recent folders (like presets)
+# TODO item selection per entry
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -582,13 +579,14 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Checks if the current version is the newest one. If not, an update 
         notice is displayed in the display
         """
-        check = Version(self.current_version)
-        if check.is_newest():
-            return
-        update_type = check.update_type()
-        self.selected_items.append(f'\n{update_type} update available!')
-        content = check.content()
-        self.selected_items.append(f'v{check.newest_version}\n{content}')
+        current_version = Version(self.current_version)
+        if not current_version.is_newest():
+            
+            update_type = current_version.update_type()
+            if type(update_type) == str:
+                self.selected_items.append(f'\n{update_type} update available!')
+                content = current_version.content()
+                self.selected_items.append(f'v{current_version.newest_version}\n{content}')
     #endregion
 
 
