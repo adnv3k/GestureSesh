@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\display_session.ui'
+# Form implementation generated from reading ui file '.\ui\display_session.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -173,16 +173,16 @@ class Ui_session_display(object):
         self.add_60.setMinimumSize(QtCore.QSize(60, 32))
         self.add_60.setMaximumSize(QtCore.QSize(60, 32))
         palette = QtGui.QPalette()
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Text, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
@@ -191,19 +191,19 @@ class Ui_session_display(object):
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 128))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0, 128))
         brush.setStyle(QtCore.Qt.NoBrush)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.PlaceholderText, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Button, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Text, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
@@ -212,19 +212,19 @@ class Ui_session_display(object):
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 128))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0, 128))
         brush.setStyle(QtCore.Qt.NoBrush)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.PlaceholderText, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Button, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Text, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
@@ -233,7 +233,7 @@ class Ui_session_display(object):
         brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 128))
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0, 128))
         brush.setStyle(QtCore.Qt.NoBrush)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
         self.add_60.setPalette(palette)
@@ -244,7 +244,7 @@ class Ui_session_display(object):
         font.setWeight(75)
         self.add_60.setFont(font)
         self.add_60.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.add_60.setStyleSheet("background: rgb(68,201,176); color: \'white\';")
+        self.add_60.setStyleSheet("background: rgb(68,201,176); color: \'black\';")
         self.add_60.setIconSize(QtCore.QSize(24, 24))
         self.add_60.setObjectName("add_60")
         self.horizontalLayout_2.addWidget(self.add_60)
@@ -263,7 +263,7 @@ class Ui_session_display(object):
         font.setWeight(75)
         self.add_30.setFont(font)
         self.add_30.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.add_30.setStyleSheet("background: rgb(68,201,176); color: \'white\';")
+        self.add_30.setStyleSheet("background: rgb(68,201,176); color: \'black\';")
         self.add_30.setIconSize(QtCore.QSize(24, 24))
         self.add_30.setObjectName("add_30")
         self.horizontalLayout_2.addWidget(self.add_30)
@@ -312,14 +312,17 @@ class Ui_session_display(object):
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;color:\'black\'\">\n"
 "<p style=\" margin-top:5px; margin-bottom:5px; margin-left:5px; margin-right:5px; -qt-block-indent:0; text-indent:0px;\'\">Add 1 minute</p></body></html>"))
         self.add_60.setText(_translate("session_display", "+m"))
+        self.add_60.setShortcut(_translate("session_display", "Ctrl+Up"))
         self.add_30.setToolTip(_translate("session_display", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;color:\'black\'\">\n"
 "<p style=\" margin-top:5px; margin-bottom:5px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Add 30 seconds</p></body></html>"))
         self.add_30.setText(_translate("session_display", "+30s"))
+        self.add_30.setShortcut(_translate("session_display", "Up"))
         self.restart.setToolTip(_translate("session_display", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;color:\'black\'\">\n"
 "<p style=\" margin-top:5px; margin-bottom:5px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Restart timer</p></body></html>"))
+        self.restart.setShortcut(_translate("session_display", "Ctrl+Shift+Up"))

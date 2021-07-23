@@ -545,7 +545,7 @@ p, li { white-space: pre-wrap; }
          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
         </property>
         <property name="placeholderText">
-         <string>Add files and/or folders. Adding folders will only add supported file types. Supported file types: jpg, jpeg, png, gif, bmp</string>
+         <string>Add files and/or folders. Supported file types: jpg, jpeg, png, gif, bmp. Selection is not randomized by default.</string>
         </property>
        </widget>
       </item>
@@ -559,9 +559,9 @@ p, li { white-space: pre-wrap; }
              <colorrole role="WindowText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -577,18 +577,18 @@ p, li { white-space: pre-wrap; }
              <colorrole role="Text">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
              <colorrole role="ButtonText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -613,9 +613,9 @@ p, li { white-space: pre-wrap; }
              <colorrole role="PlaceholderText">
               <brush brushstyle="NoBrush">
                <color alpha="128">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -624,9 +624,9 @@ p, li { white-space: pre-wrap; }
              <colorrole role="WindowText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -642,18 +642,18 @@ p, li { white-space: pre-wrap; }
              <colorrole role="Text">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
              <colorrole role="ButtonText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -678,9 +678,9 @@ p, li { white-space: pre-wrap; }
              <colorrole role="PlaceholderText">
               <brush brushstyle="NoBrush">
                <color alpha="128">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -689,9 +689,9 @@ p, li { white-space: pre-wrap; }
              <colorrole role="WindowText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -707,18 +707,18 @@ p, li { white-space: pre-wrap; }
              <colorrole role="Text">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
              <colorrole role="ButtonText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -743,9 +743,9 @@ p, li { white-space: pre-wrap; }
              <colorrole role="PlaceholderText">
               <brush brushstyle="NoBrush">
                <color alpha="128">
-                <red>255</red>
-                <green>255</green>
-                <blue>255</blue>
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
                </color>
               </brush>
              </colorrole>
@@ -764,13 +764,14 @@ p, li { white-space: pre-wrap; }
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Open folder(s). Does not open folders in chosen folder.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Open folder(s). Does not open folders in chosen folder&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;F&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="autoFillBackground">
            <bool>false</bool>
           </property>
           <property name="styleSheet">
-           <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+           <string notr="true">background: rgb(68,201,176); color: 'black';</string>
           </property>
           <property name="text">
            <string>...</string>
@@ -784,6 +785,9 @@ p, li { white-space: pre-wrap; }
             <width>24</width>
             <height>24</height>
            </size>
+          </property>
+          <property name="shortcut">
+           <string>F</string>
           </property>
           <property name="autoDefault">
            <bool>false</bool>
@@ -810,10 +814,11 @@ p, li { white-space: pre-wrap; }
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Open file(s).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Open file(s)&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Ctrl + F&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+           <string notr="true">background: rgb(68,201,176); color: 'black';</string>
           </property>
           <property name="text">
            <string>...</string>
@@ -827,6 +832,9 @@ p, li { white-space: pre-wrap; }
             <width>24</width>
             <height>24</height>
            </size>
+          </property>
+          <property name="shortcut">
+           <string>Ctrl+F</string>
           </property>
           <property name="autoDefault">
            <bool>true</bool>
@@ -842,8 +850,9 @@ p, li { white-space: pre-wrap; }
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Clear selection of items.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Clear selection of items&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Ctrl + Shift + C&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="styleSheet">
            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
@@ -860,6 +869,9 @@ p, li { white-space: pre-wrap; }
             <width>24</width>
             <height>24</height>
            </size>
+          </property>
+          <property name="shortcut">
+           <string>Ctrl+Shift+C</string>
           </property>
          </widget>
         </item>
@@ -885,45 +897,548 @@ p, li { white-space: pre-wrap; }
      </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
       <item>
-       <widget class="QPushButton" name="randomize_selection">
+       <widget class="QFrame" name="frame">
+        <property name="minimumSize">
+         <size>
+          <width>260</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="palette">
+         <palette>
+          <active>
+           <colorrole role="WindowText">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Button">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Text">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="ButtonText">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Base">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Window">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="PlaceholderText">
+            <brush brushstyle="NoBrush">
+             <color alpha="128">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </active>
+          <inactive>
+           <colorrole role="WindowText">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Button">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Text">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="ButtonText">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Base">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Window">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="PlaceholderText">
+            <brush brushstyle="NoBrush">
+             <color alpha="128">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </inactive>
+          <disabled>
+           <colorrole role="WindowText">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Button">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Text">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="ButtonText">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Base">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="Window">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>68</red>
+              <green>201</green>
+              <blue>176</blue>
+             </color>
+            </brush>
+           </colorrole>
+           <colorrole role="PlaceholderText">
+            <brush brushstyle="NoBrush">
+             <color alpha="128">
+              <red>255</red>
+              <green>255</green>
+              <blue>255</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </disabled>
+         </palette>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background: rgb(68,201,176)</string>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>1</number>
+         </property>
+         <property name="topMargin">
+          <number>1</number>
+         </property>
+         <property name="rightMargin">
+          <number>1</number>
+         </property>
+         <property name="bottomMargin">
+          <number>1</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="randomize_selection">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>258</width>
+             <height>21</height>
+            </size>
+           </property>
+           <property name="palette">
+            <palette>
+             <active>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Button">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Text">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="ButtonText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Base">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Window">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="PlaceholderText">
+               <brush brushstyle="NoBrush">
+                <color alpha="128">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </active>
+             <inactive>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Button">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Text">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="ButtonText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Base">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Window">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="PlaceholderText">
+               <brush brushstyle="NoBrush">
+                <color alpha="128">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </inactive>
+             <disabled>
+              <colorrole role="WindowText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Button">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Text">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="ButtonText">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Base">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="Window">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>68</red>
+                 <green>201</green>
+                 <blue>176</blue>
+                </color>
+               </brush>
+              </colorrole>
+              <colorrole role="PlaceholderText">
+               <brush brushstyle="NoBrush">
+                <color alpha="128">
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
+                </color>
+               </brush>
+              </colorrole>
+             </disabled>
+            </palette>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="toolTip">
+            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Toggle randomization of selection&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Ctrl + R&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="autoFillBackground">
+            <bool>false</bool>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background: rgb(68,201,176); color: 'black';</string>
+           </property>
+           <property name="text">
+            <string>Randomize</string>
+           </property>
+           <property name="shortcut">
+            <string>Ctrl+R</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+           <property name="autoRepeat">
+            <bool>false</bool>
+           </property>
+           <property name="autoDefault">
+            <bool>false</bool>
+           </property>
+           <property name="default">
+            <bool>false</bool>
+           </property>
+           <property name="flat">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="remove_duplicates">
+        <property name="minimumSize">
+         <size>
+          <width>290</width>
+          <height>20</height>
+         </size>
+        </property>
         <property name="font">
          <font>
           <pointsize>10</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
         </property>
         <property name="toolTip">
          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;By default, images will be displayed in the order of selection. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Remove duplicate selections&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Ctrl + 1&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
-         <string notr="true">background: rgb(68,201,176); color: 'white';</string>
-        </property>
-        <property name="text">
-         <string>Randomize Selection</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="remove_duplicates">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-          <weight>75</weight>
-          <bold>true</bold>
-         </font>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+         <string notr="true">background: rgb(68,201,176); color: 'black';</string>
         </property>
         <property name="text">
          <string>Remove Duplicates</string>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+1</string>
         </property>
        </widget>
       </item>
@@ -945,7 +1460,7 @@ p, li { white-space: pre-wrap; }
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;An entry will display a set number of images for a set duration of time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;An entry will display a set number of images for a set duration of time&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
          <string notr="true">color: 'white';</string>
@@ -1024,6 +1539,9 @@ p, li { white-space: pre-wrap; }
         <property name="styleSheet">
          <string notr="true">background: rgb(30,56,78); color: 'white';</string>
         </property>
+        <property name="frame">
+         <bool>false</bool>
+        </property>
         <property name="maximum">
          <number>999999999</number>
         </property>
@@ -1061,8 +1579,14 @@ p, li { white-space: pre-wrap; }
         <property name="styleSheet">
          <string notr="true">background: rgb(30,56,78); color: 'white';</string>
         </property>
+        <property name="frame">
+         <bool>false</bool>
+        </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="keyboardTracking">
+         <bool>true</bool>
         </property>
         <property name="maximum">
          <number>999999999</number>
@@ -1078,8 +1602,14 @@ p, li { white-space: pre-wrap; }
           <bold>true</bold>
          </font>
         </property>
+        <property name="focusPolicy">
+         <enum>Qt::WheelFocus</enum>
+        </property>
         <property name="styleSheet">
          <string notr="true">background: rgb(30,56,78); color: 'white';</string>
+        </property>
+        <property name="frame">
+         <bool>false</bool>
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1104,18 +1634,22 @@ p, li { white-space: pre-wrap; }
           <bold>true</bold>
          </font>
         </property>
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="toolTip">
          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Add entry to the schedule below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Add entry to the schedule below&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Enter&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="autoFillBackground">
          <bool>false</bool>
         </property>
         <property name="styleSheet">
-         <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+         <string notr="true">background: rgb(68,201,176); color: 'black';</string>
         </property>
         <property name="text">
          <string>Add</string>
@@ -1158,7 +1692,7 @@ p, li { white-space: pre-wrap; }
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Presets are saved schedules. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Presets are saved schedules &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
          <string notr="true">color: 'white';</string>
@@ -1420,7 +1954,7 @@ p, li { white-space: pre-wrap; }
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Load a preset schedule onto the table below. Duplicate saves will be overwritten.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Load a preset schedule onto the table below. Duplicate saves will be overwritten&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
          <string notr="true">background: rgb(30,56,78); color: 'white';</string>
@@ -1454,14 +1988,18 @@ p, li { white-space: pre-wrap; }
          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Saves preset under the name entered in the dropdown menu. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Saves preset under the name entered in the dropdown menu&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Ctrl + S&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
-         <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+         <string notr="true">background: rgb(68,201,176); color: 'black';</string>
         </property>
         <property name="text">
          <string>Save Preset</string>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+S</string>
         </property>
        </widget>
       </item>
@@ -1478,14 +2016,18 @@ p, li { white-space: pre-wrap; }
          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Deletes preset selected in the dropdown menu.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Deletes preset selected in the dropdown menu&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Ctrl + Shift + D&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
-         <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+         <string notr="true">background: rgb(68,201,176); color: 'black';</string>
         </property>
         <property name="text">
          <string>Delete Preset</string>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+Shift+D</string>
         </property>
        </widget>
       </item>
@@ -1563,6 +2105,24 @@ p, li { white-space: pre-wrap; }
                </color>
               </brush>
              </colorrole>
+             <colorrole role="Highlight">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>97</red>
+                <green>209</green>
+                <blue>189</blue>
+               </color>
+              </brush>
+             </colorrole>
+             <colorrole role="HighlightedText">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>45</red>
+                <green>85</green>
+                <blue>117</blue>
+               </color>
+              </brush>
+             </colorrole>
              <colorrole role="AlternateBase">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
@@ -1634,6 +2194,24 @@ p, li { white-space: pre-wrap; }
                 <red>30</red>
                 <green>56</green>
                 <blue>78</blue>
+               </color>
+              </brush>
+             </colorrole>
+             <colorrole role="Highlight">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>97</red>
+                <green>209</green>
+                <blue>189</blue>
+               </color>
+              </brush>
+             </colorrole>
+             <colorrole role="HighlightedText">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>45</red>
+                <green>85</green>
+                <blue>117</blue>
                </color>
               </brush>
              </colorrole>
@@ -1711,6 +2289,24 @@ p, li { white-space: pre-wrap; }
                </color>
               </brush>
              </colorrole>
+             <colorrole role="Highlight">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>0</red>
+                <green>120</green>
+                <blue>215</blue>
+               </color>
+              </brush>
+             </colorrole>
+             <colorrole role="HighlightedText">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>45</red>
+                <green>85</green>
+                <blue>117</blue>
+               </color>
+              </brush>
+             </colorrole>
              <colorrole role="AlternateBase">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
@@ -1742,7 +2338,8 @@ p, li { white-space: pre-wrap; }
           <property name="toolTip">
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
+p, li { white-space: pre-wrap; } 
+QTableWidget::item{ selection-background-color: black;}
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Double-click to modify.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
@@ -1847,6 +2444,13 @@ p, li { white-space: pre-wrap; }
            </property>
            <property name="textAlignment">
             <set>AlignCenter</set>
+           </property>
+           <property name="background">
+            <color>
+             <red>68</red>
+             <green>201</green>
+             <blue>176</blue>
+            </color>
            </property>
            <property name="foreground">
             <brush brushstyle="SolidPattern">
@@ -2002,11 +2606,12 @@ p, li { white-space: pre-wrap; }
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Remove entry.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Delete entry&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;D&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+           <string notr="true">background: rgb(68,201,176); color: 'black';</string>
           </property>
           <property name="text">
            <string/>
@@ -2021,6 +2626,9 @@ p, li { white-space: pre-wrap; }
             <height>24</height>
            </size>
           </property>
+          <property name="shortcut">
+           <string>D</string>
+          </property>
          </widget>
         </item>
         <item>
@@ -2029,8 +2637,9 @@ p, li { white-space: pre-wrap; }
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Move entry up.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Move entry up&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;W&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="styleSheet">
            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
@@ -2048,6 +2657,9 @@ p, li { white-space: pre-wrap; }
             <height>24</height>
            </size>
           </property>
+          <property name="shortcut">
+           <string>W</string>
+          </property>
          </widget>
         </item>
         <item>
@@ -2056,8 +2668,9 @@ p, li { white-space: pre-wrap; }
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Move entry down.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Move entry down&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;D&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="styleSheet">
            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
@@ -2075,6 +2688,18 @@ p, li { white-space: pre-wrap; }
             <height>24</height>
            </size>
           </property>
+          <property name="shortcut">
+           <string>S</string>
+          </property>
+          <property name="autoDefault">
+           <bool>false</bool>
+          </property>
+          <property name="default">
+           <bool>false</bool>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
+          </property>
          </widget>
         </item>
         <item>
@@ -2083,8 +2708,9 @@ p, li { white-space: pre-wrap; }
            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:13pt; font-weight:400; font-style:normal;color:'black';&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Clear all entries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;Clear all entries&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:13pt; color:#000000;&quot;&gt;C&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="styleSheet">
            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
@@ -2101,6 +2727,15 @@ p, li { white-space: pre-wrap; }
             <width>24</width>
             <height>24</height>
            </size>
+          </property>
+          <property name="shortcut">
+           <string>C</string>
+          </property>
+          <property name="default">
+           <bool>false</bool>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -2130,8 +2765,11 @@ p, li { white-space: pre-wrap; }
         <bold>true</bold>
        </font>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
       <property name="styleSheet">
-       <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+       <string notr="true">background: rgb(68,201,176); color: 'black';</string>
       </property>
       <property name="standardButtons">
        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
@@ -2162,6 +2800,7 @@ p, li { white-space: pre-wrap; }
  <tabstops>
   <tabstop>add_folder</tabstop>
   <tabstop>add_items</tabstop>
+  <tabstop>clear_items</tabstop>
   <tabstop>randomize_selection</tabstop>
   <tabstop>remove_duplicates</tabstop>
   <tabstop>set_number_of_images</tabstop>
@@ -2176,6 +2815,7 @@ p, li { white-space: pre-wrap; }
   <tabstop>move_entry_up</tabstop>
   <tabstop>move_entry_down</tabstop>
   <tabstop>reset_table</tabstop>
+  <tabstop>total_table</tabstop>
  </tabstops>
  <resources>
   <include location="resources/resources_config.qrc"/>

@@ -403,9 +403,9 @@
               <colorrole role="WindowText">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -421,18 +421,18 @@
               <colorrole role="Text">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
               <colorrole role="ButtonText">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -457,9 +457,9 @@
               <colorrole role="PlaceholderText">
                <brush brushstyle="NoBrush">
                 <color alpha="128">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -468,9 +468,9 @@
               <colorrole role="WindowText">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -486,18 +486,18 @@
               <colorrole role="Text">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
               <colorrole role="ButtonText">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -522,9 +522,9 @@
               <colorrole role="PlaceholderText">
                <brush brushstyle="NoBrush">
                 <color alpha="128">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -533,9 +533,9 @@
               <colorrole role="WindowText">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -551,18 +551,18 @@
               <colorrole role="Text">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
               <colorrole role="ButtonText">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -587,9 +587,9 @@
               <colorrole role="PlaceholderText">
                <brush brushstyle="NoBrush">
                 <color alpha="128">
-                 <red>255</red>
-                 <green>255</green>
-                 <blue>255</blue>
+                 <red>0</red>
+                 <green>0</green>
+                 <blue>0</blue>
                 </color>
                </brush>
               </colorrole>
@@ -615,7 +615,7 @@ p, li { white-space: pre-wrap; }
             <enum>Qt::LeftToRight</enum>
            </property>
            <property name="styleSheet">
-            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+            <string notr="true">background: rgb(68,201,176); color: 'black';</string>
            </property>
            <property name="text">
             <string>+m</string>
@@ -625,6 +625,9 @@ p, li { white-space: pre-wrap; }
              <width>24</width>
              <height>24</height>
             </size>
+           </property>
+           <property name="shortcut">
+            <string>Ctrl+Up</string>
            </property>
           </widget>
          </item>
@@ -667,7 +670,7 @@ p, li { white-space: pre-wrap; }
             <enum>Qt::LeftToRight</enum>
            </property>
            <property name="styleSheet">
-            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+            <string notr="true">background: rgb(68,201,176); color: 'black';</string>
            </property>
            <property name="text">
             <string>+30s</string>
@@ -677,6 +680,9 @@ p, li { white-space: pre-wrap; }
              <width>24</width>
              <height>24</height>
             </size>
+           </property>
+           <property name="shortcut">
+            <string>Up</string>
            </property>
           </widget>
          </item>
@@ -730,6 +736,9 @@ p, li { white-space: pre-wrap; }
              <width>24</width>
              <height>24</height>
             </size>
+           </property>
+           <property name="shortcut">
+            <string>Ctrl+Shift+Up</string>
            </property>
           </widget>
          </item>
