@@ -13,14 +13,22 @@ import resources_config
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 from check_update import Version
+
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
-CURRENT_VERSION = '0.3.4'
-# Contrast on buttons now WCAG AAA
-# New hotkeys added: Ctrl+Enter: start session, Esc: close window, Enter: add entry, F: open files... full list in the README
-# Randomization will now be handled as a toggle, and will be loaded up along with the recent session settings
-# BUGFIX break.png now adequately handled
-# Some code housekeeping
+CURRENT_VERSION = '0.3.5'
+# TODO grayscale option
+# TODO default presets
+
+# TODO recent folders (like presets)
+# TODO add display of last time checked for update
+
+# TODO item selection per entry
+# TODO horizontal flip
+
+# TODO 32bit compatability. 
+# must have separate python32bit install. then build with that. will be a different file
+# TODO mac compatability 
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -60,28 +68,20 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.return_shortcut.activated.connect(self.start_session)
         self.enter_shortcut = QShortcut(QtGui.QKeySequence('Ctrl+Enter'), self)
         self.enter_shortcut.activated.connect(self.start_session)
-        # Escape to close window
-        self.escape_shortcut = QShortcut(QtGui.QKeySequence('Escape'), self)
-        self.escape_shortcut.activated.connect(self.close)
         # Add entry
         self.add_shortcut_return = QShortcut(QtGui.QKeySequence('Return'), self)
         self.add_shortcut_return.activated.connect(self.append_schedule)
         self.add_shortcut_enter = QShortcut(QtGui.QKeySequence('Enter'), self)
         self.add_shortcut_enter.activated.connect(self.append_schedule)
+        # Escape to close window
+        self.escape_shortcut = QShortcut(QtGui.QKeySequence('Escape'), self)
+        self.escape_shortcut.activated.connect(self.close)
 
         self.init_preset()
         self.load_recent()
         self.check_version()
         self.entry_table.itemChanged.connect(self.update_total)
         self.dialog_buttons.accepted.connect(self.start_session)
-
-    def display_random_status(self):
-        if self.randomize_selection.isChecked():
-            self.selected_items.setText(f'Randomization on!')
-        else:
-            self.selected_items.setText(f'Randomization off!')
-        QTest.qWait(2000)
-        self.display_status()
 
     #region Functions for user input
     #region Select Items
@@ -170,6 +170,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def display_status(self):
         """Displays amount of files, and folders selected"""
         self.selected_items.setText(f'{len(self.selection["files"])} total files added from {len(self.selection["folders"])} folder(s).')
+   
+    def display_random_status(self):
+        """Displays the randomization setting"""
+        if self.randomize_selection.isChecked():
+            self.selected_items.setText(f'Randomization on!')
+        else:
+            self.selected_items.setText(f'Randomization off!')
+        QTest.qWait(2000)
+        self.display_status()
 
     def load_recent(self):
         """
@@ -368,11 +377,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
         else:
             try:
                 os.chdir(r'.\presets')
-                temp = shelve.open('preset')
-                preset_list = list(temp.keys())
+                pre = shelve.open('preset')
+                preset_list = list(pre.keys())
                 for preset in preset_list:
-                    self.presets[preset] = temp[preset]
-                temp.close()
+                    self.presets[preset] = pre[preset]
+                pre.close()
                 os.chdir(r'..\\')
                 self.update_presets() 
             except:
@@ -583,7 +592,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """
         current_version = Version(self.current_version)
         if not current_version.is_newest():
-            
             update_type = current_version.update_type()
             if type(update_type) == str:
                 self.selected_items.append(f'\n{update_type} update available!')
@@ -591,13 +599,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.selected_items.append(f'v{current_version.newest_version}\n{content}')
     #endregion
 
-
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()
     def __init__(self, schedule=None, items=None):
         super().__init__()
         self.setupUi(self)
         self.schedule = schedule
+        # alwaysontop
         # self.setWindowFlags(
         #     QtCore.Qt.Window |
         #     QtCore.Qt.CustomizeWindowHint |
