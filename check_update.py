@@ -1,9 +1,9 @@
 import os, sys
-os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 import requests
 import shelve
 from datetime import datetime
 
+os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 class Version():
     def __init__(self, current_version):
         super().__init__()
@@ -64,7 +64,7 @@ class Version():
             self.last_checked = f['last_checked']
         except:
             f['last_checked'] = [datetime.now().date(),self.current_version]
-            self.last_checked = False
+            self.last_checked = False # f['last_checked'] does not exist, so it was never checked last
         f.close()
         os.chdir(r'..\\')
 
