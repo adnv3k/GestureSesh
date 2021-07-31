@@ -17,17 +17,17 @@ from check_update import Version
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
 CURRENT_VERSION = '0.3.5'
-# TODO grayscale option
+# TODO Done | 16 bit grayscale option 
+# TODO Done | horizontal flip 
+# TODO Done | 32bit compatability
+
 # TODO default presets
 
 # TODO recent folders (like presets)
 # TODO add display of last time checked for update
 
 # TODO item selection per entry
-# TODO horizontal flip
 
-# TODO 32bit compatability. 
-# must have separate python32bit install. then build with that. will be a different file
 # TODO mac compatability 
 
 class MainApp(QMainWindow, Ui_MainWindow):
@@ -599,6 +599,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.selected_items.append(f'v{current_version.newest_version}\n{content}')
     #endregion
 
+
+
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()
     def __init__(self, schedule=None, items=None):
@@ -680,13 +682,22 @@ class SessionDisplay(QWidget, Ui_session_display):
                 self.entry['amount of items'] = 0
                 self.setWindowTitle('Break')
                 self.session_info.setText('Break')
-                self.image = QtGui.QPixmap(self.playlist[self.playlist_position])
-                self.image_display.setPixmap(self.image.scaled(self.size(),aspectRatioMode=1))
+                self.prepare_image_mods()
                 return
             self.setWindowTitle(os.path.basename(self.playlist[self.playlist_position]))
-            self.image = QtGui.QPixmap(self.playlist[self.playlist_position])
-            self.image_display.setPixmap(self.image.scaled(self.size(),aspectRatioMode=1))
+            self.prepare_image_mods()
             self.session_info.setText(f'Entry: {self.entry["current"]+1}/{self.entry["total"]} Image: {int(self.schedule[self.entry["current"]][1])-self.entry["amount of items"]}/{int(self.schedule[self.entry["current"]][1])}')
+    def prepare_image_mods(self):
+        self.image = QtGui.QImage(self.playlist[self.playlist_position])
+
+        # Grayscale
+        # self.image = QtGui.QImage(self.image).convertToFormat(QtGui.QImage.Format_Grayscale16)
+
+        # Horizontal flip
+        # self.image = self.image.mirrored(horizontal=True)
+
+        self.image = QtGui.QPixmap.fromImage(self.image,QtCore.Qt.ImageConversionFlags(0))
+        self.image_display.setPixmap(self.image.scaled(self.size(),aspectRatioMode=1))
 
     def previous_playlist_position(self):
         #first image
