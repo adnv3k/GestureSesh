@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 import shelve
 import random
+import numpy as np
+import cv2
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.uic.uiparser import QtWidgets
@@ -134,7 +136,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """Checks if files are supported file types"""
         res = {'valid_files':[],'invalid_files':[]}
         for file in files:
-            if file[-4:].lower() not in self.valid_file_types:
+            if (file[-4:].lower() not in self.valid_file_types
+                and file[-5:].lower() not in self.valid_file_types): # .jpeg
+                # Since the file extensionn is not a valid file type,
+                # add it to list of invalid files.
                 res['invalid_files'].append(file)
             else:
                 res['valid_files'].append(file)
@@ -622,16 +627,29 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.pause_timer.clicked.connect(self.pause)
         self.add_30.clicked.connect(self.add_30_seconds)
         self.add_60.clicked.connect(self.add_60_seconds)
-        self.entry = {'current':0,'total':[*self.schedule][-1]+1, 'amount of items':int(self.schedule[0][1]), 'time':int(self.schedule[0][2])}
+        self.entry = self.init_entries()
         self.playlist = items
         self.playlist_position = 0
         self.installEventFilter(self)
+        self.image_mods = self.init_mods()
         self.load_entry()
         self.previous_image.clicked.connect(self.previous_playlist_position)
         self.next_image.clicked.connect(self.load_next_image)
         self.restart.clicked.connect(self.restart_timer)
         self.stop_session.clicked.connect(self.close)
 
+    def init_entries(self):
+        return {
+            'current': 0,
+            'total': [*self.schedule][-1]+1,
+            'amount of items': int(self.schedule[0][1]),
+            'time': int(self.schedule[0][2])}
+    def init_mods(self):
+        return {
+            'break': False,
+            'grayscale': False,
+            'hflip': False}
+            
     def closeEvent(self, event):
         self.timer.stop()
         self.closed.emit()
@@ -672,35 +690,83 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.display_image()
 
     def display_image(self):
-        #last image
-        if self.playlist_position > len(self.playlist):
+        if self.playlist_position > len(self.playlist): # Last image
             self.timer.stop()
             self.timer_display.setText(f'Last image!')
-
         else:
-            if self.entry['amount of items'] == -1 or os.path.basename(self.playlist[self.playlist_position]) == 'break.png':
+            if (self.entry['amount of items'] == -1 # End of entry
+                or os.path.basename(
+                    self.playlist[self.playlist_position]
+                    ) == 'break.png'): # Break scheduled
+                # Since the end of an entry has been reached, or a break is scheduled,
+                # configure for break image
+                self.image_mods['break'] = True
                 self.entry['amount of items'] = 0
                 self.setWindowTitle('Break')
                 self.session_info.setText('Break')
-                self.prepare_image_mods()
-                return
-            self.setWindowTitle(os.path.basename(self.playlist[self.playlist_position]))
+            else:
+                self.image_mods['break'] = False
+                self.setWindowTitle(
+                    os.path.basename(
+                        self.playlist[
+                            self.playlist_position
+                            ]))
+                self.session_info.setText(
+                    f'Entry: {self.entry["current"]+1}/{self.entry["total"]} '
+                    f'Image: {int(self.schedule[self.entry["current"]][1])-self.entry["amount of items"]}'
+                    f'/{int(self.schedule[self.entry["current"]][1])}')
             self.prepare_image_mods()
-            self.session_info.setText(f'Entry: {self.entry["current"]+1}/{self.entry["total"]} Image: {int(self.schedule[self.entry["current"]][1])-self.entry["amount of items"]}/{int(self.schedule[self.entry["current"]][1])}')
     def prepare_image_mods(self):
-        self.image = QtGui.QImage(self.playlist[self.playlist_position])
+        """
+        self.image gets modified procedurally.
+        """
+        # Break scheduled
+        if self.image_mods['break']:
+            cvimage = self.convert_to_cvimage()
+        # .jpg file
+        elif self.playlist[self.playlist_position][-3:].lower() == 'jpg':
+            cvimage = self.convert_to_cvimage()
+        # Edge cases are handled
+        else:
+            cvimage = cv2.imread(self.playlist[self.playlist_position])
+        try:
+            height, width, chanel = cvimage.shape
+            bytes_per_line = 3 * width
+        except:
+            self.setWindowTitle('Error processing image')
 
         # Grayscale
-        # self.image = QtGui.QImage(self.image).convertToFormat(QtGui.QImage.Format_Grayscale16)
-
+        if self.image_mods['grayscale']:
+            cvimage = cv2.cvtColor(cvimage, cv2.COLOR_BGR2GRAY)
+            self.image = QtGui.QImage(cvimage.data, width, height, width, QtGui.QImage.Format_Grayscale8)
+        else:
+            self.image = QtGui.QImage(cvimage.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+        
         # Horizontal flip
-        # self.image = self.image.mirrored(horizontal=True)
+        if self.image_mods['hflip']:
+            self.image = self.image.mirrored(horizontal=True)
 
-        self.image = QtGui.QPixmap.fromImage(self.image,QtCore.Qt.ImageConversionFlags(0))
-        self.image_display.setPixmap(self.image.scaled(self.size(),aspectRatioMode=1))
+        # Convert to QPixmap
+        self.image = QtGui.QPixmap.fromImage(self.image)
 
+        # Display image scaled to window size in image display
+        self.image_display.setPixmap(
+            self.image.scaled(
+                self.size(), 
+                aspectRatioMode=1, 
+                transformMode=QtCore.Qt.SmoothTransformation))
+    def convert_to_cvimage(self):
+        file = QtCore.QFile()
+        file.setFileName(self.playlist[self.playlist_position])
+        file.open(QtCore.QFile.OpenModeFlag.ReadOnly)
+        ba =  file.readAll()
+        ba = ba.data()
+        ba = np.asarray(bytearray(ba), dtype='uint8')
+        file.close()
+        return cv2.imdecode(ba, 1)
+        
     def previous_playlist_position(self):
-        #first image
+        # First image
         if self.playlist_position == 0:
             self.time_seconds = self.entry['time']
             self.update_timer_display()
@@ -710,9 +776,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.timer.start(500)
             self.load_entry()
             return
-
-        self.playlist_position -= 1
-        # end of entries
+        self.playlist_position -= 1 # Navigate to the previous position
+        # End of entries
         if self.entry['current'] >= self.entry['total']:
             self.playlist_position -= 1
             self.entry['current'] = [*self.schedule][-1]
@@ -723,8 +788,10 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.entry['amount of items'] = 1
             self.display_image()
             return
-        # at the beginning of a new entry
-        if self.entry['amount of items']+1 == int(self.schedule[self.entry['current']][1]) or self.session_info.text() == 'Break':
+        # At the beginning of a new entry
+        if (self.entry['amount of items']+1 == int(self.schedule[self.entry['current']][1]) 
+            or self.session_info.text() == 'Break'):
+            # Since 
             self.entry['current'] -= 1
             self.timer.stop()
             self.entry['time'] = int(self.schedule[self.entry['current']][2])
