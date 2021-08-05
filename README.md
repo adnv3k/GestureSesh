@@ -26,6 +26,9 @@ Close Window | Escape
 ### Navigation Bar: 
 Button | Hotkey
 ------------ | -------------
+Grayscale | G
+Flip Horizontal | F
+Toggle Resizing (dynamic/static) | R
 Previous Image | Left Arrow Key
 Stop | Esc 
 Pause | Spacebar
