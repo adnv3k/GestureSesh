@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="icons">
+    <file>icons/flip horizontal.png</file>
+    <file>icons/grayscale.png</file>
     <file>icons/_Blank.ico</file>
     <file>icons/brush.ico</file>
     <file>icons/_Blank.png</file>
@@ -65,6 +67,7 @@
     <file>icons/Undo 2.ico</file>
     <file>icons/Undo 2.png</file>
   </qresource>
+  <qresource prefix="iconsnew"/>
   <qresource prefix="break">
     <file>break.png</file>
   </qresource>
