@@ -11,15 +11,15 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Ignored">
+   <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>955</width>
-    <height>700</height>
+    <width>695</width>
+    <height>1</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -64,15 +64,15 @@
    <item>
     <widget class="QLabel" name="image_display">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
      <property name="minimumSize">
       <size>
-       <width>450</width>
-       <height>500</height>
+       <width>1</width>
+       <height>1</height>
       </size>
      </property>
      <property name="styleSheet">
@@ -96,14 +96,11 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4">
-     <property name="spacing">
-      <number>6</number>
-     </property>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
       <widget class="QLabel" name="session_info">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -140,9 +137,12 @@
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_2">
+      <spacer name="horizontalSpacer_3">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Preferred</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -153,9 +153,115 @@
       </spacer>
      </item>
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <property name="spacing">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>5</number>
+       </property>
+       <item>
+        <widget class="QPushButton" name="grayscale_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>50</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="mouseTracking">
+          <bool>false</bool>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Grayscale
+G</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background: rgb(119, 153, 146);</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="resources/resources_config.qrc">
+           <normaloff>:/icons/icons/grayscale.png</normaloff>:/icons/icons/grayscale.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="shortcut">
+          <string>G</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="flip_horizontal_button">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>50</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="mouseTracking">
+          <bool>false</bool>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>Flip horizontal
+F</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background: rgb(119, 153, 146);</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="resources/resources_config.qrc">
+           <normaloff>:/icons/icons/flip horizontal.png</normaloff>:/icons/icons/flip horizontal.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="shortcut">
+          <string>F</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <property name="spacing">
-        <number>20</number>
+        <number>1</number>
        </property>
        <item alignment="Qt::AlignBottom">
         <widget class="QPushButton" name="previous_image">
@@ -174,11 +280,14 @@
          <property name="mouseTracking">
           <bool>false</bool>
          </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
          <property name="toolTip">
-          <string>Previous Image</string>
+          <string>Previous image</string>
          </property>
          <property name="styleSheet">
-          <string notr="true">background: rgb(68,201,176);</string>
+          <string notr="true">background: rgb(119, 153, 146);</string>
          </property>
          <property name="text">
           <string/>
@@ -215,11 +324,14 @@
          <property name="mouseTracking">
           <bool>false</bool>
          </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
          <property name="toolTip">
           <string>Pause Timer</string>
          </property>
          <property name="styleSheet">
-          <string notr="true">background: rgb(68,201,176);</string>
+          <string notr="true">background: rgb(119, 153, 146);</string>
          </property>
          <property name="text">
           <string/>
@@ -256,11 +368,14 @@
          <property name="mouseTracking">
           <bool>false</bool>
          </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
          <property name="toolTip">
-          <string>Stop Session. This will close the window.</string>
+          <string>Stop Session. Closes window.</string>
          </property>
          <property name="styleSheet">
-          <string notr="true">background: rgb(68,201,176);</string>
+          <string notr="true">background: rgb(119, 153, 146);</string>
          </property>
          <property name="text">
           <string/>
@@ -297,11 +412,14 @@
          <property name="mouseTracking">
           <bool>false</bool>
          </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
          <property name="toolTip">
           <string>Next Image</string>
          </property>
          <property name="styleSheet">
-          <string notr="true">background: rgb(68,201,176);</string>
+          <string notr="true">background: rgb(119, 153, 146);</string>
          </property>
          <property name="text">
           <string/>
@@ -364,6 +482,15 @@
          <property name="styleSheet">
           <string notr="true">color: 'white';</string>
          </property>
+         <property name="frameShape">
+          <enum>QFrame::NoFrame</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Plain</enum>
+         </property>
+         <property name="lineWidth">
+          <number>1</number>
+         </property>
          <property name="text">
           <string>00:00</string>
          </property>
@@ -377,6 +504,9 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <property name="sizeConstraint">
+          <enum>QLayout::SetFixedSize</enum>
+         </property>
          <item>
           <widget class="QPushButton" name="add_60">
            <property name="sizePolicy">
@@ -412,9 +542,9 @@
               <colorrole role="Button">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
@@ -439,18 +569,18 @@
               <colorrole role="Base">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
               <colorrole role="Window">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
@@ -477,9 +607,9 @@
               <colorrole role="Button">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
@@ -504,18 +634,18 @@
               <colorrole role="Base">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
               <colorrole role="Window">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
@@ -542,9 +672,9 @@
               <colorrole role="Button">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
@@ -569,18 +699,18 @@
               <colorrole role="Base">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
               <colorrole role="Window">
                <brush brushstyle="SolidPattern">
                 <color alpha="255">
-                 <red>68</red>
-                 <green>201</green>
-                 <blue>176</blue>
+                 <red>119</red>
+                 <green>153</green>
+                 <blue>146</blue>
                 </color>
                </brush>
               </colorrole>
@@ -604,18 +734,21 @@
              <bold>true</bold>
             </font>
            </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
            <property name="toolTip">
             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;color:'black'&quot;&gt;
-&lt;p style=&quot; margin-top:5px; margin-bottom:5px; margin-left:5px; margin-right:5px; -qt-block-indent:0; text-indent:0px;'&quot;&gt;Add 1 minute&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;'&quot;&gt;Add 1 minute&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="layoutDirection">
             <enum>Qt::LeftToRight</enum>
            </property>
            <property name="styleSheet">
-            <string notr="true">background: rgb(68,201,176); color: 'black';</string>
+            <string notr="true">background: rgb(119, 153, 146);</string>
            </property>
            <property name="text">
             <string>+m</string>
@@ -659,18 +792,21 @@ p, li { white-space: pre-wrap; }
              <bold>true</bold>
             </font>
            </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
            <property name="toolTip">
             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;color:'black'&quot;&gt;
-&lt;p style=&quot; margin-top:5px; margin-bottom:5px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Add 30 seconds&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Add 30 seconds&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="layoutDirection">
             <enum>Qt::LeftToRight</enum>
            </property>
            <property name="styleSheet">
-            <string notr="true">background: rgb(68,201,176); color: 'black';</string>
+            <string notr="true">background: rgb(119, 153, 146);</string>
            </property>
            <property name="text">
             <string>+30s</string>
@@ -711,18 +847,21 @@ p, li { white-space: pre-wrap; }
              <pointsize>14</pointsize>
             </font>
            </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
            <property name="toolTip">
             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;color:'black'&quot;&gt;
-&lt;p style=&quot; margin-top:5px; margin-bottom:5px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Restart timer&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Restart timer&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="layoutDirection">
             <enum>Qt::LeftToRight</enum>
            </property>
            <property name="styleSheet">
-            <string notr="true">background: rgb(68,201,176); color: 'white';</string>
+            <string notr="true">background: rgb(119, 153, 146);</string>
            </property>
            <property name="text">
             <string/>
