@@ -630,6 +630,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.entry = self.init_entries()
         self.playlist = items
         self.playlist_position = 0
+        self.resize(self.screen().availableSize()/2) # Resizes to half resolution of current screen in both directions.
+        self.previous_size = self.size()
+        self.default_size = self.init_default_size()
         self.installEventFilter(self)
         self.image_mods = self.init_mods()
         self.load_entry()
@@ -649,7 +652,18 @@ class SessionDisplay(QWidget, Ui_session_display):
             'break': False,
             'grayscale': False,
             'hflip': False}
-            
+    def init_default_size(self):
+        """
+        Creates a default box size that is used as a basis for
+        images to scale off of. The size is determined by the 
+        smallest side of the given rectangle from the
+        current screen's available resolution divided by two
+        for both horizontally, and vertically.
+        """
+        half_screen = self.screen().availableSize()/2
+        min_length = min(half_screen.height(), half_screen.width())
+        return QtCore.QSize(min_length, min_length)
+      
     def closeEvent(self, event):
         self.timer.stop()
         self.closed.emit()
@@ -657,8 +671,12 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     #region Session processing functions
     def eventFilter(self, source, event):
-        if (source is self and event.type() == QtCore.QEvent.Resize):
-            self.image_display.setPixmap(self.image.scaled(self.size(),aspectRatioMode=1))
+        if source is self and event.type() == QtCore.QEvent.Resize:
+            self.image_display.setPixmap(
+                self.image.scaled(
+                    self.image_display.size(),
+                    aspectRatioMode=1,
+                    transformMode=QtCore.Qt.SmoothTransformation))
         return super(SessionDisplay, self).eventFilter(source, event)
 
     def load_entry(self):
@@ -748,13 +766,28 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         # Convert to QPixmap
         self.image = QtGui.QPixmap.fromImage(self.image)
-
+        
         # Display image scaled to window size in image display
-        self.image_display.setPixmap(
-            self.image.scaled(
-                self.size(), 
-                aspectRatioMode=1, 
-                transformMode=QtCore.Qt.SmoothTransformation))
+        # If resized
+        if self.size() != self.previous_size: 
+            resized_pixmap = self.image_display.pixmap()
+            scaled_size = self.default_size.scaled(resized_pixmap.size(), 1)
+            self.default_size = QtCore.QSize(scaled_size)
+        # Get scaled pixmap
+        self.image_scaled = self.image.scaled(
+            self.default_size,
+            aspectRatioMode=2,
+            transformMode=QtCore.Qt.SmoothTransformation)
+        # Set
+        self.image_display.setPixmap(self.image_scaled)
+        # Resize
+        self.image_display.resize(self.image_scaled.size())
+        self.resize(
+            self.image_scaled.size().width(),
+            self.image_scaled.size().height()+32)
+        # Save current size
+        self.previous_size = self.size()
+
     def convert_to_cvimage(self):
         file = QtCore.QFile()
         file.setFileName(self.playlist[self.playlist_position])
