@@ -20,7 +20,9 @@ class Version():
             # Grab json from github
             print('Checking releases...')
             try:
-                r = requests.get('https://api.github.com/repos/adnv3k/Image-Queuer/releases')
+                r = requests.get(
+                    'https://api.github.com/repos/adnv3k/Image-Queuer/releases'
+                    )
                 self.r_json = r.json()
             except:
                 print('Cannot connect to api.github')
