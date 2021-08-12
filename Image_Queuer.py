@@ -17,14 +17,9 @@ from check_update import Version
 
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
-CURRENT_VERSION = '0.3.5'
-# Grayscale - geared for visibility
-# Flip horizontal
-# Dynamic window resizing to remove borders
-# Main window raises to the front after session is closed
-# Fixed jpeg not adding
+CURRENT_VERSION = '0.3.6'
+# Flip verticle
 # Nav bar shortened
-
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -617,9 +612,10 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer.timeout.connect(self.countdown)
         self.timer.start(500)
         self.toggle_resize_status = False
+        self.toggle_always_on_top_status = False
         self.pause_timer.clicked.connect(self.pause)
-        self.add_30.clicked.connect(self.add_30_seconds)
-        self.add_60.clicked.connect(self.add_60_seconds)
+        # self.add_30.clicked.connect(self.add_30_seconds)
+        # self.add_60.clicked.connect(self.add_60_seconds)
         self.entry = self.init_entries()
         self.playlist = items
         self.playlist_position = 0
@@ -631,14 +627,18 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.load_entry()
         self.previous_image.clicked.connect(self.previous_playlist_position)
         self.next_image.clicked.connect(self.load_next_image)
-        self.restart.clicked.connect(self.restart_timer)
+        # self.restart.clicked.connect(self.restart_timer)
         self.stop_session.clicked.connect(self.close)
         self.flip_horizontal_button.clicked.connect(self.flip_horizontal)
+        self.flip_vertical_button.clicked.connect(self.flip_vertical)
         self.grayscale_button.clicked.connect(self.grayscale)
 
         # Shortcuts
         self.toggle_resize_key = QShortcut(QtGui.QKeySequence('R'), self)
         self.toggle_resize_key.activated.connect(self.toggle_resize)
+        self.always_on_top_key = QShortcut(QtGui.QKeySequence('A'), self)
+        self.always_on_top_key.activated.connect(self.toggle_always_on_top)
+        
 
     def init_entries(self):
         return {
@@ -651,6 +651,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             'break': False,
             'grayscale': False,
             'hflip': False,
+            'vflip': False,
             'break_grayscale': False}
     def init_default_size(self):
         """
@@ -775,7 +776,17 @@ class SessionDisplay(QWidget, Ui_session_display):
         
         # Horizontal flip
         if self.image_mods['hflip']:
-            self.image = self.image.mirrored(horizontal=True, vertical=False)
+            self.image = self.image.mirrored(horizontal=True)
+            if not self.image_mods['vflip']:
+                self.image = self.image.mirrored(vertical=True)
+            else:
+                self.image = self.image.mirrored(vertical=False)
+        else:
+            self.image = self.image.mirrored(horizontal=False)
+            if not self.image_mods['vflip']:
+                self.image = self.image.mirrored(vertical=True)
+            else:
+                self.image = self.image.mirrored(vertical=False)
 
         # Convert to QPixmap
         self.image = QtGui.QPixmap.fromImage(self.image)
@@ -823,6 +834,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self.image_mods['hflip'] = True
         self.display_image()
+    def flip_vertical(self):
+        if self.image_mods['vflip']:
+            self.image_mods['vflip'] = False
+        else:
+            self.image_mods['vflip'] = True
+        self.display_image()
     def grayscale(self):
         if self.image_mods['grayscale']:
             self.image_mods['grayscale'] = False
@@ -836,7 +853,16 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self.toggle_resize_status = False
             self.sizePolicy().setHeightForWidth(True)
-
+    def toggle_always_on_top(self):
+        if not self.toggle_always_on_top_status:
+            self.toggle_always_on_top_status = True
+            self.setWindowFlag(QtCore.Qt.X11BypassWindowManagerHint, True)
+            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+            self.show()
+        else:
+            self.toggle_always_on_top_status = False
+            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, False)
+            self.show()
     def previous_playlist_position(self):
         # First image
         if self.playlist_position == 0:
@@ -940,23 +966,23 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self.timer_display.setText(f'{self.sec[0]}{self.sec[1]}')
             
-    def add_30_seconds(self):
-        self.time_seconds += 30
-        self.update_timer_display()
+    # def add_30_seconds(self):
+    #     self.time_seconds += 30
+    #     self.update_timer_display()
 
-    def add_60_seconds(self):
-        self.time_seconds += 60
-        self.update_timer_display()
+    # def add_60_seconds(self):
+    #     self.time_seconds += 60
+    #     self.update_timer_display()
 
-    def restart_timer(self):
-        self.time_seconds = int(self.schedule[self.entry['current']][2])
+    # def restart_timer(self):
+    #     self.time_seconds = int(self.schedule[self.entry['current']][2])
     #endregion
 
 
 #Subclass to enable multifolder selection.
 class FileDialog(QFileDialog):
-    def __init__(self, *args, **kwargs):
-        super(FileDialog,self).__init__(*args, **kwargs)
+    def __init__(self):
+        super(FileDialog,self).__init__()
         self.setOption(QFileDialog.DontUseNativeDialog, True)
         self.setFileMode(QFileDialog.Directory)
         self.setOption(QFileDialog.ShowDirsOnly, True)
