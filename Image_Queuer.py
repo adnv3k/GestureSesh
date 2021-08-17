@@ -707,6 +707,8 @@ class SessionDisplay(QWidget, Ui_session_display):
                 )
             self.image_display.clear()
             self.timer_display.setText(f'Done!')
+            QTest.qWait(5000)
+            self.close()
             return
         self.entry['time'] = int(self.schedule[self.entry['current']][2])
         self.timer.stop()
@@ -734,11 +736,8 @@ class SessionDisplay(QWidget, Ui_session_display):
     def display_image(self):
         if self.playlist_position > len(self.playlist): # Last image
             self.timer.stop()
-            self.setWindowTitle(
-                "You've reached the end of your session. Good job!!"
-                )
-            self.image_display.clear()
             self.timer_display.setText(f'Done!')
+            return
         else:
             if (self.entry['amount of items'] == -1 # End of entry
                 or os.path.basename(
