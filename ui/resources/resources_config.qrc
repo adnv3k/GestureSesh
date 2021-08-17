@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="icons">
+    <file>icons/flip vertical.png</file>
     <file>icons/flip horizontal.png</file>
     <file>icons/grayscale.png</file>
     <file>icons/_Blank.ico</file>
