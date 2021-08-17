@@ -21,6 +21,7 @@ CURRENT_VERSION = '0.3.6'
 PROCESSOR = '64-bit'
 # Added flip verticle, hotkey V
 # Changed flip horizontal hotkey from F to H
+# Added always on top. Hotkey set to A
 # Removed timer buttons. Hotkeys remain the same.
 # Added notification for end of session
 
