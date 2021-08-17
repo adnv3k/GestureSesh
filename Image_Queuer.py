@@ -6,7 +6,7 @@ import random
 import numpy as np
 import cv2
 
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtMultimedia
 from PyQt5.QtWidgets import *
 from PyQt5.QtTest import QTest
 
@@ -18,14 +18,20 @@ from check_update import Version
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
 CURRENT_VERSION = '0.3.6'
-# Flip verticle
-# Nav bar shortened
+PROCESSOR = '64-bit'
+# Added flip verticle, hotkey V
+# Changed flip horizontal hotkey from F to H
+# Removed timer buttons. Hotkeys remain the same.
+# Added notification for end of session
+
+# Added processor type for future updating
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
         self.current_version = CURRENT_VERSION
+        self.processor = PROCESSOR
         self.setWindowTitle(f'Reference Practice v{self.current_version}')
         self.session_schedule = {}
         self.has_break = False
@@ -34,26 +40,31 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.total_time = 0
         self.total_images = 0
         self.selection = {'folders':[],'files':[]}
+        self.init_buttons()
+        self.init_shortcuts()
+        self.init_preset()
+        self.load_recent()
+        self.check_version()
+        self.entry_table.itemChanged.connect(self.update_total)
+        self.dialog_buttons.accepted.connect(self.start_session)
 
+    def init_buttons(self):
         # Buttons for selection
         self.add_folder.clicked.connect(self.open_folder)
         self.clear_items.clicked.connect(self.remove_items)
         self.randomize_selection.clicked.connect(self.display_random_status)
         self.remove_duplicates.clicked.connect(self.remove_dupes)
-
         # Buttons for preset
         self.add_entry.clicked.connect(self.append_schedule)
         self.save_preset.clicked.connect(self.save)
         self.delete_preset.clicked.connect(self.delete)
         self.preset_loader_box.currentIndexChanged.connect(self.load)
-
         # Buttons for table
         self.remove_entry.pressed.connect(self.remove_row)
         self.move_entry_up.clicked.connect(self.move_up)
         self.move_entry_down.clicked.connect(self.move_down)
         self.reset_table.clicked.connect(self.remove_rows)
-        
-        # Shortcuts
+    def init_shortcuts(self):
         # Ctrl+Enter to start session
         self.return_shortcut = QShortcut(QtGui.QKeySequence('Ctrl+Return'), self)
         self.return_shortcut.activated.connect(self.start_session)
@@ -68,12 +79,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.escape_shortcut = QShortcut(QtGui.QKeySequence('Escape'), self)
         self.escape_shortcut.activated.connect(self.close)
 
-        self.init_preset()
-        self.load_recent()
-        self.check_version()
-        self.entry_table.itemChanged.connect(self.update_total)
-        self.dialog_buttons.accepted.connect(self.start_session)
-
     #region Functions for user input
     #region Select Items
     def open_files(self):
@@ -83,7 +88,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.selected_items.setText(f'{len(checked_files["valid_files"])} file(s) added!')
         if len(checked_files['invalid_files']) > 0:
             self.selected_items.append(f'{len(checked_files["invalid_files"])} file(s) not added. Supported file types: {", ".join(self.valid_file_types)}.')
-            QTest.qWait(2000)
+            QTest.qWait(500)
         QTest.qWait(3000)
         self.display_status()
 
@@ -585,7 +590,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Checks if the current version is the newest one. If not, an update 
         notice is displayed in the display
         """
-        current_version = Version(self.current_version)
+        current_version = Version(self.current_version, self.processor)
         if not current_version.is_newest():
             update_type = current_version.update_type()
             if type(update_type) == str:
@@ -613,9 +618,6 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer.start(500)
         self.toggle_resize_status = False
         self.toggle_always_on_top_status = False
-        self.pause_timer.clicked.connect(self.pause)
-        # self.add_30.clicked.connect(self.add_30_seconds)
-        # self.add_60.clicked.connect(self.add_60_seconds)
         self.entry = self.init_entries()
         self.playlist = items
         self.playlist_position = 0
@@ -625,21 +627,10 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.installEventFilter(self)
         self.image_mods = self.init_mods()
         self.load_entry()
-        self.previous_image.clicked.connect(self.previous_playlist_position)
-        self.next_image.clicked.connect(self.load_next_image)
-        # self.restart.clicked.connect(self.restart_timer)
-        self.stop_session.clicked.connect(self.close)
-        self.flip_horizontal_button.clicked.connect(self.flip_horizontal)
-        self.flip_vertical_button.clicked.connect(self.flip_vertical)
-        self.grayscale_button.clicked.connect(self.grayscale)
-
-        # Shortcuts
-        self.toggle_resize_key = QShortcut(QtGui.QKeySequence('R'), self)
-        self.toggle_resize_key.activated.connect(self.toggle_resize)
-        self.always_on_top_key = QShortcut(QtGui.QKeySequence('A'), self)
-        self.always_on_top_key.activated.connect(self.toggle_always_on_top)
+        self.pause_timer.clicked.connect(self.pause)
+        self.init_buttons()
+        self.init_shortcuts()
         
-
     def init_entries(self):
         return {
             'current': 0,
@@ -664,11 +655,32 @@ class SessionDisplay(QWidget, Ui_session_display):
         half_screen = self.screen().availableSize()/2
         min_length = min(half_screen.height(), half_screen.width())
         return QtCore.QSize(min_length, min_length)
+    def init_buttons(self):
+        self.previous_image.clicked.connect(self.previous_playlist_position)
+        self.next_image.clicked.connect(self.load_next_image)
+        self.stop_session.clicked.connect(self.close)
+        self.flip_horizontal_button.clicked.connect(self.flip_horizontal)
+        self.flip_vertical_button.clicked.connect(self.flip_vertical)
+        self.grayscale_button.clicked.connect(self.grayscale)
+    def init_shortcuts(self):
+        # Resize and always on top
+        self.toggle_resize_key = QShortcut(QtGui.QKeySequence('R'), self)
+        self.toggle_resize_key.activated.connect(self.toggle_resize)
+        self.always_on_top_key = QShortcut(QtGui.QKeySequence('A'), self)
+        self.always_on_top_key.activated.connect(self.toggle_always_on_top)
+        # Timer
+        self.add_30 = QShortcut(QtGui.QKeySequence('Up'), self)
+        self.add_30.activated.connect(self.add_30_seconds)
+        self.add_60 = QShortcut(QtGui.QKeySequence('Ctrl+Up'), self)
+        self.add_60.activated.connect(self.add_60_seconds)
+        self.restart = QShortcut(QtGui.QKeySequence('Ctrl+Shift+Up'), self)
+        self.restart.activated.connect(self.restart_timer)
 
     def closeEvent(self, event):
         self.timer.stop()
         self.closed.emit()
         event.accept()
+
     #region Session processing functions
     def eventFilter(self, source, event):
         if source is self and event.type() == QtCore.QEvent.Resize:
@@ -690,7 +702,11 @@ class SessionDisplay(QWidget, Ui_session_display):
     def load_entry(self):
         if self.entry['current'] >= self.entry['total']:
             self.timer.stop()
-            self.timer_display.setText(f'Last image!')
+            self.setWindowTitle(
+                "You've reached the end of your session! Good job!!"
+                )
+            self.image_display.clear()
+            self.timer_display.setText(f'Done!')
             return
         self.entry['time'] = int(self.schedule[self.entry['current']][2])
         self.timer.stop()
@@ -718,14 +734,20 @@ class SessionDisplay(QWidget, Ui_session_display):
     def display_image(self):
         if self.playlist_position > len(self.playlist): # Last image
             self.timer.stop()
-            self.timer_display.setText(f'Last image!')
+            self.setWindowTitle(
+                "You've reached the end of your session. Good job!!"
+                )
+            self.image_display.clear()
+            self.timer_display.setText(f'Done!')
         else:
             if (self.entry['amount of items'] == -1 # End of entry
                 or os.path.basename(
                     self.playlist[self.playlist_position]
                     ) == 'break.png'): # Break scheduled
-                # Since the end of an entry has been reached, or a break is scheduled,
-                # configure for break image
+                """
+                Since the end of an entry has been reached, or a break is scheduled,
+                configure for break image.
+                """
                 self.image_mods['break'] = True
                 self.image_mods['break_grayscale'] = True
                 self.entry['amount of items'] = 0
@@ -774,7 +796,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self.image = QtGui.QImage(cvimage.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
         
-        # Horizontal flip
+        # Flip
         if self.image_mods['hflip']:
             self.image = self.image.mirrored(horizontal=True)
             if not self.image_mods['vflip']:
@@ -790,7 +812,7 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         # Convert to QPixmap
         self.image = QtGui.QPixmap.fromImage(self.image)
-        if self.toggle_resize_status:
+        if self.toggle_resize_status: # If toggle resize is true
             self.image_display.setPixmap(
                 self.image.scaled(
                     self.size(),
@@ -815,7 +837,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.image_display.resize(self.image_scaled.size())
         self.resize(
             self.image_scaled.size().width(),
-            self.image_scaled.size().height()+32) # 32 is the current height of the nav bar in px
+            self.image_scaled.size().height() + 32) # 32 is the current height of the nav bar in px
         # Save current size
         self.previous_size = self.size()
 
@@ -823,7 +845,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         file = QtCore.QFile()
         file.setFileName(self.playlist[self.playlist_position])
         file.open(QtCore.QFile.OpenModeFlag.ReadOnly)
-        ba =  file.readAll()
+        ba = file.readAll()
         ba = ba.data()
         ba = np.asarray(bytearray(ba), dtype='uint8')
         file.close()
@@ -888,8 +910,10 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.display_image()
             return
         # At the beginning of a new entry
-        if (self.entry['amount of items']+1 == int(self.schedule[self.entry['current']][1]) 
-            or self.session_info.text() == 'Break'):
+        if (self.entry['amount of items']+1 == 
+                int(self.schedule[self.entry['current']][1]) 
+            or self.session_info.text() == 
+                'Break'):
             self.entry['current'] -= 1
             self.timer.stop()
             self.entry['time'] = int(self.schedule[self.entry['current']][2])
@@ -966,16 +990,16 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self.timer_display.setText(f'{self.sec[0]}{self.sec[1]}')
             
-    # def add_30_seconds(self):
-    #     self.time_seconds += 30
-    #     self.update_timer_display()
+    def add_30_seconds(self):
+        self.time_seconds += 30
+        self.update_timer_display()
 
-    # def add_60_seconds(self):
-    #     self.time_seconds += 60
-    #     self.update_timer_display()
+    def add_60_seconds(self):
+        self.time_seconds += 60
+        self.update_timer_display()
 
-    # def restart_timer(self):
-    #     self.time_seconds = int(self.schedule[self.entry['current']][2])
+    def restart_timer(self):
+        self.time_seconds = int(self.schedule[self.entry['current']][2])
     #endregion
 
 
