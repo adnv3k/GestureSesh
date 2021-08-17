@@ -1,5 +1,5 @@
 # Image Queuer
-A free tool intended to help artists practice gesture/figure drawing with their own pictures. The tool itself is a GUI app that displays image files based on a user defined schedule. A session will display images, while maintaining their original aspect ratio, according to the schedule with image navigation that maintains its respective schedule configuration. 
+A free tool intended to help artists practice gesture/figure drawing with their own libraries. The tool itself is a GUI app that displays image files based on a user defined schedule. A session will display images, while maintaining their original aspect ratio, according to the schedule with image navigation that maintains its respective schedule configuration. 
 
 # Usage
 No installation needed. Either zip in Releases includes a standalone exe. 
@@ -43,7 +43,7 @@ Reset timer | Ctrl + Shift + Up Arrow Key
 # Note
 Current supported file types: .bmp, .jpg, .jpeg, .png. Settings are stored using the shelve module, and are saved in the folders 'presets' and 'recent' as .bak, .dat, and .dir files. These folders are saved in the same directory as Image Queuer.exe. The most recent images, randomization setting, and schedule used will be automatically loaded when reopening Image Queuer.exe. 
 
-Updates are checked every 3 days, and a notice of available update will be displayed if there is one.
+Updates are checked every 2 days (if the app was opened), and a notice of available update will be displayed if there is one.
 
 GUI created using PyQt5
 
