@@ -27,8 +27,10 @@ Close Window | Escape
 Button | Hotkey
 ------------ | -------------
 Grayscale | G
-Flip Horizontal | F
+Flip Horizontal | H
+Flip Vertical | V
 Toggle Resizing (dynamic/static) | R
+Toggle Always On Top | A
 Previous Image | Left Arrow Key
 Stop | Esc 
 Pause | Spacebar
