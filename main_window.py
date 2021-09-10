@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\ui\main_window.ui'
+# Form implementation generated from reading ui file '.\resources\ui\main_window.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -86,7 +86,7 @@ class Ui_MainWindow(object):
         font.setBold(True)
         font.setWeight(75)
         MainWindow.setFont(font)
-        MainWindow.setFocusPolicy(QtCore.Qt.NoFocus)
+        MainWindow.setFocusPolicy(QtCore.Qt.ClickFocus)
         MainWindow.setAcceptDrops(True)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/icons/icons/Art1Paint Net.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -563,7 +563,10 @@ class Ui_MainWindow(object):
         font.setBold(True)
         font.setWeight(75)
         self.set_minutes.setFont(font)
+        self.set_minutes.setFocusPolicy(QtCore.Qt.WheelFocus)
+        self.set_minutes.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
         self.set_minutes.setStyleSheet("background: rgb(30,56,78); color: \'white\';")
+        self.set_minutes.setWrapping(False)
         self.set_minutes.setFrame(False)
         self.set_minutes.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.set_minutes.setKeyboardTracking(True)
@@ -577,9 +580,11 @@ class Ui_MainWindow(object):
         font.setWeight(75)
         self.set_seconds.setFont(font)
         self.set_seconds.setFocusPolicy(QtCore.Qt.WheelFocus)
+        self.set_seconds.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
         self.set_seconds.setStyleSheet("background: rgb(30,56,78); color: \'white\';")
         self.set_seconds.setFrame(False)
         self.set_seconds.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.set_seconds.setKeyboardTracking(True)
         self.set_seconds.setMaximum(59)
         self.set_seconds.setObjectName("set_seconds")
         self.gridLayout.addWidget(self.set_seconds, 1, 4, 1, 1)
@@ -773,7 +778,7 @@ class Ui_MainWindow(object):
         brush = QtGui.QBrush(QtGui.QColor(30, 56, 78))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
-        brush = QtGui.QBrush(QtGui.QColor(97, 209, 189))
+        brush = QtGui.QBrush(QtGui.QColor(68, 201, 176))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Highlight, brush)
         brush = QtGui.QBrush(QtGui.QColor(45, 85, 117))
@@ -821,8 +826,10 @@ class Ui_MainWindow(object):
         font.setBold(True)
         font.setWeight(75)
         self.entry_table.setFont(font)
+        self.entry_table.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
         self.entry_table.setAutoFillBackground(False)
         self.entry_table.setStyleSheet("background: rgb(30,56,78); color: \'white\';")
+        self.entry_table.setInputMethodHints(QtCore.Qt.ImhDigitsOnly)
         self.entry_table.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.entry_table.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.entry_table.setLineWidth(1)
@@ -850,7 +857,6 @@ class Ui_MainWindow(object):
         font.setBold(True)
         font.setWeight(75)
         item.setFont(font)
-        item.setBackground(QtGui.QColor(68, 201, 176))
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         item.setForeground(brush)
@@ -1075,7 +1081,8 @@ class Ui_MainWindow(object):
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Add entry to the schedule below</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Enter</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + A</span></p>\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.add_entry.setText(_translate("MainWindow", "Add"))
         self.label_8.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
