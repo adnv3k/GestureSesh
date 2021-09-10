@@ -68,7 +68,6 @@
     <file>icons/Undo 2.ico</file>
     <file>icons/Undo 2.png</file>
   </qresource>
-  <qresource prefix="iconsnew"/>
   <qresource prefix="break">
     <file>break.png</file>
   </qresource>

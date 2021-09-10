@@ -13,7 +13,7 @@ Open Files | Ctrl + F
 Clear Selection | Ctrl + C
 Toggle Randomization | Ctrl + R
 Remove Duplicates | Ctrl + 1 (only 1 of a kind)
-Add Entry | Enter
+Add Entry | Shift + Enter
 Save Preset | Ctrl + S
 Delete Preset | Ctrl + Shift + D
 Delete Entry | D
@@ -23,14 +23,15 @@ Clear Schedule | C
 Start Session | Ctrl + Enter
 Close Window | Escape
 
-### Navigation Bar: 
+### Session Window: 
 Button | Hotkey
 ------------ | -------------
 Grayscale | G
 Flip Horizontal | H
 Flip Vertical | V
-Toggle Resizing (dynamic/static) | R
+Toggle Window Resizing (dynamic/static) | R
 Toggle Always On Top | A
+Toggle Mute | M
 Previous Image | Left Arrow Key
 Stop | Esc 
 Pause | Spacebar
@@ -43,7 +44,7 @@ Reset timer | Ctrl + Shift + Up Arrow Key
 # Note
 Current supported file types: .bmp, .jpg, .jpeg, .png. Settings are stored using the shelve module, and are saved in the folders 'presets' and 'recent' as .bak, .dat, and .dir files. These folders are saved in the same directory as Image Queuer.exe. The most recent images, randomization setting, and schedule used will be automatically loaded when reopening Image Queuer.exe. 
 
-Updates are checked every 2 days (if the app was opened), and a notice of available update will be displayed if there is one.
+Updates are checked every other day (if the app was opened), and a notice of available update will be displayed if there is one.
 
 GUI created using PyQt5
 
