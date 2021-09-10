@@ -45,18 +45,18 @@ class Version():
             f'last_checked_date: {last_checked}\n'
             f'Now: {now}'
             )
-        # If more than 1 month or 2 days
+        # If more than 1 month or 1 days
         print(
             f'Month: {int(now[1])}\n'
             f'last_checked month: {int(last_checked[1])}\n'
             f'Day: {int(now[2])}\n'
-            f'last_checked day + 2: {int(last_checked[2])+2}'
+            f'last_checked day + 1: {int(last_checked[2])+1}'
             )
-        if int(now[1]) > int(last_checked[1]) or int(now[2]) > int(last_checked[2])+2:
+        if int(now[1]) > int(last_checked[1]) or int(now[2]) > int(last_checked[2])+1:
             return True
         print(
             f'Check not allowed',
-            f'{int(last_checked[2])+2 - int(now[2])} days until allowed'
+            f'{int(last_checked[2])+1 - int(now[2])} days until allowed'
             )
         return False
 
