@@ -6,10 +6,9 @@ from datetime import datetime
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
 class Version():
-    def __init__(self, current_version, processor):
+    def __init__(self, current_version):
         super().__init__()
         self.current_version = current_version
-        self.processor = processor
         self.last_checked = self.get_last_checked()
         self.allowed = self.check_allowed()
         self.patch_available = False

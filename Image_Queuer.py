@@ -29,7 +29,6 @@ def resource_path(relative_path):
 sounds_dir = resource_path("sounds")
 
 CURRENT_VERSION = '0.3.7'
-PROCESSOR = '64-bit'
 
 # Audio cues added:
 # Different sounds will be played for:
@@ -64,7 +63,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
         self.current_version = CURRENT_VERSION
-        self.processor = PROCESSOR
         self.setWindowTitle(f'Reference Practice v{self.current_version}')
         self.session_schedule = {}
         self.has_break = False
@@ -673,7 +671,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Checks if the current version is the newest one. If not, an update 
         notice is displayed in the display
         """
-        current_version = Version(self.current_version, self.processor)
+        current_version = Version(self.current_version)
         if not current_version.is_newest():
             update_type = current_version.update_type()
             if type(update_type) == str:
