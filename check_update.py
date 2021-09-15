@@ -1,16 +1,20 @@
-import os, sys
+import os
+import sys
 import requests
 import shelve
 from datetime import datetime
 
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
-class Version():
+
+class Version:
     def __init__(self, current_version):
         super().__init__()
         self.current_version = current_version
+        # self.current_version = '0.3.3'
         self.last_checked = self.get_last_checked()
         self.allowed = self.check_allowed()
+        # self.allowed = True
         self.patch_available = False
         self.newest_version = self.get_newest_version()
 
@@ -22,9 +26,9 @@ class Version():
             try:
                 r = requests.get(
                     'https://api.github.com/repos/adnv3k/Image-Queuer/releases'
-                    )
+                )
                 self.r_json = r.json()
-            except:
+            except (Exception, ConnectionError):
                 print('Cannot connect to api.github')
                 return
             # Get newest version from json
@@ -43,20 +47,20 @@ class Version():
         print(
             f'last_checked_date: {last_checked}\n'
             f'Now: {now}'
-            )
+        )
         # If more than 1 month or 1 days
         print(
             f'Month: {int(now[1])}\n'
             f'last_checked month: {int(last_checked[1])}\n'
             f'Day: {int(now[2])}\n'
-            f'last_checked day + 1: {int(last_checked[2])+1}'
-            )
-        if int(now[1]) > int(last_checked[1]) or int(now[2]) > int(last_checked[2])+1:
+            f'last_checked day + 1: {int(last_checked[2]) + 1}'
+        )
+        if int(now[1]) > int(last_checked[1]) or int(now[2]) > int(last_checked[2]) + 1:
             return True
         print(
             f'Check not allowed',
-            f'{int(last_checked[2])+1 - int(now[2])} days until allowed'
-            )
+            f'{int(last_checked[2]) + 1 - int(now[2])} days until allowed'
+        )
         return False
 
     def is_newest(self):
@@ -84,13 +88,13 @@ class Version():
             self.save_to_recent()
             print('save_to_recent called')
             return False
-    
+
     def is_valid_update(self):
         if self.r_json[0]['target_commitish'].lower() != 'main':
             return False
-        if self.r_json[0]['prerelease'] != False:
+        if self.r_json[0]['prerelease']:
             return False
-        if self.r_json[0]['draft'] != False:
+        if self.r_json[0]['draft']:
             return False
         return True
 
@@ -103,13 +107,14 @@ class Version():
         try:
             last_checked = f['last_checked']
             print(f'Save exists. last_checked: {last_checked}')
-        except:
+        except (Exception, KeyError):
             f['last_checked'] = [datetime.now().date(), self.current_version]
             last_checked = False
             print('last_checked not found')
         f.close()
         os.chdir(r'..\\')
         return last_checked
+
     # Saves date checked
     def save_to_recent(self):
         os.chdir(r'.\recent')
@@ -117,7 +122,7 @@ class Version():
         f['last_checked'] = [datetime.now().date(), self.newest_version]
         f.close()
         os.chdir(r'..\\')
-        
+
     def update_type(self):
         if self.patch_available:
             return 'Patch'
@@ -134,5 +139,6 @@ class Version():
             return 'Feature update'
         elif update_type == 2:
             return 'Minor update'
+
     def content(self):
         return self.r_json[0]['body']
