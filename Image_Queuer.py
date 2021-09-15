@@ -1,56 +1,41 @@
 import os
+import random
+import shelve
 import sys
 from pathlib import Path
-import shelve
-import random
-import numpy as np
+
 import cv2
+import numpy as np
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtTest import QTest
+from PyQt5.QtWidgets import *
 from pygame import mixer
 
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import *
-from PyQt5.QtTest import QTest
-
-import resources_config
+from check_update import Version
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
-from check_update import Version
+import resources_config
 
 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
+
 
 def resource_path(relative_path):
     """Get absolute path to sounds"""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
-    except Exception:
+    except (Exception, FileNotFoundError):
+        print('Temp folder not found.')
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+
 sounds_dir = resource_path("sounds")
 
-CURRENT_VERSION = '0.3.7'
+CURRENT_VERSION = '0.3.8'
 
-# Audio cues added:
-# Different sounds will be played for:
-# Total time reaching the halfway point
-# Timer reaching 10/5/0 seconds
-# Start of a new entry
-# Last image of an entry
-# New image being displayed
-# *toggle mute by pressing "M"
-# 
-# Image path now set as window title temporarily.
-#
-# Hotkey changes:
-# Add Entry changed from "Enter" to "Shift+Enter"
-# Added "Delete" hotkey for delete entry
-# "M" added to mute audio cues
-# Bug fixes:
-# Entry column no longer editable
-# Error notice for letters in schedule items
-# "Enter" key now be accessible for schedule item edits
-#
-# What's to come: 
+
+# What's to come:
 # Skip button that displays the next image without reducing the
 # amount of reducing the amount of images scheduled
 # Frameless session window
@@ -95,6 +80,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.move_entry_up.clicked.connect(self.move_up)
         self.move_entry_down.clicked.connect(self.move_down)
         self.reset_table.clicked.connect(self.remove_rows)
+
     def init_shortcuts(self):
         # Ctrl+Enter to start session
         self.return_shortcut = QShortcut(QtGui.QKeySequence('Ctrl+Return'), self)
@@ -112,9 +98,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Escape to close window
         self.escape_shortcut = QShortcut(QtGui.QKeySequence('Escape'), self)
         self.escape_shortcut.activated.connect(self.close)
-    #region
+
+    # region
     # Functions for user input
-    #region
+    # region
     # Select Items
 
     def open_files(self):
@@ -217,7 +204,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             f'{len(self.selection["files"])} total files added from '
             f'{len(self.selection["folders"])} folder(s).'
         )
-   
+
     def display_random_status(self):
         """Displays the randomization setting"""
         if self.randomize_selection.isChecked():
@@ -247,7 +234,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.randomize_selection.setChecked(recent['randomized'])
                 recent.close()
                 os.chdir(r'..\\')
-            except:
+            except (Exception, KeyError):
                 print('load_recent error')
                 print(os.getcwd())
                 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
@@ -259,9 +246,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
             if not self.is_valid_session():
                 return
 
-    #endregion
+    # endregion
 
-    #region Session Settings
+    # region Session Settings
     def append_schedule(self):
         """
         Adds entry information as a new row in the schedule
@@ -269,11 +256,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Updates total amount
         """
         entry = []
-        self.table_entries = self.entry_table.rowCount()+1
+        self.table_entries = self.entry_table.rowCount() + 1
         entry.append(self.table_entries)
         images = self.set_number_of_images.value()
         entry.append(images)
-        duration = self.set_minutes.value()*60 + self.set_seconds.value()
+        duration = self.set_minutes.value() * 60 + self.set_seconds.value()
         entry.append(duration)
         self.set_number_of_images.setValue(0)
         self.set_minutes.setValue(0)
@@ -292,19 +279,18 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.update_total()
 
     def remove_row(self):
+        # Save current row
         row = self.entry_table.currentRow()
-        if row == self.entry_table.rowCount()-1:
-            last = True
         self.entry_table.removeRow(row)
         for i in range(row, self.entry_table.rowCount()):
-            item = QTableWidgetItem(str(i+1))
+            item = QTableWidgetItem(str(i + 1))
             item.setTextAlignment(4)
             self.entry_table.setItem(i, 0, item)
-        try:
-            if last:
-                self.entry_table.setCurrentCell(row-1, 0)
-        except:
+        # Set current cell
+        if row != self.entry_table.rowCount():
             self.entry_table.setCurrentCell(row, 0)
+        else:  # Case for last row selected
+            self.entry_table.setCurrentCell(row - 1, 0)
         self.update_total()
 
     def move_up(self):
@@ -318,8 +304,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             try:
                 current, above = QTableWidgetItem(
                     self.entry_table.item(row, column).text()), \
-                                 QTableWidgetItem(self.entry_table.item(row-1, column).text())
-            except:
+                                 QTableWidgetItem(self.entry_table.item(row - 1, column).text())
+            except (Exception, ValueError):
                 self.selected_items.append('\nSelect a row in the table!')
                 QTest.qWait(2000)
                 self.display_status()
@@ -327,8 +313,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             current.setTextAlignment(4)
             above.setTextAlignment(4)
             self.entry_table.setItem(row, column, above)
-            self.entry_table.setItem(row-1, column, current)
-        self.entry_table.setCurrentCell(row-1, 0)
+            self.entry_table.setItem(row - 1, column, current)
+        self.entry_table.setCurrentCell(row - 1, 0)
 
     def move_down(self):
         row = self.entry_table.currentRow()
@@ -342,18 +328,18 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 current, below = QTableWidgetItem(
                     self.entry_table.item(row, column).text()), \
                                  QTableWidgetItem(
-                                     self.entry_table.item(row+1, column).text()
+                                     self.entry_table.item(row + 1, column).text()
                                  )
-            except:
+            except (Exception, ValueError):
                 self.selected_items.append('\nSelect a row in the table!')
                 QTest.qWait(2000)
                 self.display_status()
                 return
             current.setTextAlignment(4)
             below.setTextAlignment(4)
-            self.entry_table.setItem(row+1, column, current)
+            self.entry_table.setItem(row + 1, column, current)
             self.entry_table.setItem(row, column, below)
-        self.entry_table.setCurrentCell(row+1, 0)
+        self.entry_table.setCurrentCell(row + 1, 0)
 
     # Clears the schedule of its entries
     def remove_rows(self):
@@ -365,7 +351,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         copy = self.selection['files'].copy()
         randomized_items = []
         while len(copy) > 0:
-            random_index = random.randint(0, len(copy)-1)
+            random_index = random.randint(0, len(copy) - 1)
             randomized_items.append(copy.pop(random_index))
         self.selection['files'] = randomized_items
         self.display_status()
@@ -384,7 +370,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         for row in range(self.entry_table.rowCount()):
             try:
                 self.total_images += int(self.entry_table.item(row, 1).text())
-            except:
+            except (Exception, ValueError):
                 return
         total_images = QTableWidgetItem(str(self.total_images))
         total_images.setTextAlignment(4)
@@ -400,32 +386,33 @@ class MainApp(QMainWindow, Ui_MainWindow):
                         int(self.entry_table.item(row, 1).text())
                 else:
                     self.total_time += int(self.entry_table.item(row, 2).text())
-            except:
+            except (Exception, ValueError):
                 return
         total_time = QTableWidgetItem(self.format_seconds(self.total_time))
         total_time.setTextAlignment(4)
         self.total_table.setItem(0, 2, total_time)
 
     def format_seconds(self, sec):
-        hrs = int(sec/3600)
+        hrs = int(sec / 3600)
         self.hrs_list = list(str(hrs))
         if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
             self.hrs_list.insert(0, '0')
 
-        mins = int((sec/3600 - hrs) * 60)
-        self.mins_list = list(str(mins))
-        if len(self.mins_list) == 1 or self.mins_list[0] == "0":
-            self.mins_list.insert(0, '0')
+        minutes = int((sec / 3600 - hrs) * 60)
+        self.minutes_list = list(str(minutes))
+        if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
+            self.minutes_list.insert(0, '0')
 
-        self.secs = list(str(int((((sec/3600 - hrs) * 60) - mins) * 60)))
+        self.secs = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
         if len(self.secs) == 1 or self.secs[0] == "0":
             self.secs.insert(0, '0')
         return f'{self.hrs_list[0]}{self.hrs_list[1]}:' \
-               f'{self.mins_list[0]}{self.mins_list[1]}:' \
+               f'{self.minutes_list[0]}{self.minutes_list[1]}:' \
                f'{self.secs[0]}{self.secs[1]}'
-    #endregion
 
-    #region Presets
+    # endregion
+
+    # region Presets
     def init_preset(self):
         self.presets = {}
         # If the presets folder does not exist in file directory, then create it and create shelve files there
@@ -445,8 +432,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     self.presets[preset] = pre[preset]
                 pre.close()
                 os.chdir(r'..\\')
-                self.update_presets() 
-            except:
+                self.update_presets()
+            except (Exception, KeyError):
                 print('init_preset error')
                 print(os.getcwd())
                 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
@@ -494,7 +481,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if self.preset_loader_box.currentText() not in [*self.presets]:
             self.presets[preset_name] = tmppreset
             self.update_presets()
-            self.preset_loader_box.setCurrentIndex(self.preset_loader_box.count()-1)
+            self.preset_loader_box.setCurrentIndex(self.preset_loader_box.count() - 1)
         else:
             self.presets[preset_name] = tmppreset
         QTest.qWait(3000)
@@ -526,7 +513,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.remove_rows()
             return
         self.remove_rows()
-        self.presets[preset_name]
         rows = list(self.presets[preset_name].keys())
         columns = list(self.presets[preset_name][0])
         for row in range(len(rows)):
@@ -536,9 +522,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 item.setTextAlignment(4)
                 self.entry_table.setItem(row, column, item)
 
-    #endregion
-    #endregion
-    #region
+    # endregion
+    # endregion
+    # region
     # Start Session
     def start_session(self):
         """
@@ -584,12 +570,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """
         # Check if all items are numbers
         for row in range(self.entry_table.rowCount()):
+            items = []
             try:
-                items = [
-                    int(self.entry_table.item(row, 1).text()),
-                    int(self.entry_table.item(row, 2).text())
-                    ]
-            except:
+                for i in range(2):
+                    items.append(
+                        int(self.entry_table.item(row, i+1).text()))
+            except (Exception, ValueError):
                 self.selected_items.setText(
                     f'Schedule items must be numbers!'
                 )
@@ -662,9 +648,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         file['randomized'] = self.randomize_selection.isChecked()
         file.close()
         os.chdir(r'..\\')
-    #endregion
 
-    #region
+    # endregion
+
+    # region
     # Updates
     def check_version(self):
         """
@@ -678,13 +665,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.selected_items.append(
                     f'\n{update_type} available!'
                     f'\nPlease visit the site to download!'
-                    )
+                )
                 content = current_version.content()
                 self.selected_items.append(
                     f'v{current_version.newest_version}\n'
                     f'{content}'
-                    )
-    #endregion
+                )
+    # endregion
 
 
 class SessionDisplay(QWidget, Ui_session_display):
@@ -693,7 +680,7 @@ class SessionDisplay(QWidget, Ui_session_display):
     def __init__(self, schedule=None, items=None):
         super().__init__()
         self.setupUi(self)
-        self.resize(self.screen().availableSize()/2)
+        self.resize(self.screen().availableSize() / 2)
         self.schedule = schedule
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.countdown)
@@ -710,21 +697,28 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.mute = False
         mixer.init()
         self.new_entry = True
-        self.image_mods = self.init_mods()
+        # self.image_mods = self.init_mods()
+        self.init_mods()
         self.load_entry()
         self.pause_timer.clicked.connect(self.pause)
         self.init_buttons()
         self.init_shortcuts()
-        
+
     def init_entries(self):
         return {
             'current': 0,
-            'total': [*self.schedule][-1]+1,
+            'total': [*self.schedule][-1] + 1,
             'amount of items': int(self.schedule[0][1]),
             'time': int(self.schedule[0][2])}
 
     def init_mods(self):
-        return {
+        # return {
+        #     'break': False,
+        #     'grayscale': False,
+        #     'hflip': False,
+        #     'vflip': False,
+        #     'break_grayscale': False}
+        self.image_mods = {
             'break': False,
             'grayscale': False,
             'hflip': False,
@@ -739,7 +733,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         current screen's available resolution divided by two
         for both horizontally, and vertically.
         """
-        half_screen = self.screen().availableSize()/2
+        half_screen = self.screen().availableSize() / 2
         min_length = min(half_screen.height(), half_screen.width())
         return QtCore.QSize(min_length, min_length)
 
@@ -768,12 +762,13 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.add_60.activated.connect(self.add_60_seconds)
         self.restart = QShortcut(QtGui.QKeySequence('Ctrl+Shift+Up'), self)
         self.restart.activated.connect(self.restart_timer)
-    
+
     def init_mixer(self):
         mixer.init()
         self.volume = mixer.music.get_volume()
+
     def toggle_mute(self):
-        if not self.mute: 
+        if not self.mute:
             self.mute = True
             self.volume = mixer.music.get_volume()
             mixer.music.set_volume(0.0)
@@ -788,20 +783,20 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.closed.emit()
         event.accept()
 
-    #region Session processing functions
+    # region Session processing functions
     def eventFilter(self, source, event):
         if source is self and event.type() == QtCore.QEvent.Resize:
             if self.toggle_resize_status:
                 self.image_display.setPixmap(
                     self.image.scaled(
                         self.size(),
-                        aspectRatioMode=1,
+                        aspectRatioMode=QtCore.Qt.KeepAspectRatio,
                         transformMode=QtCore.Qt.SmoothTransformation))
             else:
                 self.image_display.setPixmap(
                     self.image.scaled(
                         self.image_display.size(),
-                        aspectRatioMode=1,
+                        aspectRatioMode=QtCore.Qt.KeepAspectRatio,
                         transformMode=QtCore.Qt.SmoothTransformation))
 
         return super(SessionDisplay, self).eventFilter(source, event)
@@ -811,7 +806,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.timer.stop()
             self.setWindowTitle(
                 "You've reached the end of your session! Good job!!"
-                )
+            )
             self.image_display.clear()
             self.timer_display.setText(f'Done!')
             QTest.qWait(5000)
@@ -821,13 +816,13 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer.stop()
         self.time_seconds = self.entry['time']
         self.timer.start(500)
-        self.entry['amount of items'] = int(self.schedule[self.entry['current']][1])-1
+        self.entry['amount of items'] = int(self.schedule[self.entry['current']][1]) - 1
         self.display_image()
 
     def load_next_image(self):
         if self.entry['current'] >= self.entry['total']:
             return
-        if self.entry['amount of items'] == 0: # End of entry
+        if self.entry['amount of items'] == 0:  # End of entry
             self.entry['current'] += 1
             self.playlist_position += 1
             self.new_entry = True
@@ -846,7 +841,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             mixer.music.load(sounds_dir + "\\new_entry.mp3")
             mixer.music.play()
             self.new_entry = False
-        elif self.entry['amount of items'] == 0: # Last image in entry
+        elif self.entry['amount of items'] == 0:  # Last image in entry
             mixer.music.load(sounds_dir + "\\last_entry_image.mp3")
             mixer.music.play()
         else:
@@ -858,8 +853,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             return
         else:
             if (self.entry['amount of items'] == -1  # End of entry
-                or os.path.basename(
-                    self.playlist[self.playlist_position]
+                    or os.path.basename(
+                        self.playlist[self.playlist_position]
                     ) == 'break.png'):  # Break scheduled
                 """
                 Since the end of an entry has been reached, or a break is scheduled,
@@ -875,8 +870,8 @@ class SessionDisplay(QWidget, Ui_session_display):
                 self.image_mods['break_grayscale'] = False
                 self.setWindowTitle(self.playlist[self.playlist_position])
                 self.session_info.setText(
-                    f' {self.entry["current"]+1}/{self.entry["total"]} | '
-                    f'{int(self.schedule[self.entry["current"]][1])-self.entry["amount of items"]}'
+                    f' {self.entry["current"] + 1}/{self.entry["total"]} | '
+                    f'{int(self.schedule[self.entry["current"]][1]) - self.entry["amount of items"]}'
                     f'/{int(self.schedule[self.entry["current"]][1])}')
             self.prepare_image_mods()
 
@@ -897,11 +892,11 @@ class SessionDisplay(QWidget, Ui_session_display):
         try:
             height, width, chanel = cvimage.shape
             bytes_per_line = 3 * width
-        except:
+        except (Exception, BufferError):
             print('Error with processing image.')
             self.setWindowTitle('Error processing image')
             return
-        
+
         # Grayscale
         if (
                 self.image_mods['grayscale'] or
@@ -921,7 +916,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                 height,
                 bytes_per_line,
                 QtGui.QImage.Format_RGB888).rgbSwapped()
-        
+
         # Flip
         if self.image_mods['hflip']:
             self.image = self.image.mirrored(horizontal=True)
@@ -942,19 +937,21 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.image_display.setPixmap(
                 self.image.scaled(
                     self.size(),
-                    aspectRatioMode=1,
+                    aspectRatioMode=QtCore.Qt.KeepAspectRatio,
                     transformMode=QtCore.Qt.SmoothTransformation))
             return
         # Display image scaled to window size in image display
         # If resized
-        if self.size() != self.previous_size: 
+        if self.size() != self.previous_size:
             resized_pixmap = self.image_display.pixmap()
-            scaled_size = self.default_size.scaled(resized_pixmap.size(), 1)
+            scaled_size = self.default_size.scaled(
+                resized_pixmap.size(),
+                aspectRatioMode=QtCore.Qt.KeepAspectRatio)
             self.default_size = QtCore.QSize(scaled_size)
         # Get scaled pixmap
         self.image_scaled = self.image.scaled(
             self.default_size,
-            aspectRatioMode=2,
+            aspectRatioMode=QtCore.Qt.KeepAspectRatioByExpanding,
             transformMode=QtCore.Qt.SmoothTransformation)
 
         # Set
@@ -963,7 +960,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.image_display.resize(self.image_scaled.size())
         self.resize(
             self.image_scaled.size().width(),
-            self.image_scaled.size().height() + 32) # 32 is the current height of the nav bar in px
+            self.image_scaled.size().height() + 32)  # 32 is the current height of the nav bar in px
         # Save current size
         self.previous_size = self.size()
 
@@ -1029,7 +1026,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.load_entry()
             return
 
-        self.playlist_position -= 1 # Navigate to the previous position
+        self.playlist_position -= 1  # Navigate to the previous position
         # End of entries
         if self.entry['current'] >= self.entry['total']:
             self.playlist_position -= 1
@@ -1042,9 +1039,9 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.display_image()
             return
         # At the beginning of a new entry
-        if (self.entry['amount of items']+1 == 
-                int(self.schedule[self.entry['current']][1]) 
-            or self.session_info.text() == 
+        if (self.entry['amount of items'] + 1 ==
+                int(self.schedule[self.entry['current']][1])
+                or self.session_info.text() ==
                 'Break'):
             self.entry['current'] -= 1
             self.timer.stop()
@@ -1059,18 +1056,19 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_timer_display()
         self.new_entry = True
         self.display_image()
-    #endregion
 
-    #region Timer functions
+    # endregion
+
+    # region Timer functions
     def format_seconds(self, sec):
-        min = int(sec/60)
-        sec = int(self.time_seconds-(min*60))
-        return f'{min}:{sec}'
+        minutes = int(sec / 60)
+        sec = int(self.time_seconds - (minutes * 60))
+        return f'{minutes}:{sec}'
 
     def countdown(self):
         self.update_timer_display()
         if self.entry['time'] >= 30:
-            if self.time_seconds == self.entry['time']//2:
+            if self.time_seconds == self.entry['time'] // 2:
                 mixer.music.load(sounds_dir + "\\halfway.mp3")
                 mixer.music.play()
         if self.time_seconds <= 10:
@@ -1086,7 +1084,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             if self.time_seconds <= 10:
                 self.image_mods['break_grayscale'] = False
                 self.prepare_image_mods()
-        
+
         if self.time_seconds == 0:
             QTest.qWait(500)
             self.load_next_image()
@@ -1094,17 +1092,20 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.time_seconds -= 0.5
 
     def update_timer_display(self):
-        hr = int(self.time_seconds/3600)
+        hr = int(self.time_seconds / 3600)
         self.hr_list = list(str(hr))
         if len(self.hr_list) == 1 or self.hr_list[0] == "0":
             self.hr_list.insert(0, '0')
 
-        min = int((self.time_seconds/3600 - hr) * 60)
-        self.min_list = list(str(min))
-        if len(self.min_list) == 1 or self.min_list[0] == "0":
-            self.min_list.insert(0, '0')
+        minutes = int((self.time_seconds / 3600 - hr) * 60)
+        self.minutes_list = list(str(minutes))
+        if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
+            self.minutes_list.insert(0, '0')
 
-        self.sec = list(str(int((((self.time_seconds/3600 - hr) * 60) - min) * 60)))
+        self.sec = list(
+            str(
+                int(
+                    (((self.time_seconds / 3600 - hr) * 60) - minutes) * 60)))
         if len(self.sec) == 1 or self.sec[0] == "0":
             self.sec.insert(0, '0')
         self.display_time()
@@ -1118,7 +1119,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.timer_display.setFrameShape(QFrame.NoFrame)
             self.timer.start(500)
         self.display_time()
-        
+
     def display_time(self):
         """
         Displays amount of time left depending on how many seconds are left.
@@ -1127,17 +1128,17 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.time_seconds >= 3600:
             self.timer_display.setText(
                 f'{self.hr_list[0]}{self.hr_list[1]}:'
-                f'{self.min_list[0]}{self.min_list[1]}:'
+                f'{self.minutes_list[0]}{self.minutes_list[1]}:'
                 f'{self.sec[0]}{self.sec[1]}')
         # Minute or longer
         elif self.time_seconds >= 60:
             self.timer_display.setText(
-                f'{self.min_list[0]}{self.min_list[1]}:'
+                f'{self.minutes_list[0]}{self.minutes_list[1]}:'
                 f'{self.sec[0]}{self.sec[1]}')
         # Less than a minute left
         else:
             self.timer_display.setText(f'{self.sec[0]}{self.sec[1]}')
-            
+
     def add_30_seconds(self):
         self.time_seconds += 30
         self.update_timer_display()
@@ -1148,10 +1149,10 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def restart_timer(self):
         self.time_seconds = int(self.schedule[self.entry['current']][2])
-    #endregion
+    # endregion
 
 
-#Subclass to enable multifolder selection.
+# Subclass to enable multifolder selection.
 class FileDialog(QFileDialog):
     def __init__(self):
         super(FileDialog, self).__init__()
