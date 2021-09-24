@@ -35,12 +35,8 @@ sounds_dir = resource_path("sounds")
 CURRENT_VERSION = '0.3.8'
 
 
-# What's to come:
-# Skip button that displays the next image without reducing the
-# amount of reducing the amount of images scheduled
-# Frameless session window
-# New way to interact with buttons
-# Item selection per entry
+# BUGFIX editing schedule after closing a session now working properly
+# BUGFIX resizing window without toggling the static resizing no longer causes a crash
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
@@ -551,7 +547,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Saves to recent folder
         self.save_to_recent()
         self.insert_breaks()
-        self.display = SessionDisplay(schedule=self.session_schedule, items=self.selection['files'])
+        self.display = SessionDisplay(
+            schedule=self.session_schedule,
+            items=self.selection['files'],
+            total=self.total_scheduled_images)
         self.display.closed.connect(self.session_closed)
         self.display.show()
 
@@ -574,7 +573,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             try:
                 for i in range(2):
                     items.append(
-                        int(self.entry_table.item(row, i+1).text()))
+                        int(self.entry_table.item(row, i + 1).text()))
             except (Exception, ValueError):
                 self.selected_items.setText(
                     f'Schedule items must be numbers!'
@@ -603,10 +602,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if self.total_scheduled_images <= len(self.selection['files']):
             return True
 
-        self.selected_items.setText(f'Not enough images selected. Add more images, or schedule fewer images.')
-        QTest.qWait(4000)
-        self.display_status()
-        return False
+        else:
+            self.selected_items.setText(f'Not enough images selected. Add more images, or schedule fewer images.')
+            QTest.qWait(4000)
+            self.display_status()
+            return False
 
     def insert_breaks(self):
         """Inserts break images as specified by the schedule"""
@@ -629,6 +629,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def grab_schedule(self):
         """Builds self.session_schedule with data from the schedule"""
+        self.session_schedule = {}
         for row in range(self.entry_table.rowCount()):
             self.session_schedule[row] = []
             for column in range(self.entry_table.columnCount()):
@@ -677,11 +678,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()
 
-    def __init__(self, schedule=None, items=None):
+    def __init__(self, schedule=None, items=None, total=None):
         super().__init__()
         self.setupUi(self)
         self.resize(self.screen().availableSize() / 2)
         self.schedule = schedule
+        self.total_scheduled_images = total
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.countdown)
         self.timer.start(500)
@@ -946,7 +948,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             resized_pixmap = self.image_display.pixmap()
             scaled_size = self.default_size.scaled(
                 resized_pixmap.size(),
-                aspectRatioMode=QtCore.Qt.KeepAspectRatio)
+                QtCore.Qt.KeepAspectRatio)
             self.default_size = QtCore.QSize(scaled_size)
         # Get scaled pixmap
         self.image_scaled = self.image.scaled(
