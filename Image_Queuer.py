@@ -974,7 +974,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             cvimage = self.convert_to_cvimage()
         # Edge cases are handled
         else:
-            cvimage = cv.imread(self.playlist[self.playlist_position])
+            cvimage = cv2.imread(self.playlist[self.playlist_position])
 
         try:
             height, width, chanel = cvimage.shape
