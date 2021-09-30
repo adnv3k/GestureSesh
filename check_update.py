@@ -4,17 +4,13 @@ import requests
 import shelve
 from datetime import datetime
 
-os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
-
 
 class Version:
     def __init__(self, current_version):
         super().__init__()
         self.current_version = current_version
-        # self.current_version = '0.3.3'
         self.last_checked = self.get_last_checked()
         self.allowed = self.check_allowed()
-        # self.allowed = True
         self.patch_available = False
         self.newest_version = self.get_newest_version()
 
