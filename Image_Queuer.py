@@ -3,38 +3,23 @@ import random
 import shelve
 import sys
 from pathlib import Path
-
 import cv2
 import numpy as np
-from PyQt5 import QtCore, QtGui
+from pygame import mixer
+
+from PyQt5 import QtCore
+from PyQt5 import QtGui
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import *
-from pygame import mixer
 
 from check_update import Version
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
-os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
-
-
-def resource_path(relative_path):
-    """Get absolute path to sounds"""
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except (Exception, FileNotFoundError):
-        print('Temp folder not found.')
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-
-
-sounds_dir = resource_path("sounds")
-
 CURRENT_VERSION = '0.3.8'
 
-
+# Began implementation of skip feature.
 # BUGFIX editing schedule after closing a session now working properly
 # BUGFIX resizing window without toggling the static resizing no longer causes a crash
 
@@ -59,7 +44,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.check_version()
         self.entry_table.itemChanged.connect(self.update_total)
         self.dialog_buttons.accepted.connect(self.start_session)
-
+        
     def init_buttons(self):
         # Buttons for selection
         self.add_folder.clicked.connect(self.open_folder)
@@ -99,7 +84,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
     # Functions for user input
     # region
     # Select Items
-
     def open_files(self):
         selected_files = QFileDialog().getOpenFileNames()
         checked_files = self.check_files(selected_files[0])
@@ -124,8 +108,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         selected_dir = FileDialog()
         if selected_dir.exec():
             # Example of result
-            # ['D:/Files/Documents/Programming/Projects/Image Displayer/image_displayer/atest2',
-            # 'D:/Files/Documents/Programming/Projects/Image Displayer/image_displayer/atest1']
+            # ['D:/.../image_displayer/atest2',
+            # 'D:/.../image_displayer/atest1']
             total_valid_files = 0
             total_invalid_files = 0
             self.selected_items.clear()
@@ -178,8 +162,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def remove_dupes(self):
         """
         Iterates through user selection of files while keeping seen files 
-        in memory
-        If a file has already been seen, it is deleted from the selection
+        in memory.
+        If a file has already been seen, it is deleted from the selection.
+
         """
         self.duplicates = []
         files = []
@@ -218,6 +203,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Randomization
         Removes breaks in case entire program closed during a session
         Displays status
+
         """
         if os.path.exists(r'.\recent'):
             try:
@@ -248,8 +234,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def append_schedule(self):
         """
         Adds entry information as a new row in the schedule
-        Resets scrollboxes to 0
-        Updates total amount
+        Resets scrollboxes to 0.
+        Updates total amount.
+
         """
         entry = []
         self.table_entries = self.entry_table.rowCount() + 1
@@ -367,6 +354,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             try:
                 self.total_images += int(self.entry_table.item(row, 1).text())
             except (Exception, ValueError):
+                print(f'self.total_images could not be added for row {row}')
                 return
         total_images = QTableWidgetItem(str(self.total_images))
         total_images.setTextAlignment(4)
@@ -411,7 +399,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
     # region Presets
     def init_preset(self):
         self.presets = {}
-        # If the presets folder does not exist in file directory, then create it and create shelve files there
+        # If the presets folder does not exist in file directory, then 
+        # create it and create shelve files there.
         if not os.path.exists(r'.\presets'):
             os.mkdir(r'.\presets')
             os.chdir(r'.\presets')
@@ -529,7 +518,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         shows session window
         self.selection['files'] => images to display
         self.session_schedule => schedule
+
         """
+
         self.grab_schedule()
 
         if not self.is_valid_session():
@@ -564,8 +555,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def is_valid_session(self):
         """
-        Checks if all files exist and 
-        if there are enough images for the schedule
+        Checks if all files exist, and 
+        if there are enough images for the schedule.
+
         """
         # Check if all items are numbers
         for row in range(self.entry_table.rowCount()):
@@ -657,7 +649,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def check_version(self):
         """
         Checks if the current version is the newest one. If not, an update 
-        notice is displayed in the display
+        notice is displayed in the display.
+
         """
         current_version = Version(self.current_version)
         if not current_version.is_newest():
@@ -681,45 +674,65 @@ class SessionDisplay(QWidget, Ui_session_display):
     def __init__(self, schedule=None, items=None, total=None):
         super().__init__()
         self.setupUi(self)
-        self.resize(self.screen().availableSize() / 2)
+        self.init_sizing()
+        self.init_scaling_size()
         self.schedule = schedule
+        self.playlist = items
+        self.playlist_position = 0
+        # print(self.playlist, len(self.playlist))
         self.total_scheduled_images = total
+        # print(self.schedule)
+        self.init_timer()
+        self.init_entries()
+        # print(self.entry)
+        self.installEventFilter(self)
+        self.init_image_mods()
+        self.init_sounds()
+        self.init_mixer()
+        self.load_entry()
+        self.init_buttons()
+        self.init_shortcuts()
+        self.skip_count = 0
+
+    def init_sizing(self):
+        """
+        Resizes the window to half of the current screen's resolution,
+        sets states for window flags,
+        and initializes self.previous_size.
+        
+        """
+        self.resize(self.screen().availableSize() / 2)
+        self.toggle_resize_status = False
+        self.toggle_always_on_top_status = False
+        self.sizePolicy().setHeightForWidth(True)
+        self.previous_size = self.size()
+
+    def init_scaling_size(self):
+        """
+        Creates a scaling box size that is used as a basis for
+        images to scale off of. The box dimensions are determined by the 
+        smallest side of half of the given rectangle from the
+        current screen's available resolution.
+
+        """
+        half_screen = self.screen().availableSize() / 2
+        min_length = min(half_screen.height(), half_screen.width())
+        self.scaling_size = QtCore.QSize(min_length, min_length)
+
+    def init_timer(self):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.countdown)
         self.timer.start(500)
-        self.toggle_resize_status = False
-        self.toggle_always_on_top_status = False
-        self.entry = self.init_entries()
-        self.playlist = items
-        self.playlist_position = 0
-        self.sizePolicy().setHeightForWidth(True)
-        self.previous_size = self.size()
-        self.default_size = self.init_default_size()
-        self.installEventFilter(self)
-        self.mute = False
-        mixer.init()
-        self.new_entry = True
-        # self.image_mods = self.init_mods()
-        self.init_mods()
-        self.load_entry()
-        self.pause_timer.clicked.connect(self.pause)
-        self.init_buttons()
-        self.init_shortcuts()
 
     def init_entries(self):
-        return {
+        self.entry = {
             'current': 0,
             'total': [*self.schedule][-1] + 1,
             'amount of items': int(self.schedule[0][1]),
             'time': int(self.schedule[0][2])}
-
-    def init_mods(self):
-        # return {
-        #     'break': False,
-        #     'grayscale': False,
-        #     'hflip': False,
-        #     'vflip': False,
-        #     'break_grayscale': False}
+        self.new_entry = True
+        
+    def init_image_mods(self):
         self.image_mods = {
             'break': False,
             'grayscale': False,
@@ -727,17 +740,25 @@ class SessionDisplay(QWidget, Ui_session_display):
             'vflip': False,
             'break_grayscale': False}
 
-    def init_default_size(self):
+    def init_sounds(self):
         """
-        Creates a default box size that is used as a basis for
-        images to scale off of. The size is determined by the 
-        smallest side of the given rectangle from the
-        current screen's available resolution divided by two
-        for both horizontally, and vertically.
+        Gets absolute path to sounds. 
+        PyInstaller creates a temp folder, and stores dependencies path in _MEIPASS.
+        If the temp folder is not found, then use the current file path.
+
         """
-        half_screen = self.screen().availableSize() / 2
-        min_length = min(half_screen.height(), half_screen.width())
-        return QtCore.QSize(min_length, min_length)
+        relative_path = "sounds"
+        try:
+            base_path = sys._MEIPASS
+        except (Exception, FileNotFoundError):
+            print('Temp folder not found.')
+            base_path = os.path.abspath(".")
+        self.sounds_dir = os.path.join(base_path, relative_path)
+        
+    def init_mixer(self):
+        mixer.init()
+        self.volume = mixer.music.get_volume()
+        self.mute = False
 
     def init_buttons(self):
         self.previous_image.clicked.connect(self.previous_playlist_position)
@@ -746,6 +767,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.flip_horizontal_button.clicked.connect(self.flip_horizontal)
         self.flip_vertical_button.clicked.connect(self.flip_vertical)
         self.grayscale_button.clicked.connect(self.grayscale)
+        self.pause_timer.clicked.connect(self.pause)
 
     def init_shortcuts(self):
         # Resize
@@ -764,19 +786,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.add_60.activated.connect(self.add_60_seconds)
         self.restart = QShortcut(QtGui.QKeySequence('Ctrl+Shift+Up'), self)
         self.restart.activated.connect(self.restart_timer)
-
-    def init_mixer(self):
-        mixer.init()
-        self.volume = mixer.music.get_volume()
-
-    def toggle_mute(self):
-        if not self.mute:
-            self.mute = True
-            self.volume = mixer.music.get_volume()
-            mixer.music.set_volume(0.0)
-        else:
-            self.mute = False
-            mixer.music.set_volume(self.volume)
+        # Skip image
+        # self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
+        # self.skip_image_key.activated.connect(self.skip_image)
 
     def closeEvent(self, event):
         self.timer.stop()
@@ -800,8 +812,73 @@ class SessionDisplay(QWidget, Ui_session_display):
                         self.image_display.size(),
                         aspectRatioMode=QtCore.Qt.KeepAspectRatio,
                         transformMode=QtCore.Qt.SmoothTransformation))
-
         return super(SessionDisplay, self).eventFilter(source, event)
+
+    def skip_image(self):
+        # TODO add skipping restraint
+        if (os.path.basename(
+                self.playlist[self.playlist_position]
+        ) == 'break.png'):
+            return
+        self.skip_count += 1
+        if len(self.playlist) - self.total_scheduled_images <= self.skip_count:
+            self.setWindowTitle(
+                f'Not enough images selected for another skip.'
+            )
+            QTest.qWait(2500)
+            self.setWindowTitle(
+                self.playlist[self.playlist_position]
+            )
+            return
+        # self.playlist_position += 1
+        # print(self.playlist)
+        print(f'amount of items: {self.entry["amount of items"]}')
+        print(f'before playlist_position: {self.playlist_position}')
+        print(f'current image: {self.playlist[self.playlist_position]} | current length: {len(self.playlist)}')
+        item = self.playlist[self.playlist_position + 1]
+        print(f'next image: {item}')
+        if self.playlist_position == 0:
+            self.playlist.insert(0, item)
+        else:
+            self.playlist.reverse()
+            self.playlist.insert(-self.playlist_position, item)
+            print(f'after insert: {self.playlist[self.playlist_position]} | after insert length: {len(self.playlist)}')
+            self.playlist.reverse()
+        self.display_image()
+        self.playlist.pop(self.playlist_position)
+        # self.playlist_position -= 1
+        self.entry['amount of items'] -= 1
+        # self.load_next_image()
+
+        print(f'after reverse: {self.playlist[self.playlist_position]} | after reverse length: {len(self.playlist)}')
+
+        # move the scheduled breaks over 1
+        old = self.playlist.index(":/break/break.png")
+
+        break_index = self.playlist.index(':/break/break.png')
+        self.playlist[break_index], self.playlist[break_index + 1] = \
+            self.playlist[break_index + 1], self.playlist[break_index]
+
+        if self.playlist.index(":/break/break.png") - old == 1:
+            print('Successful break move')
+        else:
+            print('Unsuccessful break move')
+        # self.display_image()
+        print(f'after playlist_position: {self.playlist_position}')
+        # self.playlist.pop(self.playlist_position)
+        # self.playlist_position += 1
+        # self.entry['amount of items'] -= 1
+        # print(self.playlist)
+        print(f'amount of items: {self.entry["amount of items"]}')
+
+    def toggle_mute(self):
+        if self.mute:
+            self.mute = False
+            mixer.music.set_volume(self.volume)
+        else:
+            self.mute = True
+            self.vlume = mixer.music.get_volume()
+            mixer.music.set_volume(0.0)
 
     def load_entry(self):
         if self.entry['current'] >= self.entry['total']:
@@ -822,7 +899,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.display_image()
 
     def load_next_image(self):
-        if self.entry['current'] >= self.entry['total']:
+        if self.entry['current'] >= self.entry['total']:  # End of schedule
             return
         if self.entry['amount of items'] == 0:  # End of entry
             self.entry['current'] += 1
@@ -839,28 +916,35 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.display_image()
 
     def display_image(self):
+        print(self.entry)
+        # Sounds
         if self.new_entry:
-            mixer.music.load(sounds_dir + "\\new_entry.mp3")
+            mixer.music.load(self.sounds_dir + "\\new_entry.mp3")
             mixer.music.play()
             self.new_entry = False
         elif self.entry['amount of items'] == 0:  # Last image in entry
-            mixer.music.load(sounds_dir + "\\last_entry_image.mp3")
+            mixer.music.load(self.sounds_dir + "\\last_entry_image.mp3")
             mixer.music.play()
         else:
-            mixer.music.load(sounds_dir + "\\new_image.mp3")
+            mixer.music.load(self.sounds_dir + "\\new_image.mp3")
             mixer.music.play()
+
         if self.playlist_position > len(self.playlist):  # Last image
             self.timer.stop()
             self.timer_display.setText(f'Done!')
             return
         else:
-            if (self.entry['amount of items'] == -1  # End of entry
-                    or os.path.basename(
-                        self.playlist[self.playlist_position]
-                    ) == 'break.png'):  # Break scheduled
+            # if (self.entry['amount of items'] == -1  # End of entry
+            #         or os.path.basename(
+            #             self.playlist[self.playlist_position]
+            #         ) == 'break.png'):  # Break scheduled
+            if (os.path.basename(
+                    self.playlist[self.playlist_position]
+            ) == 'break.png'):  # Break scheduled
                 """
                 Since the end of an entry has been reached, or a break is scheduled,
                 configure for break image.
+
                 """
                 self.image_mods['break'] = True
                 self.image_mods['break_grayscale'] = True
@@ -879,7 +963,8 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def prepare_image_mods(self):
         """
-        self.image gets modified procedurally in this function
+        self.image gets modified depending on which value in self.image_mods
+        is true.
         """
         # Break scheduled
         if self.image_mods['break']:
@@ -889,7 +974,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             cvimage = self.convert_to_cvimage()
         # Edge cases are handled
         else:
-            cvimage = cv2.imread(self.playlist[self.playlist_position])
+            cvimage = cv.imread(self.playlist[self.playlist_position])
 
         try:
             height, width, chanel = cvimage.shape
@@ -946,13 +1031,13 @@ class SessionDisplay(QWidget, Ui_session_display):
         # If resized
         if self.size() != self.previous_size:
             resized_pixmap = self.image_display.pixmap()
-            scaled_size = self.default_size.scaled(
+            scaled_size = self.scaling_size.scaled(
                 resized_pixmap.size(),
                 QtCore.Qt.KeepAspectRatio)
-            self.default_size = QtCore.QSize(scaled_size)
+            self.scaling_size = QtCore.QSize(scaled_size)
         # Get scaled pixmap
         self.image_scaled = self.image.scaled(
-            self.default_size,
+            self.scaling_size,
             aspectRatioMode=QtCore.Qt.KeepAspectRatioByExpanding,
             transformMode=QtCore.Qt.SmoothTransformation)
 
@@ -962,7 +1047,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.image_display.resize(self.image_scaled.size())
         self.resize(
             self.image_scaled.size().width(),
-            self.image_scaled.size().height() + 32)  # 32 is the current height of the nav bar in px
+            # 32 is the current height of the nav bar in px
+            self.image_scaled.size().height() + 32)  
         # Save current size
         self.previous_size = self.size()
 
@@ -1017,8 +1103,19 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.show()
 
     def previous_playlist_position(self):
+        # Skip_counter
+        # if self.skip_count > 0: 
+        #     self.skip_count -= 1
         # First image
-        if self.playlist_position == 0:
+        if (self.playlist_position == 0 or
+                (self.entry['current'], self.entry['amount of items']) ==
+                (0, int(self.schedule[self.entry['current']][1]) - 1)):
+            """
+            If it's the first image in the playlist or if the current entry
+            is the first one and the position is at the beginning. The second 
+            case is in place for the skip function
+
+            """
             self.time_seconds = self.entry['time']
             self.update_timer_display()
             self.timer.stop()
@@ -1043,10 +1140,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         # At the beginning of a new entry
         if (self.entry['amount of items'] + 1 ==
                 int(self.schedule[self.entry['current']][1])
-                or self.session_info.text() ==
-                'Break'):
-            self.entry['current'] -= 1
+                or self.session_info.text() == 'Break'):
+            if self.entry['current'] != 0:
+                self.entry['current'] -= 1
             self.timer.stop()
+            # print(self.entry['current'])
+            # print(self.schedule[self.entry['current']])
             self.entry['time'] = int(self.schedule[self.entry['current']][2])
             self.time_seconds = self.entry['time']
             self.timer.start(500)
@@ -1071,17 +1170,17 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_timer_display()
         if self.entry['time'] >= 30:
             if self.time_seconds == self.entry['time'] // 2:
-                mixer.music.load(sounds_dir + "\\halfway.mp3")
+                mixer.music.load(self.sounds_dir + "\\halfway.mp3")
                 mixer.music.play()
         if self.time_seconds <= 10:
             if self.time_seconds == 10:
-                mixer.music.load(sounds_dir + "\\first_alert.mp3")
+                mixer.music.load(self.sounds_dir + "\\first_alert.mp3")
                 mixer.music.play()
             if self.time_seconds == 5:
-                mixer.music.load(sounds_dir + "\\second_alert.mp3")
+                mixer.music.load(self.sounds_dir + "\\second_alert.mp3")
                 mixer.music.play()
             if self.time_seconds == 0.5:
-                mixer.music.load(sounds_dir + "\\third_alert.mp3")
+                mixer.music.load(self.sounds_dir + "\\third_alert.mp3")
                 mixer.music.play()
             if self.time_seconds <= 10:
                 self.image_mods['break_grayscale'] = False
@@ -1125,6 +1224,7 @@ class SessionDisplay(QWidget, Ui_session_display):
     def display_time(self):
         """
         Displays amount of time left depending on how many seconds are left.
+        
         """
         # Hour or longer
         if self.time_seconds >= 3600:
