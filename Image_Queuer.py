@@ -679,12 +679,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.schedule = schedule
         self.playlist = items
         self.playlist_position = 0
-        # print(self.playlist, len(self.playlist))
         self.total_scheduled_images = total
-        # print(self.schedule)
         self.init_timer()
         self.init_entries()
-        # print(self.entry)
         self.installEventFilter(self)
         self.init_image_mods()
         self.init_sounds()
@@ -704,6 +701,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.resize(self.screen().availableSize() / 2)
         self.toggle_resize_status = False
         self.toggle_always_on_top_status = False
+        self.frameless_status = False
         self.sizePolicy().setHeightForWidth(True)
         self.previous_size = self.size()
 
@@ -789,13 +787,35 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Skip image
         # self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
         # self.skip_image_key.activated.connect(self.skip_image)
+        # Frameless Window
+        self.frameless_window = QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
+        self.frameless_window.activated.connect(self.toggle_frameless)
 
     def closeEvent(self, event):
+        """
+        Stops timer and sound on close event.
+        """
         self.timer.stop()
         mixer.music.stop()
         mixer.music.unload()
         self.closed.emit()
         event.accept()
+
+    def mousePressEvent(self, event):
+        """
+        Gets the current position of the cursor as a QPoint instance.
+        """
+        self.old_position = event.globalPos()
+        
+    def mouseMoveEvent(self, event):
+        """
+        Finds the difference of the current cursor position and self.old_position as change.
+        Moves the window by change.
+        Sets self.old_position with the current position of the cursor. 
+        """
+        change = QtCore.QPoint(event.globalPos() - self.old_position)
+        self.move(self.x() + change.x(), self.y() + change.y())
+        self.old_position = event.globalPos()
 
     # region Session processing functions
     def eventFilter(self, source, event):
@@ -1084,7 +1104,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.display_image()
 
     def toggle_resize(self):
-        if not self.toggle_resize_status:
+        if self.toggle_resize_status is not True:
             self.toggle_resize_status = True
             self.sizePolicy().setHeightForWidth(False)
         else:
@@ -1092,14 +1112,39 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.sizePolicy().setHeightForWidth(True)
 
     def toggle_always_on_top(self):
-        if not self.toggle_always_on_top_status:
+        if self.toggle_always_on_top_status is not True:
             self.toggle_always_on_top_status = True
-            self.setWindowFlag(QtCore.Qt.X11BypassWindowManagerHint, True)
-            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+            self.setWindowFlag(
+                QtCore.Qt.X11BypassWindowManagerHint,
+                self.toggle_always_on_top_status
+                )
+            self.setWindowFlag(
+                QtCore.Qt.WindowStaysOnTopHint,
+                self.toggle_always_on_top_status
+                )
             self.show()
         else:
             self.toggle_always_on_top_status = False
-            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, False)
+            self.setWindowFlag(
+                QtCore.Qt.WindowStaysOnTopHint,
+                self.toggle_always_on_top_status
+                )
+            self.show()
+    
+    def toggle_frameless(self):
+        if self.frameless_status is not True:
+            self.frameless_status = True
+            self.setWindowFlag(
+                QtCore.Qt.FramelessWindowHint,
+                self.frameless_status
+                )
+            self.show()
+        else:
+            self.frameless_status = False
+            self.setWindowFlag(
+                QtCore.Qt.FramelessWindowHint,
+                self.frameless_status
+                )
             self.show()
 
     def previous_playlist_position(self):
