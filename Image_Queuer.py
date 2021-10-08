@@ -1,7 +1,7 @@
 import os
+import sys
 import random
 import shelve
-import sys
 from pathlib import Path
 import cv2
 import numpy as np
@@ -17,19 +17,19 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
-CURRENT_VERSION = '0.3.8'
+__version__ = '0.4.0'
 
-# Began implementation of skip feature.
-# BUGFIX editing schedule after closing a session now working properly
-# BUGFIX resizing window without toggling the static resizing no longer causes a crash
+# Frameless Window Ctrl + F
+# -resizing with mouse will not be enabled when frameless window is toggled yet.
+# Move window by click + drag 
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.current_version = CURRENT_VERSION
-        self.setWindowTitle(f'Reference Practice v{self.current_version}')
+        # self.__version__ = __version__
+        self.setWindowTitle(f'Reference Practice v{__version__}')
         self.session_schedule = {}
         self.has_break = False
         self.valid_file_types = ['.bmp', '.jpg', '.jpeg', '.png']
@@ -652,8 +652,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         notice is displayed in the display.
 
         """
-        current_version = Version(self.current_version)
-        if not current_version.is_newest():
+        current_version = Version(__version__)
+        if current_version.is_newest() is False:
             update_type = current_version.update_type()
             if type(update_type) == str:
                 self.selected_items.append(
@@ -669,7 +669,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
 
 class SessionDisplay(QWidget, Ui_session_display):
-    closed = QtCore.pyqtSignal()
+    closed = QtCore.pyqtSignal() # Needed here close close event to work.
 
     def __init__(self, schedule=None, items=None, total=None):
         super().__init__()
