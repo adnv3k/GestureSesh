@@ -31,6 +31,7 @@ Flip Horizontal | H
 Flip Vertical | V
 Toggle Window Resizing (dynamic/static) | R
 Toggle Always On Top | A
+Toggle Frameless Window | Ctrl + F
 Toggle Mute | M
 Previous Image | Left Arrow Key
 Stop | Esc 
