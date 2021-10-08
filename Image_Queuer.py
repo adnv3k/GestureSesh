@@ -17,18 +17,17 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 
-# Frameless Window Ctrl + F
-# -resizing with mouse will not be enabled when frameless window is toggled yet.
-# Move window by click + drag 
+# Autocomplete preset names
+# Scheduling functions now work properly.
+# Minor bug fixes for speed and function.
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        # self.__version__ = __version__
         self.setWindowTitle(f'Reference Practice v{__version__}')
         self.session_schedule = {}
         self.has_break = False
@@ -44,7 +43,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.check_version()
         self.entry_table.itemChanged.connect(self.update_total)
         self.dialog_buttons.accepted.connect(self.start_session)
-        
+
     def init_buttons(self):
         # Buttons for selection
         self.add_folder.clicked.connect(self.open_folder)
@@ -56,6 +55,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.save_preset.clicked.connect(self.save)
         self.delete_preset.clicked.connect(self.delete)
         self.preset_loader_box.currentIndexChanged.connect(self.load)
+        self.preset_loader_box.currentTextChanged.connect(self.load)
         # Buttons for table
         self.remove_entry.pressed.connect(self.remove_row)
         self.move_entry_up.clicked.connect(self.move_up)
@@ -141,8 +141,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         res = {'valid_files': [], 'invalid_files': []}
         for file in files:
             if (
-                    file[-4:].lower() not in self.valid_file_types and
-                    file[-5:].lower() not in self.valid_file_types  # .jpeg
+                file[-4:].lower() not in self.valid_file_types and
+                file[-5:].lower() not in self.valid_file_types  # .jpeg
             ):
                 # Since the file extension is not a valid file type,
                 # add it to list of invalid files.
@@ -225,8 +225,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.display_status()
             self.selected_items.append(f'Recent session settings loaded!')
             self.update_total()
-            if not self.is_valid_session():
-                return
 
     # endregion
 
@@ -238,28 +236,23 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Updates total amount.
 
         """
-        entry = []
-        self.table_entries = self.entry_table.rowCount() + 1
-        entry.append(self.table_entries)
-        images = self.set_number_of_images.value()
-        entry.append(images)
-        duration = self.set_minutes.value() * 60 + self.set_seconds.value()
-        entry.append(duration)
+        row = self.entry_table.rowCount()
+        entry = [
+            row + 1, # entry number
+            self.set_number_of_images.value(),
+            self.set_minutes.value() * 60 + self.set_seconds.value()
+        ]
         self.set_number_of_images.setValue(0)
         self.set_minutes.setValue(0)
         self.set_seconds.setValue(0)
-        row = self.entry_table.rowCount()
         self.entry_table.insertRow(row)
         for column, item in enumerate(entry):
             item = QTableWidgetItem(str(item))
             item.setTextAlignment(4)
             # Sets the entry column to be not editable, while still selectable.
             if column == 0:
-                item.setFlags(QtCore.Qt.ItemIsEditable)
                 item.setFlags(QtCore.Qt.ItemIsEnabled)
-                item.setFlags(QtCore.Qt.ItemIsSelectable)
             self.entry_table.setItem(row, column, item)
-        self.update_total()
 
     def remove_row(self):
         # Save current row
@@ -268,6 +261,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         for i in range(row, self.entry_table.rowCount()):
             item = QTableWidgetItem(str(i + 1))
             item.setTextAlignment(4)
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
             self.entry_table.setItem(i, 0, item)
         # Set current cell
         if row != self.entry_table.rowCount():
@@ -278,7 +272,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def move_up(self):
         row = self.entry_table.currentRow()
-        if row == 0:
+        if row <= 0:
             return
         self.entry_table.setCurrentCell(row, 0)
         for column in range(self.entry_table.columnCount()):
@@ -298,15 +292,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.entry_table.setItem(row, column, above)
             self.entry_table.setItem(row - 1, column, current)
         self.entry_table.setCurrentCell(row - 1, 0)
-
+        
     def move_down(self):
         row = self.entry_table.currentRow()
-        if row == self.entry_table.rowCount() - 1:
+        if row >= self.entry_table.rowCount() - 1:
             return
         self.entry_table.setCurrentCell(row, 0)
-        for column in range(self.entry_table.columnCount()):
-            if column == 0:
-                continue
+        for column in range(1, self.entry_table.columnCount()): # Column 0 is the title column
             try:
                 current, below = QTableWidgetItem(
                     self.entry_table.item(row, column).text()), \
@@ -324,11 +316,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.entry_table.setItem(row, column, below)
         self.entry_table.setCurrentCell(row + 1, 0)
 
-    # Clears the schedule of its entries
     def remove_rows(self):
+        """Clears the schedule of its entries"""
         for i in range(self.entry_table.rowCount()):
             self.entry_table.removeRow(0)
-        self.update_total()
 
     def randomize_items(self):
         copy = self.selection['files'].copy()
@@ -340,29 +331,26 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def update_total(self):
-        # Adds a row for total if it's empty
-        if self.total_table.rowCount() < 1:
-            self.total_table.insertRow(0)
-
-        total = QTableWidgetItem('Total')
-        total.setTextAlignment(4)
-        self.total_table.setItem(0, 0, total)
-
-        # Number of images
+        # Check if the row is completely set
+        rows = self.entry_table.rowCount()
+        if (self.entry_table.item(rows-1, 1) is None or
+            self.entry_table.item(rows-1, 2) is None):
+            return
         self.total_images = 0
-        for row in range(self.entry_table.rowCount()):
-            try:
-                self.total_images += int(self.entry_table.item(row, 1).text())
-            except (Exception, ValueError):
-                print(f'self.total_images could not be added for row {row}')
-                return
-        total_images = QTableWidgetItem(str(self.total_images))
-        total_images.setTextAlignment(4)
-        self.total_table.setItem(0, 1, total_images)
-
-        # Total time
         self.total_time = 0
-        for row in range(self.entry_table.rowCount()):
+        for row in range(rows):
+            # Amount of images
+            try: 
+                self.total_images += int(
+                    self.entry_table.item(row, 1).text()
+                    )
+            except (Exception, ValueError):
+                print(f'BUG self.total_images could not be added from')
+                print(f'row: {row}')
+                print('item', self.entry_table.item(row, 1).text())
+                print(f'{self.entry_table.row()} {self.entry_table.column()}')
+                return
+            # Amount of time
             try:
                 if int(self.entry_table.item(row, 1).text()) > 0:
                     self.total_time += \
@@ -371,22 +359,38 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 else:
                     self.total_time += int(self.entry_table.item(row, 2).text())
             except (Exception, ValueError):
+                print(f'BUG self.total_time could not be counted from')
+                print(f'row: {row}')
+                print('item', self.entry_table.item(row, 2).text())
+                print(f'{self.entry_table.row()} {self.entry_table.column()}')
                 return
+        # Adds a row for total if it's empty
+        if self.total_table.rowCount() < 1:
+            self.total_table.insertRow(0)
+        total = QTableWidgetItem('Total')
+        total.setTextAlignment(4)
+        self.total_table.setItem(0, 0, total)
+        # Sets amount of images
+        total_images = QTableWidgetItem(str(self.total_images))
+        total_images.setTextAlignment(4)
+        self.total_table.setItem(0, 1, total_images)
+        # Sets amount of time
         total_time = QTableWidgetItem(self.format_seconds(self.total_time))
         total_time.setTextAlignment(4)
         self.total_table.setItem(0, 2, total_time)
 
     def format_seconds(self, sec):
+        # Hours
         hrs = int(sec / 3600)
         self.hrs_list = list(str(hrs))
         if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
             self.hrs_list.insert(0, '0')
-
+        # Minutes
         minutes = int((sec / 3600 - hrs) * 60)
         self.minutes_list = list(str(minutes))
         if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
             self.minutes_list.insert(0, '0')
-
+        # Seconds
         self.secs = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
         if len(self.secs) == 1 or self.secs[0] == "0":
             self.secs.insert(0, '0')
@@ -433,42 +437,37 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.update_total()
 
     def save(self):
-        if self.entry_table.rowCount() == 0:
+        if self.entry_table.rowCount() <= 0:
             self.selected_items.setText(f'Cannot save an empty schedule!')
             QTest.qWait(4000)
             self.display_status()
             return
-
         preset_name = self.preset_loader_box.currentText()
-
-        if preset_name == '':
+        if preset_name == "":
             self.selected_items.setText(f'Cannot save an empty name!')
             QTest.qWait(5500)
             self.display_status()
             return
-        tmppreset = {}
-
         # Get table entries
+        tmppreset = {}
         for row in range(self.entry_table.rowCount()):
             tmppreset[row] = []
             for column in range(self.entry_table.columnCount()):
                 tmppreset[row].append(self.entry_table.item(row, column).text())
-
         # Save preset to file
         os.chdir(r'.\presets')
         preset = shelve.open('preset')
         preset[preset_name] = tmppreset
         preset.close()
         os.chdir(r'..\\')
-
         # Load preset to new name
         self.selected_items.setText(f'{preset_name} saved!')
-        if self.preset_loader_box.currentText() not in [*self.presets]:
+        if self.presets.get(preset_name):
+            self.presets[preset_name] = tmppreset
+        else:
             self.presets[preset_name] = tmppreset
             self.update_presets()
             self.preset_loader_box.setCurrentIndex(self.preset_loader_box.count() - 1)
-        else:
-            self.presets[preset_name] = tmppreset
         QTest.qWait(3000)
         self.display_status()
 
@@ -492,20 +491,20 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def load(self):
         preset_name = self.preset_loader_box.currentText()
-        if preset_name not in [*self.presets]:
-            self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
-            self.preset_loader_box.clearEditText()
+        # If the current text in the preset field exists as the key for a saved
+        # preset, then update the schedule
+        if self.presets.get(preset_name):
             self.remove_rows()
-            return
-        self.remove_rows()
-        rows = list(self.presets[preset_name].keys())
-        columns = list(self.presets[preset_name][0])
-        for row in range(len(rows)):
-            self.entry_table.insertRow(row)
-            for column in range(len(columns)):
-                item = QTableWidgetItem(self.presets[preset_name][row][column])
-                item.setTextAlignment(4)
-                self.entry_table.setItem(row, column, item)
+            rows = list(self.presets[preset_name].keys())
+            columns = list(self.presets[preset_name][0])
+            for row in range(len(rows)):
+                self.entry_table.insertRow(row)
+                for column in range(len(columns)):
+                    item = QTableWidgetItem(self.presets[preset_name][row][column])
+                    item.setTextAlignment(4)
+                    if column == 0:
+                        item.setFlags(QtCore.Qt.ItemIsEnabled)
+                    self.entry_table.setItem(row, column, item)
 
     # endregion
     # endregion
@@ -520,22 +519,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.session_schedule => schedule
 
         """
-
         self.grab_schedule()
-
         if not self.is_valid_session():
-            return
-
-        if len(self.session_schedule) == 0:
-            self.selected_items.setText(f'Schedule cannot be empty.')
-            QTest.qWait(3000)
+            print('Invalid session')
+            QTest.qWait(4000)
             self.display_status()
             return
-
+        # Apply randomization
         if self.randomize_selection.isChecked():
             self.randomize_items()
-
-        # Saves to recent folder
+        # Save to recent folder
         self.save_to_recent()
         self.insert_breaks()
         self.display = SessionDisplay(
@@ -570,10 +563,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.selected_items.setText(
                     f'Schedule items must be numbers!'
                 )
-                QTest.qWait(2000)
-                self.display_status()
                 return False
 
+        # Check if empty schedule
+        if len(self.session_schedule) == 0:
+            self.selected_items.setText(f'Schedule cannot be empty.')
+            return False
         # Count scheduled images
         self.total_scheduled_images = 0
         for entry in [*self.session_schedule]:
@@ -591,14 +586,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 return False
 
         # Check if there are enough selected images for the schedule
-        if self.total_scheduled_images <= len(self.selection['files']):
-            return True
-
-        else:
-            self.selected_items.setText(f'Not enough images selected. Add more images, or schedule fewer images.')
-            QTest.qWait(4000)
-            self.display_status()
+        if self.total_scheduled_images > len(self.selection['files']):
+            self.selected_items.setText(
+                f'Not enough images selected. Add more images, or schedule fewer images.')
             return False
+        return True
 
     def insert_breaks(self):
         """Inserts break images as specified by the schedule"""
@@ -632,7 +624,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def save_to_recent(self):
         """Saves current selection, selected preset, and randomization setting"""
         self.recent = {}
-        if not os.path.exists(r'.\recent'):
+        if os.path.exists(r'.\recent') is not True:
             os.mkdir(r'.\recent')
         os.chdir(r'.\recent')
         file = shelve.open('recent')
@@ -653,7 +645,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
         """
         current_version = Version(__version__)
-        if current_version.is_newest() is False:
+        if not current_version.is_newest():
             update_type = current_version.update_type()
             if type(update_type) == str:
                 self.selected_items.append(
@@ -669,7 +661,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
 
 class SessionDisplay(QWidget, Ui_session_display):
-    closed = QtCore.pyqtSignal() # Needed here close close event to work.
+    closed = QtCore.pyqtSignal() # Needed here for close event to work.
 
     def __init__(self, schedule=None, items=None, total=None):
         super().__init__()
