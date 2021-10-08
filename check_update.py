@@ -1,5 +1,4 @@
 import os
-import sys
 import requests
 import shelve
 from datetime import datetime
