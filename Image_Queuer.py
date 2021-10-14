@@ -657,6 +657,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     f'v{current_version.newest_version}\n'
                     f'{content}'
                 )
+        else:
+            if current_version.allowed is True:
+                self.selected_items.append(f'Up to date.')
+
     # endregion
 
 
@@ -721,6 +725,10 @@ class SessionDisplay(QWidget, Ui_session_display):
             'amount of items': int(self.schedule[0][1]),
             'time': int(self.schedule[0][2])}
         self.new_entry = True
+        if self.entry['amount of items'] > 1:
+            self.end_of_entry = False
+        else:
+            self.end_of_entry = True
         
     def init_image_mods(self):
         self.image_mods = {
@@ -801,9 +809,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         Stops timer and sound on close event.
         """
         self.timer.stop()
-        mixer.quit()
         view.mute = self.mute
         view.volume = self.volume
+        mixer.quit()
         self.closed.emit()
         event.accept()
 
@@ -939,6 +947,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.update_timer_display()
             self.playlist_position += 1
             self.entry['amount of items'] -= 1
+            if self.entry['amount of items'] == 0:
+                self.end_of_entry = True
             self.display_image()
 
     def display_image(self):
@@ -947,11 +957,11 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.new_entry:
             mixer.music.load(self.sounds_dir + "\\new_entry.mp3")
             mixer.music.play()
-            self.new_entry = False
+            # self.new_entry = False
         elif self.entry['amount of items'] == 0:  # Last image in entry
             mixer.music.load(self.sounds_dir + "\\last_entry_image.mp3")
             mixer.music.play()
-        else:
+        elif self.entry['time'] > 10:
             mixer.music.load(self.sounds_dir + "\\new_image.mp3")
             mixer.music.play()
 
@@ -1179,13 +1189,14 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.playlist_position -= 1  # Navigate to the previous position
         # End of entries
         if self.entry['current'] >= self.entry['total']:
-            self.playlist_position -= 1
+            # self.playlist_position -= 1
             self.entry['current'] = [*self.schedule][-1]
             self.timer.stop()
             self.entry['time'] = int(self.schedule[self.entry['current']][2])
             self.time_seconds = int(self.schedule[self.entry['current']][2])
             self.timer.start(500)
             self.entry['amount of items'] = 1
+            self.end_of_entry = True
             self.display_image()
             return
         # At the beginning of a new entry
@@ -1224,19 +1235,25 @@ class SessionDisplay(QWidget, Ui_session_display):
                 mixer.music.load(self.sounds_dir + "\\halfway.mp3")
                 mixer.music.play()
         if self.time_seconds <= 10:
-            if self.time_seconds == 10:
-                mixer.music.load(self.sounds_dir + "\\first_alert.mp3")
-                mixer.music.play()
-            if self.time_seconds == 5:
-                mixer.music.load(self.sounds_dir + "\\second_alert.mp3")
-                mixer.music.play()
-            if self.time_seconds == 0.5:
-                mixer.music.load(self.sounds_dir + "\\third_alert.mp3")
-                mixer.music.play()
-            if self.time_seconds <= 10:
+            if self.new_entry is False and self.end_of_entry is False:
+                if self.time_seconds == 10:
+                    mixer.music.load(self.sounds_dir + "\\first_alert.mp3")
+                    mixer.music.play()
+                elif self.time_seconds == 5:
+                    mixer.music.load(self.sounds_dir + "\\second_alert.mp3")
+                    mixer.music.play()
+                elif self.time_seconds == 0.5:
+                    mixer.music.load(self.sounds_dir + "\\third_alert.mp3")
+                    mixer.music.play()
+            else:
+                if self.new_entry is True:
+                    self.new_entry = False
+                if self.end_of_entry is True:
+                    self.end_of_entry = False
+            if os.path.basename(
+                    self.playlist[self.playlist_position]) == 'break.png':
                 self.image_mods['break_grayscale'] = False
                 self.prepare_image_mods()
-
         if self.time_seconds == 0:
             QTest.qWait(500)
             self.load_next_image()
@@ -1253,10 +1270,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.minutes_list = list(str(minutes))
         if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
             self.minutes_list.insert(0, '0')
-
-        self.sec = list(
-            str(
-                int(
+        self.sec = list(str(int(
                     (((self.time_seconds / 3600 - hr) * 60) - minutes) * 60)))
         if len(self.sec) == 1 or self.sec[0] == "0":
             self.sec.insert(0, '0')
