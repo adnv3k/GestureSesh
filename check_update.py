@@ -14,7 +14,9 @@ class Version:
         self.newest_version = self.get_newest_version()
 
     def get_newest_version(self):
-        if self.allowed:
+        if self.last_checked is False:
+            newest_version = self.current_version
+        elif self.allowed:
             print('Check allowed')
             # Grab json from github
             print('Checking releases...')
@@ -31,11 +33,12 @@ class Version:
             print(f'newest_version: {newest_version}')
         else:
             newest_version = self.last_checked[1]
+            print('Not allowed (get_newest_version)')
         return newest_version
 
     def check_allowed(self):
-        if not self.last_checked:
-            return True
+        if self.last_checked is False:
+            return False
         # Change format from datetime object to str elements [year, month, day]
         last_checked = str(self.last_checked[0]).split('-')
         now = str(datetime.now().date()).split('-')
@@ -56,32 +59,41 @@ class Version:
             f'Check not allowed',
             f'{int(last_checked[2]) + 1 - int(now[2])} days until allowed'
         )
+        os.chdir(r'.\recent')
+        f = shelve.open('recent')
+        f['last_checked'] = [datetime.now().date(), self.current_version]
+        f.close()
+        os.chdir(r'..\\')
         return False
 
     def is_newest(self):
         """
         Checks if the current version is up to date.
         """
+        self.save_to_recent()
+        print(self.last_checked)
         print(f'current version: {self.current_version}')
+
         if self.current_version == self.newest_version:
             if self.allowed:
                 if 'patch' in self.r_json[0]['name'].lower():
                     print('Patch available')
                     self.patch_available = True
                     if self.is_valid_update():
-                        self.save_to_recent()
-                        print('save_to_recent called')
-                        return False
+                        # self.save_to_recent()
+                        # print('self.is_valid_update = True. save_to_recent called')
+                        return False # version not newest
                 print('Up to date')
+
             return True
 
         # There is a newer version
         if not self.allowed:
             print('Out of date')
-            return True
+            return True # version is not newest, but self.allowed = False means don't proceed.
         if self.is_valid_update():
-            self.save_to_recent()
-            print('save_to_recent called')
+            # self.save_to_recent()
+            # print('save_to_recent called')
             return False
 
     def is_valid_update(self):
@@ -102,7 +114,7 @@ class Version:
         try:
             last_checked = f['last_checked']
             print(f'Save exists. last_checked: {last_checked}')
-        except (Exception, KeyError):
+        except (Exception, KeyError): # First time opening app
             f['last_checked'] = [datetime.now().date(), self.current_version]
             last_checked = False
             print('last_checked not found')
