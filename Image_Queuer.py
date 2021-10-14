@@ -747,8 +747,21 @@ class SessionDisplay(QWidget, Ui_session_display):
         
     def init_mixer(self):
         mixer.init()
-        self.volume = mixer.music.get_volume()
-        self.mute = False
+        try:
+            """
+            If view.mute exists, then a session has been started before.
+            Set mute and volume according to previous session's sound settings.
+            """
+            if view.mute is True: # if view.mute exists and is True
+                self.mute = True
+                self.volume = mixer.music.get_volume()
+                mixer.music.set_volume(0.0)
+            else: # if view.mute exists and is False
+                self.mute = False
+                self.volume = view.volume
+        except: # view.mute does not exist, so init settings with default.
+            self.volume = mixer.music.get_volume()
+            self.mute = False
 
     def init_buttons(self):
         self.previous_image.clicked.connect(self.previous_playlist_position)
@@ -788,8 +801,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         Stops timer and sound on close event.
         """
         self.timer.stop()
-        mixer.music.stop()
-        mixer.music.unload()
+        mixer.quit()
+        view.mute = self.mute
+        view.volume = self.volume
         self.closed.emit()
         event.accept()
 
@@ -884,12 +898,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         print(f'amount of items: {self.entry["amount of items"]}')
 
     def toggle_mute(self):
-        if self.mute:
+        if self.mute is True:
             self.mute = False
             mixer.music.set_volume(self.volume)
         else:
             self.mute = True
-            self.vlume = mixer.music.get_volume()
+            self.volume = mixer.music.get_volume()
             mixer.music.set_volume(0.0)
 
     def load_entry(self):
