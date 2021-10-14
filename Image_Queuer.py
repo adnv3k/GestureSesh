@@ -23,12 +23,16 @@ __version__ = '0.4.2'
 # Volume was mispelled in the function to toggle mute, resulting in sound not working. Mute settings are now inherited from the parent, if there are any.
 # Display now shows "Up to date." if the version was compared to the newest version available. 
 # Removed version from window title.
+# BUG Previous image
+# Navigating to the previous image would play the 'new_entry' sound. 
+# Added self.new_entry configuration for previous_playlist_position().
+
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.setWindowTitle(f'Reference Practice')
+        self.setWindowTitle(f'Reference Practice v{__version__}')
         self.session_schedule = {}
         self.has_break = False
         self.valid_file_types = ['.bmp', '.jpg', '.jpeg', '.png']
@@ -729,6 +733,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.end_of_entry = False
         else:
             self.end_of_entry = True
+        print(f'self.endofentry: {self.end_of_entry}')
         
     def init_image_mods(self):
         self.image_mods = {
@@ -947,6 +952,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.update_timer_display()
             self.playlist_position += 1
             self.entry['amount of items'] -= 1
+            self.new_entry = False
             if self.entry['amount of items'] == 0:
                 self.end_of_entry = True
             self.display_image()
@@ -1201,8 +1207,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             return
         # At the beginning of a new entry
         if (self.entry['amount of items'] + 1 ==
-                int(self.schedule[self.entry['current']][1])
-                or self.session_info.text() == 'Break'):
+                int(self.schedule[self.entry['current']][1]) or
+                self.session_info.text() == 'Break'):
             if self.entry['current'] != 0:
                 self.entry['current'] -= 1
             self.timer.stop()
@@ -1212,12 +1218,13 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.time_seconds = self.entry['time']
             self.timer.start(500)
             self.entry['amount of items'] = 0
+            self.new_entry = True
             self.display_image()
             return
         self.entry['amount of items'] += 1
         self.time_seconds = self.entry['time']
         self.update_timer_display()
-        self.new_entry = True
+        self.new_entry = False
         self.display_image()
 
     # endregion
