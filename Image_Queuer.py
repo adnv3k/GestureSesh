@@ -17,18 +17,18 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
-# Autocomplete preset names
-# Scheduling functions now work properly.
-# Minor bug fixes for speed and function.
-
+# Mute revision and update bug
+# Volume was mispelled in the function to toggle mute, resulting in sound not working. Mute settings are now inherited from the parent, if there are any.
+# Display now shows "Up to date." if the version was compared to the newest version available. 
+# Removed version from window title.
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.setWindowTitle(f'Reference Practice v{__version__}')
+        self.setWindowTitle(f'Reference Practice')
         self.session_schedule = {}
         self.has_break = False
         self.valid_file_types = ['.bmp', '.jpg', '.jpeg', '.png']
