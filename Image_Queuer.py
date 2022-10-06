@@ -114,24 +114,19 @@ class MainApp(QMainWindow, Ui_MainWindow):
             # Example of result
             # ['D:/.../image_displayer/atest2',
             # 'D:/.../image_displayer/atest1']
-            total_valid_files = 0
-            total_invalid_files = 0
+            total_valid_files, total_invalid_files = 0, 0
             self.selected_items.clear()
-            for directory in selected_dir.selectedFiles():
-                checked_files = self.check_files(os.listdir(directory))
-                total_valid_files += len(checked_files['valid_files'])
-                total_invalid_files += len(checked_files['invalid_files'])
-                if directory not in self.selection['folders']:
-                    self.selection['folders'].append(directory)
-                for file in checked_files['valid_files']:
-                    self.selection['files'].append(f'{directory}/{file}')
+            #TODO refactor so that calling os.walk is done just once 
+            directories = [x[0] for x in os.walk(selected_dir.selectedFiles()[0])]
+            total_valid_files, total_invalid_files = self.scan_directories(directories)
             self.selected_items.append(
                 f'{total_valid_files} file(s) added from '
-                f'{len(selected_dir.selectedFiles())} folders!')
+                f'{len(directories)} folders!')
+            #TODO update error handling here to accomodate subfolder inclusion
             if total_invalid_files > 0:
                 self.selected_items.append(
                     f'{total_invalid_files} file(s) not added. '
-                    f'Supported file types: {", ".join(self.valid_file_types)}. Does not add folders.')
+                    f'Supported file types: {", ".join(self.valid_file_types)}.')
                 QTest.qWait(1000)
             QTest.qWait(4000)
             self.display_status()
@@ -140,6 +135,21 @@ class MainApp(QMainWindow, Ui_MainWindow):
         QTest.qWait(2000)
         self.display_status()
 
+    def scan_directories(self, directories):
+            total_valid_files, total_invalid_files = 0, 0
+            for directory in directories:
+                if not os.path.exists(directory):
+                    self.selection['folders'].remove(directory)
+                    continue
+                checked_files = self.check_files([x[2] for x in os.walk(directory)][0])
+                total_valid_files += len(checked_files['valid_files'])
+                total_invalid_files += len(checked_files['invalid_files'])
+                if directory not in self.selection['folders']:
+                    self.selection['folders'].append(directory)
+                for file in checked_files['valid_files']:
+                    self.selection['files'].append(f'{directory}/{file}')
+            return total_valid_files, total_invalid_files
+            
     def check_files(self, files):
         """Checks if files are supported file types"""
         res = {'valid_files': [], 'invalid_files': []}
@@ -213,9 +223,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
             try:
                 os.chdir(r'.\recent')
                 recent = shelve.open('recent')
-                keys = list(recent['recent'].keys())
-                for key in keys:
-                    self.selection[key] = recent['recent'][key]
+                if recent['recent'].get('folders'):
+                    self.selection['folders'] = recent['recent']['folders']
+                    self.scan_directories(self.selection['folders'])
                 self.preset_loader_box.setCurrentIndex(recent['recent_preset'])
                 self.randomize_selection.setChecked(recent['randomized'])
                 recent.close()
@@ -432,6 +442,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
     def update_presets(self):
+        """
+        Populates the configuration with preset.
+        """
         self.preset_loader_box.clear()
         self.preset_names = []
         for p in [*self.presets]:
