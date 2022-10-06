@@ -17,16 +17,9 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
-__version__ = '0.4.2'
+__version__ = '0.4.3'
 
-# Mute revision and update bug
-# Volume was mispelled in the function to toggle mute, resulting in sound not working. Mute settings are now inherited from the parent, if there are any.
-# Display now shows "Up to date." if the version was compared to the newest version available. 
-# Removed version from window title.
-# BUG Previous image
-# Navigating to the previous image would play the 'new_entry' sound. 
-# Added self.new_entry configuration for previous_playlist_position().
-
+# Adding a folder will now add all files in subdirectories as well.
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -149,7 +142,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 for file in checked_files['valid_files']:
                     self.selection['files'].append(f'{directory}/{file}')
             return total_valid_files, total_invalid_files
-            
+
     def check_files(self, files):
         """Checks if files are supported file types"""
         res = {'valid_files': [], 'invalid_files': []}
