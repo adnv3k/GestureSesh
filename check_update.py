@@ -22,7 +22,7 @@ class Version:
             print('Checking releases...')
             try:
                 r = requests.get(
-                    'https://api.github.com/repos/adnv3k/Image-Queuer/releases'
+                    'https://api.github.com/repos/adnv3k/GestureSesh/releases'
                 )
                 self.r_json = r.json()
             except (Exception, ConnectionError):
