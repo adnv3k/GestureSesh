@@ -19,7 +19,7 @@ import resources_config
 
 __version__ = '0.4.3'
 
-# Adding a folder will now add all files in subdirectories as well.
+# Adding a folder will now include subdirectories.
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
