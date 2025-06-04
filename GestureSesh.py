@@ -129,33 +129,31 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def scan_directories(self, directories):
-            total_valid_files, total_invalid_files = 0, 0
-            for directory in directories:
-                if not os.path.exists(directory):
+        total_valid_files, total_invalid_files = 0, 0
+        for directory in directories:
+            if not os.path.exists(directory):
+                if directory in self.selection['folders']:
                     self.selection['folders'].remove(directory)
-                    continue
-                checked_files = self.check_files([x[2] for x in os.walk(directory)][0])
-                total_valid_files += len(checked_files['valid_files'])
-                total_invalid_files += len(checked_files['invalid_files'])
-                if directory not in self.selection['folders']:
-                    self.selection['folders'].append(directory)
-                for file in checked_files['valid_files']:
-                    self.selection['files'].append(f'{directory}/{file}')
-            return total_valid_files, total_invalid_files
+                continue
+            filenames = next(os.walk(directory))[2]
+            checked_files = self.check_files(filenames)
+            total_valid_files += len(checked_files['valid_files'])
+            total_invalid_files += len(checked_files['invalid_files'])
+            if directory not in self.selection['folders']:
+                self.selection['folders'].append(directory)
+            for file in checked_files['valid_files']:
+                self.selection['files'].append(f'{directory}/{file}')
+        return total_valid_files, total_invalid_files
 
     def check_files(self, files):
         """Checks if files are supported file types"""
         res = {'valid_files': [], 'invalid_files': []}
         for file in files:
-            if (
-                file[-4:].lower() not in self.valid_file_types and
-                file[-5:].lower() not in self.valid_file_types  # .jpeg
-            ):
-                # Since the file extension is not a valid file type,
-                # add it to list of invalid files.
-                res['invalid_files'].append(file)
-            else:
+            ext = os.path.splitext(file)[1].lower()
+            if ext in self.valid_file_types:
                 res['valid_files'].append(file)
+            else:
+                res['invalid_files'].append(file)
         return res
 
     def remove_items(self):
@@ -167,21 +165,18 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def remove_dupes(self):
-        """
-        Iterates through user selection of files while keeping seen files 
-        in memory.
-        If a file has already been seen, it is deleted from the selection.
-
-        """
+        """Remove duplicate files while keeping track of removed items."""
         self.duplicates = []
-        files = []
-        i = len(self.selection['files'])
-        while i > 0:
-            i -= 1
-            if os.path.basename(self.selection['files'][i]) in files:
-                self.duplicates.append(self.selection['files'].pop(i))
+        seen = set()
+        unique_files = []
+        for file in self.selection['files']:
+            base = os.path.basename(file)
+            if base in seen:
+                self.duplicates.append(file)
             else:
-                files.append(os.path.basename(self.selection['files'][i]))
+                seen.add(base)
+                unique_files.append(file)
+        self.selection['files'] = unique_files
         self.selected_items.setText(f'Removed {len(self.duplicates)} duplicates!')
         QTest.qWait(2000)
         self.display_status()
@@ -329,12 +324,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.entry_table.removeRow(0)
 
     def randomize_items(self):
-        copy = self.selection['files'].copy()
-        randomized_items = []
-        while len(copy) > 0:
-            random_index = random.randint(0, len(copy) - 1)
-            randomized_items.append(copy.pop(random_index))
-        self.selection['files'] = randomized_items
+        random.shuffle(self.selection['files'])
         self.display_status()
 
     def update_total(self):
@@ -387,23 +377,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.total_table.setItem(0, 2, total_time)
 
     def format_seconds(self, sec):
-        # Hours
-        hrs = int(sec / 3600)
-        self.hrs_list = list(str(hrs))
-        if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
-            self.hrs_list.insert(0, '0')
-        # Minutes
-        minutes = int((sec / 3600 - hrs) * 60)
-        self.minutes_list = list(str(minutes))
-        if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
-            self.minutes_list.insert(0, '0')
-        # Seconds
-        self.secs = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
-        if len(self.secs) == 1 or self.secs[0] == "0":
-            self.secs.insert(0, '0')
-        return f'{self.hrs_list[0]}{self.hrs_list[1]}:' \
-               f'{self.minutes_list[0]}{self.minutes_list[1]}:' \
-               f'{self.secs[0]}{self.secs[1]}'
+        hrs = int(sec // 3600)
+        minutes = int((sec % 3600) // 60)
+        secs = int(sec % 60)
+        return f"{hrs:02d}:{minutes:02d}:{secs:02d}"
 
     # endregion
 
@@ -1237,9 +1214,9 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     # region Timer functions
     def format_seconds(self, sec):
-        minutes = int(sec / 60)
-        sec = int(self.time_seconds - (minutes * 60))
-        return f'{minutes}:{sec}'
+        minutes = int(sec // 60)
+        secs = int(sec % 60)
+        return f"{minutes}:{secs}"
 
     def countdown(self):
         self.update_timer_display()
