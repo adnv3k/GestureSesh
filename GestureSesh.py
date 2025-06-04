@@ -953,7 +953,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             if event.type() == QtCore.QEvent.MouseButtonDblClick:
                 if self.was_timer_active:
                     self.pause()  # Always pause on double click
-                self.time_seconds += 0.7
+                self.time_seconds += 0.5
                 self.open_image_directory(event)
                 return True
             if event.type() == QtCore.QEvent.MouseButtonPress:
@@ -1540,7 +1540,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             return
         directory = os.path.dirname(path)
         if sys.platform.startswith("darwin"):
-            subprocess.call(["open", "-R", directory])
+            subprocess.call(["open", "-R", path])
         elif os.name == "nt":
             subprocess.call(["explorer", "/select,", path.replace("/", "\\")])
         if sys.platform.startswith("linux"):
