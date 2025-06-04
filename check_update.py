@@ -3,6 +3,7 @@ import requests
 import shelve
 from datetime import datetime
 
+from pathlib import Path
 
 class Version:
     def __init__(self, current_version):
@@ -59,11 +60,12 @@ class Version:
             f'Check not allowed',
             f'{int(last_checked[2]) + 1 - int(now[2])} days until allowed'
         )
-        os.chdir(r'.\recent')
-        f = shelve.open('recent')
+        recent_dir = Path('recent')
+        os.chdir(recent_dir)
+        f = shelve.open(str(recent_dir))
         f['last_checked'] = [datetime.now().date(), self.current_version]
         f.close()
-        os.chdir(os.pardir)
+        os.chdir(Path('..'))
         return False
 
     def is_newest(self):
@@ -106,11 +108,12 @@ class Version:
         return True
 
     def get_last_checked(self):
-        if not os.path.exists(r'.\recent'):
+        if not Path('recent').exists():
             print(f'Recent folder not found')
-            os.mkdir(r'.\recent')
-        os.chdir(r'.\recent')
-        f = shelve.open('recent')
+            Path('recent').mkdir()
+        recent_dir = Path('recent')
+        os.chdir(recent_dir)
+        f = shelve.open(str(recent_dir))
         try:
             last_checked = f['last_checked']
             print(f'Save exists. last_checked: {last_checked}')
@@ -119,17 +122,18 @@ class Version:
             last_checked = False
             print('last_checked not found')
         f.close()
-        os.chdir(os.pardir)
+        os.chdir(Path('..'))
         
         return last_checked
 
     # Saves date checked
     def save_to_recent(self):
-        os.chdir(r'.\recent')
-        f = shelve.open('recent')
+        recent_dir = Path('recent')
+        os.chdir(recent_dir)
+        f = shelve.open(str(recent_dir))
         f['last_checked'] = [datetime.now().date(), self.newest_version]
         f.close()
-        os.chdir(os.pardir)
+        os.chdir(Path('..'))
         
 
     def update_type(self):
