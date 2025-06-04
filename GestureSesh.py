@@ -1412,9 +1412,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.close_timer.isActive():
             self.close_timer.stop()
             self.timer_display.setText("Done!")
-            self.setWindowTitle(
-                "Session complete - review mode (Ctrl+O opens folder)"
-            )
+            self.setWindowTitle("Session complete - review mode (Ctrl+O opens folder)")
 
     def open_image_directory(self, event=None):
         path = self.playlist[self.playlist_position]
@@ -1422,10 +1420,10 @@ class SessionDisplay(QWidget, Ui_session_display):
             return
         directory = os.path.dirname(path)
         if sys.platform.startswith("darwin"):
-            subprocess.call(["open", directory])
+            subprocess.call(["open", "-R", directory])
         elif os.name == "nt":
-            os.startfile(directory)
-        else:
+            subprocess.call(["explorer", "/select,", path.replace("/", "\\")])
+        if sys.platform.startswith("linux"):
             subprocess.call(["xdg-open", directory])
         if event:
             event.accept()
