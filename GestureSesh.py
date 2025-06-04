@@ -9,6 +9,7 @@ from importlib import resources
 import cv2
 import numpy as np
 from pygame import mixer
+import subprocess
 from dataclasses import dataclass
 
 from PyQt5 import QtCore, QtGui, QtWidgets
