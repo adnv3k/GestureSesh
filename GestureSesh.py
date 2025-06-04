@@ -704,6 +704,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.init_scaling_size()
         self.init_button_sizes()
         self.drag_timer_was_active = False
+        self.drag_start_position = QtCore.QPoint()
+        self.drag_threshold = 6
         self.schedule = schedule
         self.playlist = items
         self.playlist_position = 0
@@ -901,6 +903,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         before any dragging begins.
         """
         self.old_position = event.globalPos()
+        self.drag_start_position = event.globalPos()
         # Record if the timer is active at the start of a potential drag
         self.was_timer_active = self.timer.isActive()
         # Reset drag flag
@@ -912,13 +915,20 @@ class SessionDisplay(QWidget, Ui_session_display):
         Drags the window by the difference between the current cursor position and self.old_position.
         Pauses the timer on the first movement if it was active before dragging.
         """
-        if not self.session_finished and not self.drag_timer_was_active:
-            self.timer.stop()
-            self._set_timer_visuals(False)
-            self.drag_timer_was_active = True
-        change = event.globalPos() - self.old_position
-        self.move(self.x() + change.x(), self.y() + change.y())
-        self.old_position = event.globalPos()
+        # Start a drag only if the cursor moved beyond the threshold
+        if (
+            (event.globalPos() - self.drag_start_position).manhattanLength()
+            > self.drag_threshold
+        ):
+            if not self.session_finished and not self.drag_timer_was_active:
+                self.timer.stop()
+                self._set_timer_visuals(False)
+                self.drag_timer_was_active = True
+
+        if self.drag_timer_was_active:
+            change = event.globalPos() - self.old_position
+            self.move(self.x() + change.x(), self.y() + change.y())
+            self.old_position = event.globalPos()
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -949,6 +959,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                     return True
                 if event.type() == QtCore.QEvent.MouseButtonPress:
                     self.old_position = event.globalPos()
+                    self.drag_start_position = event.globalPos()
                     return True
             else:
                 if event.type() == QtCore.QEvent.MouseButtonDblClick:
@@ -959,6 +970,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                     return True
                 if event.type() == QtCore.QEvent.MouseButtonPress:
                     self.old_position = event.globalPos()
+                    self.drag_start_position = event.globalPos()
                     # Only toggle pause/resume if not part of a drag
                     if not self.drag_timer_was_active:
                         if self.timer.isActive():
@@ -1335,7 +1347,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                 return
             self.playlist_position -= 1
             self.display_image()
-            self._set_timer_visuals(True)
+            self._set_timer_visuals(False)
             return
         # Skip_counter
         # if self.skip_count > 0:
