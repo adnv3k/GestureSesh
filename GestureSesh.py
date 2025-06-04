@@ -413,13 +413,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
             self.minutes_list.insert(0, "0")
         # Seconds
-        self.secs = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
-        if len(self.secs) == 1 or self.secs[0] == "0":
-            self.secs.insert(0, "0")
+        self.sec = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
+        if len(self.sec) == 1 or self.sec[0] == "0":
+            self.sec.insert(0, "0")
         return (
             f"{self.hrs_list[0]}{self.hrs_list[1]}:"
             f"{self.minutes_list[0]}{self.minutes_list[1]}:"
-            f"{self.secs[0]}{self.secs[1]}"
+            f"{self.sec[0]}{self.sec[1]}"
         )
 
     # endregion
@@ -685,8 +685,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 )
                 content = current_version.content()
                 self.selected_items.append(
-                    f"v{current_version.newest_version}\n"
-                    f"{content}"
+                    f"v{current_version.newest_version}\n" f"{content}"
                 )
         else:
             if current_version.allowed is True:
@@ -754,6 +753,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.close_seconds = 15
         self.close_timer = QtCore.QTimer()
         self.close_timer.timeout.connect(self.close_countdown)
+        self.sec = ["0", "0"]
+        self.minutes_list = ["0", "0"]
+        self.hrs_list = ["0", "0"]
 
     def init_entries(self):
         self.entry = {
@@ -882,7 +884,8 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def mousePressEvent(self, event):
         """
-        Gets the current position of the cursor as a QPoint instance.
+        Stores the initial cursor position and whether the timer was active
+        before any dragging begins.
         """
         self.old_position = event.globalPos()
 
