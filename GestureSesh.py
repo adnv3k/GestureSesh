@@ -6,10 +6,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 from pygame import mixer
+import subprocess
 from dataclasses import dataclass
 
-from PyQt5 import QtCore
-from PyQt5 import QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import *
 
@@ -273,6 +273,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             if column == 0:
                 item.setFlags(QtCore.Qt.ItemIsEnabled)
             self.entry_table.setItem(row, column, item)
+        self.set_number_of_images.setFocus()
+        self.set_number_of_images.selectAll()
 
     def remove_row(self):
         # Save current row
@@ -411,13 +413,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
             self.minutes_list.insert(0, "0")
         # Seconds
-        self.secs = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
-        if len(self.secs) == 1 or self.secs[0] == "0":
-            self.secs.insert(0, "0")
+        self.sec = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
+        if len(self.sec) == 1 or self.sec[0] == "0":
+            self.sec.insert(0, "0")
         return (
             f"{self.hrs_list[0]}{self.hrs_list[1]}:"
             f"{self.minutes_list[0]}{self.minutes_list[1]}:"
-            f"{self.secs[0]}{self.secs[1]}"
+            f"{self.sec[0]}{self.sec[1]}"
         )
 
     # endregion
@@ -683,8 +685,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 )
                 content = current_version.content()
                 self.selected_items.append(
-                    f"v{current_version.newest_version}\n"
-                    f"{content}"
+                    f"v{current_version.newest_version}\n" f"{content}"
                 )
         else:
             if current_version.allowed is True:
@@ -701,6 +702,10 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.setupUi(self)
         self.init_sizing()
         self.init_scaling_size()
+        self.init_button_sizes()
+        self.drag_timer_was_active = False
+        self.drag_start_position = QtCore.QPoint()
+        self.drag_threshold = 6
         self.schedule = schedule
         self.playlist = items
         self.playlist_position = 0
@@ -708,6 +713,19 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.init_timer()
         self.init_entries()
         self.installEventFilter(self)
+        self.image_display.installEventFilter(self)
+        pause_style = "background: rgb(100, 120, 118); padding:2px;"
+        for btn in (
+            self.previous_image,
+            self.pause_timer,
+            self.stop_session,
+            self.next_image,
+            self.grayscale_button,
+            self.flip_horizontal_button,
+            self.flip_vertical_button,
+        ):
+            btn.setMinimumSize(60, 32)
+            btn.setStyleSheet(pause_style)
         self.init_image_mods()
         self.init_sounds()
         self.init_mixer()
@@ -746,6 +764,13 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.countdown)
         self.timer.start(500)
+        self.session_finished = False
+        self.close_seconds = 15
+        self.close_timer = QtCore.QTimer()
+        self.close_timer.timeout.connect(self.close_countdown)
+        self.sec = ["0", "0"]
+        self.minutes_list = ["0", "0"]
+        self.hrs_list = ["0", "0"]
 
     def init_entries(self):
         self.entry = {
@@ -803,6 +828,27 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.volume = mixer.music.get_volume()
             self.mute = False
 
+    def init_button_sizes(self):
+        """Ensure all control buttons use a consistent size on any platform"""
+        button_size = QtCore.QSize(60, 36)
+        if sys.platform == "darwin":
+            # macOS tends to render widgets slightly smaller
+            button_size = QtCore.QSize(70, 40)
+
+        icon_size = QtCore.QSize(32, 32)
+        buttons = [
+            self.previous_image,
+            self.pause_timer,
+            self.stop_session,
+            self.next_image,
+            self.grayscale_button,
+            self.flip_horizontal_button,
+            self.flip_vertical_button,
+        ]
+        for btn in buttons:
+            btn.setFixedSize(button_size)
+            btn.setIconSize(icon_size)
+
     def init_buttons(self):
         self.previous_image.clicked.connect(self.previous_playlist_position)
         self.next_image.clicked.connect(self.load_next_image)
@@ -832,6 +878,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Skip image
         # self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
         # self.skip_image_key.activated.connect(self.skip_image)
+        # Open image directory
+        self.open_dir_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+O"), self)
+        self.open_dir_shortcut.activated.connect(self.open_image_directory)
         # Frameless Window
         self.frameless_window = QShortcut(QtGui.QKeySequence("Ctrl+F"), self)
         self.frameless_window.activated.connect(self.toggle_frameless)
@@ -841,6 +890,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         Stops timer and sound on close event.
         """
         self.timer.stop()
+        self.close_timer.stop()
         view.mute = self.mute
         view.volume = self.volume
         mixer.quit()
@@ -849,39 +899,90 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def mousePressEvent(self, event):
         """
-        Gets the current position of the cursor as a QPoint instance.
+        Stores the initial cursor position and whether the timer was active
+        before any dragging begins.
         """
         self.old_position = event.globalPos()
+        self.drag_start_position = event.globalPos()
+        # Record if the timer is active at the start of a potential drag
+        self.was_timer_active = self.timer.isActive()
+        # Reset drag flag
+        self.drag_timer_was_active = False
+        super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         """
-        Finds the difference of the current cursor position and self.old_position as change.
-        Moves the window by change.
-        Sets self.old_position with the current position of the cursor.
+        Drags the window by the difference between the current cursor position and self.old_position.
+        Pauses the timer on the first movement if it was active before dragging.
         """
-        change = QtCore.QPoint(event.globalPos() - self.old_position)
-        self.move(self.x() + change.x(), self.y() + change.y())
-        self.old_position = event.globalPos()
+        # Start a drag only if the cursor moved beyond the threshold
+        if (
+            (event.globalPos() - self.drag_start_position).manhattanLength()
+            > self.drag_threshold
+        ):
+            if not self.session_finished and not self.drag_timer_was_active:
+                self.timer.stop()
+                self._set_timer_visuals(False)
+                self.drag_timer_was_active = True
 
-    # region Session processing functions
+        if self.drag_timer_was_active:
+            change = event.globalPos() - self.old_position
+            self.move(self.x() + change.x(), self.y() + change.y())
+            self.old_position = event.globalPos()
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """
+        After dragging, restores the timer to its previous state (paused or running).
+        """
+        if self.drag_timer_was_active:
+            if not self.session_finished:
+                self.timer.stop()
+                self._set_timer_visuals(False)
+                if not self.was_timer_active:
+                    self.pause()
+            self.drag_timer_was_active = False
+        # super().mouseReleaseEvent(event)
+
     def eventFilter(self, source, event):
-        if source is self and event.type() == QtCore.QEvent.Resize:
-            if self.toggle_resize_status:
-                self.image_display.setPixmap(
-                    self.image.scaled(
-                        self.size(),
-                        aspectRatioMode=QtCore.Qt.KeepAspectRatio,
-                        transformMode=QtCore.Qt.SmoothTransformation,
-                    )
-                )
+        if self.session_finished and self.close_timer.isActive():
+            if event.type() in (
+                QtCore.QEvent.KeyPress,
+                QtCore.QEvent.MouseButtonPress,
+            ):
+                self.cancel_close_countdown()
+
+        if source is self.image_display:
+            if self.session_finished:
+                if event.type() == QtCore.QEvent.MouseButtonDblClick:
+                    self.open_image_directory(event)
+                    return True
+                if event.type() == QtCore.QEvent.MouseButtonPress:
+                    self.old_position = event.globalPos()
+                    self.drag_start_position = event.globalPos()
+                    return True
             else:
-                self.image_display.setPixmap(
-                    self.image.scaled(
-                        self.image_display.size(),
-                        aspectRatioMode=QtCore.Qt.KeepAspectRatio,
-                        transformMode=QtCore.Qt.SmoothTransformation,
-                    )
-                )
+                if event.type() == QtCore.QEvent.MouseButtonDblClick:
+                    if self.was_timer_active:
+                        self.pause()  # Always pause on double click
+                    self.time_seconds += 0.7
+                    self.open_image_directory(event)
+                    return True
+                if event.type() == QtCore.QEvent.MouseButtonPress:
+                    self.old_position = event.globalPos()
+                    self.drag_start_position = event.globalPos()
+                    # Only toggle pause/resume if not part of a drag
+                    if not self.drag_timer_was_active:
+                        if self.timer.isActive():
+                            self.timer.stop()
+                            self._set_timer_visuals(False)
+                        else:
+                            self.timer.start(500)
+                            self._set_timer_visuals(True)
+                        self.display_time()
+                    self.was_timer_active = self.timer.isActive()
+                    self.drag_timer_was_active = False
+                    return True
         return super(SessionDisplay, self).eventFilter(source, event)
 
     def skip_image(self):
@@ -952,34 +1053,63 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.volume = mixer.music.get_volume()
             mixer.music.set_volume(0.0)
 
-    def load_entry(self):
+    def load_entry(self, resume_timer: bool = True):
         if self.entry["current"] >= self.entry["total"]:
-            self.timer.stop()
-            self.setWindowTitle("You've reached the end of your session! Good job!!")
-            self.image_display.clear()
-            self.timer_display.setText(f"Done!")
-            QTest.qWait(5000)
-            self.close()
+            self.end_session()
             return
         self.entry["time"] = self.schedule[self.entry["current"]].time
         self.timer.stop()
         self.time_seconds = self.entry["time"]
-        self.timer.start(500)
+        if resume_timer:
+            self.timer.start(500)
+            self._set_timer_visuals(True)
+        else:
+            self._set_timer_visuals(False)
         self.entry["amount of items"] = self.schedule[self.entry["current"]].images - 1
         self.display_image()
 
+    def end_session(self):
+        self.session_finished = True
+        self.timer.stop()
+        # Prevent further countdown updates once the session is done
+        self.timer.blockSignals(True)
+        self.close_seconds = 15
+        self.setWindowTitle("Session complete! Navigate images with arrows")
+        self.session_info.setText(
+            "Use arrows to browse. Double-click or Ctrl+O to open folder"
+        )
+        # Reset indices so reviewing previous images works correctly
+        self.entry["current"] = max(0, self.entry["total"] - 1)
+        self.entry["amount of items"] = 0
+        self.playlist_position = max(0, len(self.playlist) - 1)
+        self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
+        self.update_close_title()
+        self.close_timer.start(1000)
+
     def load_next_image(self):
+        was_timer_active = self.timer.isActive()
+        self.timer.stop()
+        if self.session_finished:
+            self.cancel_close_countdown()
+            self.timer.blockSignals(True)
+            if self.playlist_position >= len(self.playlist) - 1:
+                return
+            self.playlist_position += 1
+            self.display_image()
+            return
         if self.entry["current"] >= self.entry["total"]:  # End of schedule
             return
         if self.entry["amount of items"] == 0:  # End of entry
             self.entry["current"] += 1
             self.playlist_position += 1
             self.new_entry = True
-            self.load_entry()
+            self.time_seconds = self.entry["time"]
+            self.load_entry(was_timer_active)
         else:
             self.timer.stop()
             self.time_seconds = self.entry["time"]
-            self.timer.start(500)
+            if was_timer_active:
+                self.timer.start(500)
             self.update_timer_display()
             self.playlist_position += 1
             self.entry["amount of items"] -= 1
@@ -987,6 +1117,11 @@ class SessionDisplay(QWidget, Ui_session_display):
             if self.entry["amount of items"] == 0:
                 self.end_of_entry = True
             self.display_image()
+        if was_timer_active:
+            self.timer.start(500)
+            self._set_timer_visuals(True)
+        else:
+            self._set_timer_visuals(False)
 
     def display_image(self):
         print(self.entry)
@@ -1057,7 +1192,9 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         # Handle if cvimage is None or empty
         if cvimage is None or cvimage.size == 0:
-            print(f"Error: Could not load image at {self.playlist[self.playlist_position]}")
+            print(
+                f"Error: Could not load image at {self.playlist[self.playlist_position]}"
+            )
             self.setWindowTitle("Error processing image")
             return
 
@@ -1202,6 +1339,16 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.show()
 
     def previous_playlist_position(self):
+        was_timer_active = self.timer.isActive()
+        self.timer.stop()
+        if self.session_finished:
+            self.cancel_close_countdown()
+            if self.playlist_position == 0:
+                return
+            self.playlist_position -= 1
+            self.display_image()
+            self._set_timer_visuals(False)
+            return
         # Skip_counter
         # if self.skip_count > 0:
         #     self.skip_count -= 1
@@ -1221,8 +1368,10 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.timer.stop()
             self.timer_display.setText("First image! Restarting timer...")
             QTest.qWait(1000)
-            self.timer.start(500)
-            self.load_entry()
+            if was_timer_active:
+                self.timer.start(500)
+            self.load_entry(was_timer_active)
+            self._set_timer_visuals(was_timer_active)
             return
 
         self.playlist_position -= 1  # Navigate to the previous position
@@ -1232,10 +1381,12 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.timer.stop()
             self.entry["time"] = self.schedule[self.entry["current"]].time
             self.time_seconds = self.entry["time"]
-            self.timer.start(500)
+            if was_timer_active:
+                self.timer.start(500)
             self.entry["amount of items"] = 0
             self.end_of_entry = True
             self.display_image()
+            self._set_timer_visuals(was_timer_active)
             return
         # At the beginning of a new entry
         if (
@@ -1246,20 +1397,26 @@ class SessionDisplay(QWidget, Ui_session_display):
             if self.entry["current"] != 0:
                 self.entry["current"] -= 1
             self.timer.stop()
-            # print(self.entry['current'])
-            # print(self.schedule[self.entry['current']])
             self.entry["time"] = self.schedule[self.entry["current"]].time
             self.time_seconds = self.entry["time"]
-            self.timer.start(500)
+            self.update_timer_display()
+            if was_timer_active:
+                self.timer.start(500)
             self.entry["amount of items"] = 0
             self.new_entry = True
             self.display_image()
+            self._set_timer_visuals(was_timer_active)
             return
         self.entry["amount of items"] += 1
         self.time_seconds = self.entry["time"]
         self.update_timer_display()
         self.new_entry = False
         self.display_image()
+        if was_timer_active:
+            self.timer.start(500)
+            self._set_timer_visuals(True)
+        else:
+            self._set_timer_visuals(False)
 
     # endregion
 
@@ -1302,9 +1459,9 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def update_timer_display(self):
         hr = int(self.time_seconds / 3600)
-        self.hr_list = list(str(hr))
-        if len(self.hr_list) == 1 or self.hr_list[0] == "0":
-            self.hr_list.insert(0, "0")
+        self.hrs_list = list(str(hr))
+        if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
+            self.hrs_list.insert(0, "0")
 
         minutes = int((self.time_seconds / 3600 - hr) * 60)
         self.minutes_list = list(str(minutes))
@@ -1317,13 +1474,33 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.sec.insert(0, "0")
         self.display_time()
 
+    # Constants for timer visuals
+    PAUSE_BUTTON_RUNNING_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
+    PAUSE_BUTTON_PAUSED_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
+    TIMER_DISPLAY_RUNNING_STYLE = "color: white;"
+    TIMER_DISPLAY_PAUSED_STYLE = "color: white; border:1px solid white;"
+
+    def _set_timer_visuals(self, running: bool) -> None:
+        """Update pause button and display border based on running state."""
+        if running:
+            self.pause_timer.setIcon(QtGui.QIcon(":/icons/icons/Pause.png"))
+            self.pause_timer.setStyleSheet(self.PAUSE_BUTTON_RUNNING_STYLE)
+            self.timer_display.setStyleSheet(self.TIMER_DISPLAY_RUNNING_STYLE)
+        else:
+            self.pause_timer.setIcon(QtGui.QIcon(":/icons/icons/Play2.png"))
+            self.pause_timer.setStyleSheet(self.PAUSE_BUTTON_PAUSED_STYLE)
+            self.timer_display.setStyleSheet(self.TIMER_DISPLAY_PAUSED_STYLE)
+
     def pause(self):
+        # Do nothing if the session has finished
+        if self.session_finished:
+            return
+        self.update_timer_display()  # ensure sec, minutes_list, hrs_list are set
         if self.timer.isActive():
             self.timer.stop()
-            self.timer_display.setFrameShape(QFrame.WinPanel)
-            QTest.qWait(20)
+            self._set_timer_visuals(False)
         else:
-            self.timer_display.setFrameShape(QFrame.NoFrame)
+            self._set_timer_visuals(True)
             self.timer.start(500)
         self.display_time()
 
@@ -1335,7 +1512,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Hour or longer
         if self.time_seconds >= 3600:
             self.timer_display.setText(
-                f"{self.hr_list[0]}{self.hr_list[1]}:"
+                f"{self.hrs_list[0]}{self.hrs_list[1]}:"
                 f"{self.minutes_list[0]}{self.minutes_list[1]}:"
                 f"{self.sec[0]}{self.sec[1]}"
             )
@@ -1350,15 +1527,57 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.timer_display.setText(f"{self.sec[0]}{self.sec[1]}")
 
     def add_30_seconds(self):
+        if self.session_finished:
+            return
         self.time_seconds += 30
         self.update_timer_display()
 
     def add_60_seconds(self):
+        if self.session_finished:
+            return
         self.time_seconds += 60
         self.update_timer_display()
 
     def restart_timer(self):
+        if self.session_finished:
+            return
         self.time_seconds = self.schedule[self.entry["current"]].time
+
+    def update_close_title(self):
+        self.setWindowTitle(
+            f"Review mode - closing in {self.close_seconds}s (Ctrl+O opens folder)"
+        )
+
+    def close_countdown(self):
+        if not self.close_timer.isActive():
+            return
+        self.close_seconds -= 1
+        if self.close_seconds <= 0:
+            self.close_timer.stop()
+            self.close()
+            return
+        self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
+        self.update_close_title()
+
+    def cancel_close_countdown(self):
+        if self.close_timer.isActive():
+            self.close_timer.stop()
+            self.timer_display.setText("Done!")
+            self.setWindowTitle("Session complete - review mode (Ctrl+O opens folder)")
+
+    def open_image_directory(self, event=None):
+        path = self.playlist[self.playlist_position]
+        if path.startswith(":/"):
+            return
+        directory = os.path.dirname(path)
+        if sys.platform.startswith("darwin"):
+            subprocess.call(["open", "-R", path])
+        elif os.name == "nt":
+            subprocess.call(["explorer", "/select,", path.replace("/", "\\")])
+        if sys.platform.startswith("linux"):
+            subprocess.call(["xdg-open", directory])
+        if event:
+            event.accept()
 
     # endregion
 
@@ -1380,6 +1599,7 @@ class FileDialog(QFileDialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    QtWidgets.QApplication.setStyle("Fusion")
     view = MainApp()
     view.show()
     sys.exit(app.exec())
