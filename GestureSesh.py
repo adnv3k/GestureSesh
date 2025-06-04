@@ -6,6 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from pygame import mixer
+from dataclasses import dataclass
 
 from PyQt5 import QtCore
 from PyQt5 import QtGui
@@ -17,22 +18,29 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
-__version__ = '0.4.3'
+
+@dataclass
+class ScheduleEntry:
+    images: int
+    time: int
+
+
+__version__ = "0.4.3"
 
 # Adding a folder will now include subdirectories.
+
 
 class MainApp(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        self.setWindowTitle(f'Reference Practice')
-        self.session_schedule = {}
+        self.setWindowTitle(f"Reference Practice")
+        self.session_schedule = []
         self.has_break = False
-        self.valid_file_types = ['.bmp', '.jpg', '.jpeg', '.png']
-        self.schedule = []
+        self.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
         self.total_time = 0
         self.total_images = 0
-        self.selection = {'folders': [], 'files': []}
+        self.selection = {"folders": [], "files": []}
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
@@ -61,20 +69,20 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def init_shortcuts(self):
         # Ctrl+Enter to start session
-        self.return_shortcut = QShortcut(QtGui.QKeySequence('Ctrl+Return'), self)
+        self.return_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+Return"), self)
         self.return_shortcut.activated.connect(self.start_session)
-        self.enter_shortcut = QShortcut(QtGui.QKeySequence('Ctrl+Enter'), self)
+        self.enter_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+Enter"), self)
         self.enter_shortcut.activated.connect(self.start_session)
         # Add entry
-        self.add_shortcut = QShortcut(QtGui.QKeySequence('Shift+Return'), self)
+        self.add_shortcut = QShortcut(QtGui.QKeySequence("Shift+Return"), self)
         self.add_shortcut.activated.connect(self.append_schedule)
-        self.add_shortcut = QShortcut(QtGui.QKeySequence('Shift+Enter'), self)
+        self.add_shortcut = QShortcut(QtGui.QKeySequence("Shift+Enter"), self)
         self.add_shortcut.activated.connect(self.append_schedule)
         # Delete entry
-        self.remove_shortcut = QShortcut(QtGui.QKeySequence('Delete'), self)
+        self.remove_shortcut = QShortcut(QtGui.QKeySequence("Delete"), self)
         self.remove_shortcut.activated.connect(self.remove_row)
         # Escape to close window
-        self.escape_shortcut = QShortcut(QtGui.QKeySequence('Escape'), self)
+        self.escape_shortcut = QShortcut(QtGui.QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.close)
 
     # region
@@ -84,12 +92,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def open_files(self):
         selected_files = QFileDialog().getOpenFileNames()
         checked_files = self.check_files(selected_files[0])
-        self.selection['files'].extend(checked_files['valid_files'])
-        self.selected_items.setText(f'{len(checked_files["valid_files"])} file(s) added!')
-        if len(checked_files['invalid_files']) > 0:
+        self.selection["files"].extend(checked_files["valid_files"])
+        self.selected_items.setText(
+            f'{len(checked_files["valid_files"])} file(s) added!'
+        )
+        if len(checked_files["invalid_files"]) > 0:
             self.selected_items.append(
                 f'{len(checked_files["invalid_files"])} file(s) not added. '
-                f'Supported file types: {", ".join(self.valid_file_types)}.')
+                f'Supported file types: {", ".join(self.valid_file_types)}.'
+            )
             QTest.qWait(500)
         QTest.qWait(3000)
         self.display_status()
@@ -99,7 +110,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Calls on self.check_files to check each file in the user selected directories
         Saves folder paths, and file names
         Displays message of result
-        
+
         """
         # Subclassed QFileDialog
         selected_dir = FileDialog()
@@ -109,80 +120,82 @@ class MainApp(QMainWindow, Ui_MainWindow):
             # 'D:/.../image_displayer/atest1']
             total_valid_files, total_invalid_files = 0, 0
             self.selected_items.clear()
-            #TODO refactor so that calling os.walk is done just once 
+            # TODO refactor so that calling os.walk is done just once
             directories = [x[0] for x in os.walk(selected_dir.selectedFiles()[0])]
             total_valid_files, total_invalid_files = self.scan_directories(directories)
             self.selected_items.append(
-                f'{total_valid_files} file(s) added from '
-                f'{len(directories)} folders!')
-            #TODO update error handling here to accomodate subfolder inclusion
+                f"{total_valid_files} file(s) added from "
+                f"{len(directories)} folders!"
+            )
+            # TODO update error handling here to accomodate subfolder inclusion
             if total_invalid_files > 0:
                 self.selected_items.append(
-                    f'{total_invalid_files} file(s) not added. '
-                    f'Supported file types: {", ".join(self.valid_file_types)}.')
+                    f"{total_invalid_files} file(s) not added. "
+                    f'Supported file types: {", ".join(self.valid_file_types)}.'
+                )
                 QTest.qWait(1000)
             QTest.qWait(4000)
             self.display_status()
             return
-        self.selected_items.setText(f'0 folder(s) added!')
+        self.selected_items.setText(f"0 folder(s) added!")
         QTest.qWait(2000)
         self.display_status()
 
     def scan_directories(self, directories):
-            total_valid_files, total_invalid_files = 0, 0
-            for directory in directories:
-                if not os.path.exists(directory):
-                    self.selection['folders'].remove(directory)
-                    continue
-                checked_files = self.check_files([x[2] for x in os.walk(directory)][0])
-                total_valid_files += len(checked_files['valid_files'])
-                total_invalid_files += len(checked_files['invalid_files'])
-                if directory not in self.selection['folders']:
-                    self.selection['folders'].append(directory)
-                for file in checked_files['valid_files']:
-                    self.selection['files'].append(f'{directory}/{file}')
-            return total_valid_files, total_invalid_files
+        total_valid_files, total_invalid_files = 0, 0
+        for directory in directories:
+            if not os.path.exists(directory):
+                self.selection["folders"].remove(directory)
+                continue
+            checked_files = self.check_files([x[2] for x in os.walk(directory)][0])
+            total_valid_files += len(checked_files["valid_files"])
+            total_invalid_files += len(checked_files["invalid_files"])
+            if directory not in self.selection["folders"]:
+                self.selection["folders"].append(directory)
+            for file in checked_files["valid_files"]:
+                self.selection["files"].append(f"{directory}/{file}")
+        return total_valid_files, total_invalid_files
 
     def check_files(self, files):
         """Checks if files are supported file types"""
-        res = {'valid_files': [], 'invalid_files': []}
+        res = {"valid_files": [], "invalid_files": []}
         for file in files:
             if (
-                file[-4:].lower() not in self.valid_file_types and
-                file[-5:].lower() not in self.valid_file_types  # .jpeg
+                file[-4:].lower() not in self.valid_file_types
+                and file[-5:].lower() not in self.valid_file_types  # .jpeg
             ):
                 # Since the file extension is not a valid file type,
                 # add it to list of invalid files.
-                res['invalid_files'].append(file)
+                res["invalid_files"].append(file)
             else:
-                res['valid_files'].append(file)
+                res["valid_files"].append(file)
         return res
 
     def remove_items(self):
         """Clears entire selection"""
-        self.selection['files'].clear()
-        self.selection['folders'].clear()
-        self.selected_items.setText(f'All files and folders cleared!')
+        self.selection["files"].clear()
+        self.selection["folders"].clear()
+        self.selected_items.setText(f"All files and folders cleared!")
         QTest.qWait(2000)
         self.display_status()
 
     def remove_dupes(self):
         """
-        Iterates through user selection of files while keeping seen files 
+        Iterates through user selection of files while keeping seen files
         in memory.
         If a file has already been seen, it is deleted from the selection.
 
         """
         self.duplicates = []
         files = []
-        i = len(self.selection['files'])
+        i = len(self.selection["files"])
         while i > 0:
             i -= 1
-            if os.path.basename(self.selection['files'][i]) in files:
-                self.duplicates.append(self.selection['files'].pop(i))
+            if os.path.basename(self.selection["files"][i]) in files:
+                self.duplicates.append(self.selection["files"].pop(i))
             else:
-                files.append(os.path.basename(self.selection['files'][i]))
-        self.selected_items.setText(f'Removed {len(self.duplicates)} duplicates!')
+                files.append(os.path.basename(self.selection["files"][i]))
+        self.selected_items.setText(f"Removed {len(self.duplicates)} duplicates!")
         QTest.qWait(2000)
         self.display_status()
 
@@ -196,9 +209,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def display_random_status(self):
         """Displays the randomization setting"""
         if self.randomize_selection.isChecked():
-            self.selected_items.setText(f'Randomization on!')
+            self.selected_items.setText(f"Randomization on!")
         else:
-            self.selected_items.setText(f'Randomization off!')
+            self.selected_items.setText(f"Randomization off!")
         QTest.qWait(2000)
         self.display_status()
 
@@ -212,25 +225,25 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Displays status
 
         """
-        if Path('recent').exists():
+        if Path("recent").exists():
             try:
-                os.chdir(Path('recent'))
-                recent = shelve.open('recent')
-                if recent['recent'].get('folders'):
-                    self.selection['folders'] = recent['recent']['folders']
-                    self.scan_directories(self.selection['folders'])
-                self.preset_loader_box.setCurrentIndex(recent['recent_preset'])
-                self.randomize_selection.setChecked(recent['randomized'])
+                os.chdir(Path("recent"))
+                recent = shelve.open("recent")
+                if recent["recent"].get("folders"):
+                    self.selection["folders"] = recent["recent"]["folders"]
+                    self.scan_directories(self.selection["folders"])
+                self.preset_loader_box.setCurrentIndex(recent["recent_preset"])
+                self.randomize_selection.setChecked(recent["randomized"])
                 recent.close()
-                os.chdir(Path('..'))
+                os.chdir(Path(".."))
             except (Exception, KeyError):
-                print('load_recent error')
+                print("load_recent error")
                 print(os.getcwd())
                 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
                 return
             self.remove_breaks()
             self.display_status()
-            self.selected_items.append(f'Recent session settings loaded!')
+            self.selected_items.append(f"Recent session settings loaded!")
             self.update_total()
 
     # endregion
@@ -245,9 +258,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """
         row = self.entry_table.rowCount()
         entry = [
-            row + 1, # entry number
+            row + 1,  # entry number
             self.set_number_of_images.value(),
-            self.set_minutes.value() * 60 + self.set_seconds.value()
+            self.set_minutes.value() * 60 + self.set_seconds.value(),
         ]
         self.set_number_of_images.setValue(0)
         self.set_minutes.setValue(0)
@@ -287,10 +300,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 continue
             try:
                 current, above = QTableWidgetItem(
-                    self.entry_table.item(row, column).text()), \
-                                 QTableWidgetItem(self.entry_table.item(row - 1, column).text())
+                    self.entry_table.item(row, column).text()
+                ), QTableWidgetItem(self.entry_table.item(row - 1, column).text())
             except (Exception, ValueError):
-                self.selected_items.append('\nSelect a row in the table!')
+                self.selected_items.append("\nSelect a row in the table!")
                 QTest.qWait(2000)
                 self.display_status()
                 return
@@ -299,21 +312,21 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.entry_table.setItem(row, column, above)
             self.entry_table.setItem(row - 1, column, current)
         self.entry_table.setCurrentCell(row - 1, 0)
-        
+
     def move_down(self):
         row = self.entry_table.currentRow()
         if row >= self.entry_table.rowCount() - 1:
             return
         self.entry_table.setCurrentCell(row, 0)
-        for column in range(1, self.entry_table.columnCount()): # Column 0 is the title column
+        for column in range(
+            1, self.entry_table.columnCount()
+        ):  # Column 0 is the title column
             try:
                 current, below = QTableWidgetItem(
-                    self.entry_table.item(row, column).text()), \
-                                 QTableWidgetItem(
-                                     self.entry_table.item(row + 1, column).text()
-                                 )
+                    self.entry_table.item(row, column).text()
+                ), QTableWidgetItem(self.entry_table.item(row + 1, column).text())
             except (Exception, ValueError):
-                self.selected_items.append('\nSelect a row in the table!')
+                self.selected_items.append("\nSelect a row in the table!")
                 QTest.qWait(2000)
                 self.display_status()
                 return
@@ -329,52 +342,52 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.entry_table.removeRow(0)
 
     def randomize_items(self):
-        copy = self.selection['files'].copy()
+        copy = self.selection["files"].copy()
         randomized_items = []
         while len(copy) > 0:
             random_index = random.randint(0, len(copy) - 1)
             randomized_items.append(copy.pop(random_index))
-        self.selection['files'] = randomized_items
+        self.selection["files"] = randomized_items
         self.display_status()
 
     def update_total(self):
         # Check if the row is completely set
         rows = self.entry_table.rowCount()
-        if (self.entry_table.item(rows-1, 1) is None or
-            self.entry_table.item(rows-1, 2) is None):
+        if (
+            self.entry_table.item(rows - 1, 1) is None
+            or self.entry_table.item(rows - 1, 2) is None
+        ):
             return
         self.total_images = 0
         self.total_time = 0
         for row in range(rows):
             # Amount of images
-            try: 
-                self.total_images += int(
-                    self.entry_table.item(row, 1).text()
-                    )
+            try:
+                self.total_images += int(self.entry_table.item(row, 1).text())
             except (Exception, ValueError):
-                print(f'BUG self.total_images could not be added from')
-                print(f'row: {row}')
-                print('item', self.entry_table.item(row, 1).text())
-                print(f'{self.entry_table.row()} {self.entry_table.column()}')
+                print(f"BUG self.total_images could not be added from")
+                print(f"row: {row}")
+                print("item", self.entry_table.item(row, 1).text())
+                print(f"{self.entry_table.row()} {self.entry_table.column()}")
                 return
             # Amount of time
             try:
                 if int(self.entry_table.item(row, 1).text()) > 0:
-                    self.total_time += \
-                        int(self.entry_table.item(row, 2).text()) * \
-                        int(self.entry_table.item(row, 1).text())
+                    self.total_time += int(self.entry_table.item(row, 2).text()) * int(
+                        self.entry_table.item(row, 1).text()
+                    )
                 else:
                     self.total_time += int(self.entry_table.item(row, 2).text())
             except (Exception, ValueError):
-                print(f'BUG self.total_time could not be counted from')
-                print(f'row: {row}')
-                print('item', self.entry_table.item(row, 2).text())
-                print(f'{self.entry_table.row()} {self.entry_table.column()}')
+                print(f"BUG self.total_time could not be counted from")
+                print(f"row: {row}")
+                print("item", self.entry_table.item(row, 2).text())
+                print(f"{self.entry_table.row()} {self.entry_table.column()}")
                 return
         # Adds a row for total if it's empty
         if self.total_table.rowCount() < 1:
             self.total_table.insertRow(0)
-        total = QTableWidgetItem('Total')
+        total = QTableWidgetItem("Total")
         total.setTextAlignment(4)
         self.total_table.setItem(0, 0, total)
         # Sets amount of images
@@ -391,46 +404,48 @@ class MainApp(QMainWindow, Ui_MainWindow):
         hrs = int(sec / 3600)
         self.hrs_list = list(str(hrs))
         if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
-            self.hrs_list.insert(0, '0')
+            self.hrs_list.insert(0, "0")
         # Minutes
         minutes = int((sec / 3600 - hrs) * 60)
         self.minutes_list = list(str(minutes))
         if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
-            self.minutes_list.insert(0, '0')
+            self.minutes_list.insert(0, "0")
         # Seconds
         self.secs = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
         if len(self.secs) == 1 or self.secs[0] == "0":
-            self.secs.insert(0, '0')
-        return f'{self.hrs_list[0]}{self.hrs_list[1]}:' \
-               f'{self.minutes_list[0]}{self.minutes_list[1]}:' \
-               f'{self.secs[0]}{self.secs[1]}'
+            self.secs.insert(0, "0")
+        return (
+            f"{self.hrs_list[0]}{self.hrs_list[1]}:"
+            f"{self.minutes_list[0]}{self.minutes_list[1]}:"
+            f"{self.secs[0]}{self.secs[1]}"
+        )
 
     # endregion
 
     # region Presets
     def init_preset(self):
         self.presets = {}
-        # If the presets folder does not exist in file directory, then 
+        # If the presets folder does not exist in file directory, then
         # create it and create shelve files there.
-        if not Path('presets').exists():
-            Path('presets').mkdir(exist_ok=True)
-            os.chdir(Path('presets'))
-            preset = shelve.open('preset')
+        if not Path("presets").exists():
+            Path("presets").mkdir(exist_ok=True)
+            os.chdir(Path("presets"))
+            preset = shelve.open("preset")
             preset.close()
-            os.chdir(Path('..'))
+            os.chdir(Path(".."))
         # Load data from preset files then update presets
         else:
             try:
-                os.chdir(Path('presets'))
-                pre = shelve.open('preset')
+                os.chdir(Path("presets"))
+                pre = shelve.open("preset")
                 preset_list = list(pre.keys())
                 for preset in preset_list:
                     self.presets[preset] = pre[preset]
                 pre.close()
-                os.chdir(Path('..'))
+                os.chdir(Path(".."))
                 self.update_presets()
             except (Exception, KeyError):
-                print('init_preset error')
+                print("init_preset error")
                 print(os.getcwd())
                 os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
 
@@ -448,13 +463,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def save(self):
         if self.entry_table.rowCount() <= 0:
-            self.selected_items.setText(f'Cannot save an empty schedule!')
+            self.selected_items.setText(f"Cannot save an empty schedule!")
             QTest.qWait(4000)
             self.display_status()
             return
         preset_name = self.preset_loader_box.currentText()
         if preset_name == "":
-            self.selected_items.setText(f'Cannot save an empty name!')
+            self.selected_items.setText(f"Cannot save an empty name!")
             QTest.qWait(5500)
             self.display_status()
             return
@@ -465,13 +480,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
             for column in range(self.entry_table.columnCount()):
                 tmppreset[row].append(self.entry_table.item(row, column).text())
         # Save preset to file
-        os.chdir(Path('presets'))
-        preset = shelve.open('preset')
+        os.chdir(Path("presets"))
+        preset = shelve.open("preset")
         preset[preset_name] = tmppreset
         preset.close()
-        os.chdir(Path('..'))
+        os.chdir(Path(".."))
         # Load preset to new name
-        self.selected_items.setText(f'{preset_name} saved!')
+        self.selected_items.setText(f"{preset_name} saved!")
         if self.presets.get(preset_name):
             self.presets[preset_name] = tmppreset
         else:
@@ -483,18 +498,18 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def delete(self):
         preset_name = self.preset_loader_box.currentText()
-        if preset_name == '':
-            self.selected_items.setText(f'Cannot delete an empty field!')
+        if preset_name == "":
+            self.selected_items.setText(f"Cannot delete an empty field!")
             QTest.qWait(4000)
             self.display_status()
             return
-        os.chdir(Path('presets'))
-        preset = shelve.open('preset')
+        os.chdir(Path("presets"))
+        preset = shelve.open("preset")
         del preset[preset_name]
         preset.close()
-        os.chdir(Path('..'))
+        os.chdir(Path(".."))
         del self.presets[preset_name]
-        self.selected_items.setText(f'{preset_name} deleted!')
+        self.selected_items.setText(f"{preset_name} deleted!")
         self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
         QTest.qWait(2000)
         self.display_status()
@@ -523,7 +538,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def start_session(self):
         """
         Grabs schedule, checks for valid session, checks for empty schedule,
-        grabs randomization setting, save 'recent', insert break.png, 
+        grabs randomization setting, save 'recent', insert break.png,
         shows session window
         self.selection['files'] => images to display
         self.session_schedule => schedule
@@ -531,7 +546,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """
         self.grab_schedule()
         if not self.is_valid_session():
-            print('Invalid session')
+            print("Invalid session")
             QTest.qWait(4000)
             self.display_status()
             return
@@ -543,8 +558,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.insert_breaks()
         self.display = SessionDisplay(
             schedule=self.session_schedule,
-            items=self.selection['files'],
-            total=self.total_scheduled_images)
+            items=self.selection["files"],
+            total=self.total_scheduled_images,
+        )
         self.display.closed.connect(self.session_closed)
         self.display.show()
 
@@ -554,11 +570,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
         self.activateWindow()
         self.raise_()
-        self.selected_items.append(f'Recent session settings saved!')
+        self.selected_items.append(f"Recent session settings saved!")
 
     def is_valid_session(self):
         """
-        Checks if all files exist, and 
+        Checks if all files exist, and
         if there are enough images for the schedule.
 
         """
@@ -567,82 +583,85 @@ class MainApp(QMainWindow, Ui_MainWindow):
             items = []
             try:
                 for i in range(2):
-                    items.append(
-                        int(self.entry_table.item(row, i + 1).text()))
+                    items.append(int(self.entry_table.item(row, i + 1).text()))
             except (Exception, ValueError):
-                self.selected_items.setText(
-                    f'Schedule items must be numbers!'
-                )
+                self.selected_items.setText(f"Schedule items must be numbers!")
                 return False
 
         # Check if empty schedule
         if len(self.session_schedule) == 0:
-            self.selected_items.setText(f'Schedule cannot be empty.')
+            self.selected_items.setText(f"Schedule cannot be empty.")
             return False
         # Count scheduled images
         self.total_scheduled_images = 0
-        for entry in [*self.session_schedule]:
-            self.total_scheduled_images += int(self.session_schedule[entry][1])
+        for entry in self.session_schedule:
+            self.total_scheduled_images += entry.images
 
         # Check if file exists
-        for file in self.selection['files']:
+        for file in self.selection["files"]:
             file_path = Path(file)
             if not file_path.is_file():
-                self.selection['files'].remove(file)
-                self.selected_items.setText(f'{os.path.basename(file)} not found!')
-                self.selected_items.append(f'Has the location or file name been changed?')
-                self.selected_items.append(f'Image removed from selection. {len(self.selection["files"])} total files.')
-                self.selected_items.append(f'Previous directory: \n{os.path.dirname(file)}')
+                self.selection["files"].remove(file)
+                self.selected_items.setText(f"{os.path.basename(file)} not found!")
+                self.selected_items.append(
+                    f"Has the location or file name been changed?"
+                )
+                self.selected_items.append(
+                    f'Image removed from selection. {len(self.selection["files"])} total files.'
+                )
+                self.selected_items.append(
+                    f"Previous directory: \n{os.path.dirname(file)}"
+                )
                 return False
 
         # Check if there are enough selected images for the schedule
-        if self.total_scheduled_images > len(self.selection['files']):
+        if self.total_scheduled_images > len(self.selection["files"]):
             self.selected_items.setText(
-                f'Not enough images selected. Add more images, or schedule fewer images.')
+                f"Not enough images selected. Add more images, or schedule fewer images."
+            )
             return False
         return True
 
     def insert_breaks(self):
         """Inserts break images as specified by the schedule"""
         if self.has_break:
-            # Add break image at appropriate index
             current_index = 0
-            for entry in [*self.session_schedule]:
-                if self.session_schedule[entry][1] == '0':
-                    self.selection['files'].insert(current_index, ":/break/break.png")
+            for entry in self.session_schedule:
+                if entry.images == 0:
+                    self.selection["files"].insert(current_index, ":/break/break.png")
                     continue
-                current_index += int(self.session_schedule[entry][1])
+                current_index += entry.images
 
     def remove_breaks(self):
         """Removes breaks images from the selection of files"""
-        i = len(self.selection['files'])
+        i = len(self.selection["files"])
         while i > 0:
             i -= 1
-            if os.path.basename(self.selection['files'][i]) == 'break.png':
-                self.selection['files'].pop(i)
+            if os.path.basename(self.selection["files"][i]) == "break.png":
+                self.selection["files"].pop(i)
 
     def grab_schedule(self):
         """Builds self.session_schedule with data from the schedule"""
-        self.session_schedule = {}
+        self.session_schedule = []
         for row in range(self.entry_table.rowCount()):
-            self.session_schedule[row] = []
-            for column in range(self.entry_table.columnCount()):
-                if self.entry_table.item(row, column).text() == '0':
-                    self.has_break = True
-                self.session_schedule[row].append(self.entry_table.item(row, column).text())
+            images = int(self.entry_table.item(row, 1).text())
+            time = int(self.entry_table.item(row, 2).text())
+            if images == 0:
+                self.has_break = True
+            self.session_schedule.append(ScheduleEntry(images, time))
 
     def save_to_recent(self):
         """Saves current selection, selected preset, and randomization setting"""
         self.recent = {}
-        if not Path('recent').exists():
-            Path('recent').mkdir(exist_ok=True)
-        os.chdir(Path('recent'))
-        file = shelve.open('recent')
-        file['recent'] = self.selection
-        file['recent_preset'] = self.preset_loader_box.currentIndex()
-        file['randomized'] = self.randomize_selection.isChecked()
+        if not Path("recent").exists():
+            Path("recent").mkdir(exist_ok=True)
+        os.chdir(Path("recent"))
+        file = shelve.open("recent")
+        file["recent"] = self.selection
+        file["recent_preset"] = self.preset_loader_box.currentIndex()
+        file["randomized"] = self.randomize_selection.isChecked()
         file.close()
-        os.chdir(Path('..'))
+        os.chdir(Path(".."))
 
     # endregion
 
@@ -650,7 +669,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
     # Updates
     def check_version(self):
         """
-        Checks if the current version is the newest one. If not, an update 
+        Checks if the current version is the newest one. If not, an update
         notice is displayed in the display.
 
         """
@@ -659,23 +678,23 @@ class MainApp(QMainWindow, Ui_MainWindow):
             update_type = current_version.update_type()
             if type(update_type) == str:
                 self.selected_items.append(
-                    f'\n{update_type} available!'
-                    f'\nPlease visit the site to download!'
+                    f"\n{update_type} available!"
+                    f"\nPlease visit the site to download!"
                 )
                 content = current_version.content()
                 self.selected_items.append(
-                    f'v{current_version.newest_version}\n'
-                    f'{content}'
+                    f"v{current_version.newest_version}\n"
+                    f"{content}"
                 )
         else:
             if current_version.allowed is True:
-                self.selected_items.append(f'Up to date.')
+                self.selected_items.append(f"Up to date.")
 
     # endregion
 
 
 class SessionDisplay(QWidget, Ui_session_display):
-    closed = QtCore.pyqtSignal() # Needed here for close event to work.
+    closed = QtCore.pyqtSignal()  # Needed here for close event to work.
 
     def __init__(self, schedule=None, items=None, total=None):
         super().__init__()
@@ -702,7 +721,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         Resizes the window to half of the current screen's resolution,
         sets states for window flags,
         and initializes self.previous_size.
-        
+
         """
         self.resize(self.screen().availableSize() / 2)
         self.toggle_resize_status = False
@@ -714,7 +733,7 @@ class SessionDisplay(QWidget, Ui_session_display):
     def init_scaling_size(self):
         """
         Creates a scaling box size that is used as a basis for
-        images to scale off of. The box dimensions are determined by the 
+        images to scale off of. The box dimensions are determined by the
         smallest side of half of the given rectangle from the
         current screen's available resolution.
 
@@ -730,28 +749,30 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def init_entries(self):
         self.entry = {
-            'current': 0,
-            'total': [*self.schedule][-1] + 1,
-            'amount of items': int(self.schedule[0][1]),
-            'time': int(self.schedule[0][2])}
+            "current": 0,
+            "total": len(self.schedule),
+            "amount of items": self.schedule[0].images,
+            "time": self.schedule[0].time,
+        }
         self.new_entry = True
-        if self.entry['amount of items'] > 1:
+        if self.entry["amount of items"] > 1:
             self.end_of_entry = False
         else:
             self.end_of_entry = True
-        print(f'self.endofentry: {self.end_of_entry}')
-        
+        print(f"self.endofentry: {self.end_of_entry}")
+
     def init_image_mods(self):
         self.image_mods = {
-            'break': False,
-            'grayscale': False,
-            'hflip': False,
-            'vflip': False,
-            'break_grayscale': False}
+            "break": False,
+            "grayscale": False,
+            "hflip": False,
+            "vflip": False,
+            "break_grayscale": False,
+        }
 
     def init_sounds(self):
         """
-        Gets absolute path to sounds. 
+        Gets absolute path to sounds.
         PyInstaller creates a temp folder, and stores dependencies path in _MEIPASS.
         If the temp folder is not found, then use the current file path.
 
@@ -760,10 +781,10 @@ class SessionDisplay(QWidget, Ui_session_display):
         try:
             base_path = sys._MEIPASS
         except (Exception, FileNotFoundError):
-            print('Temp folder not found.')
+            print("Temp folder not found.")
             base_path = os.path.abspath(".")
         self.sounds_dir = os.path.join(base_path, relative_path)
-        
+
     def init_mixer(self):
         mixer.init()
         try:
@@ -771,14 +792,14 @@ class SessionDisplay(QWidget, Ui_session_display):
             If view.mute exists, then a session has been started before.
             Set mute and volume according to previous session's sound settings.
             """
-            if view.mute is True: # if view.mute exists and is True
+            if view.mute is True:  # if view.mute exists and is True
                 self.mute = True
                 self.volume = mixer.music.get_volume()
                 mixer.music.set_volume(0.0)
-            else: # if view.mute exists and is False
+            else:  # if view.mute exists and is False
                 self.mute = False
                 self.volume = view.volume
-        except: # view.mute does not exist, so init settings with default.
+        except:  # view.mute does not exist, so init settings with default.
             self.volume = mixer.music.get_volume()
             self.mute = False
 
@@ -793,26 +814,26 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def init_shortcuts(self):
         # Resize
-        self.toggle_resize_key = QShortcut(QtGui.QKeySequence('R'), self)
+        self.toggle_resize_key = QShortcut(QtGui.QKeySequence("R"), self)
         self.toggle_resize_key.activated.connect(self.toggle_resize)
         # Always on top
-        self.always_on_top_key = QShortcut(QtGui.QKeySequence('A'), self)
+        self.always_on_top_key = QShortcut(QtGui.QKeySequence("A"), self)
         self.always_on_top_key.activated.connect(self.toggle_always_on_top)
         # Mute
-        self.mute_key = QShortcut(QtGui.QKeySequence('M'), self)
+        self.mute_key = QShortcut(QtGui.QKeySequence("M"), self)
         self.mute_key.activated.connect(self.toggle_mute)
         # Timer
-        self.add_30 = QShortcut(QtGui.QKeySequence('Up'), self)
+        self.add_30 = QShortcut(QtGui.QKeySequence("Up"), self)
         self.add_30.activated.connect(self.add_30_seconds)
-        self.add_60 = QShortcut(QtGui.QKeySequence('Ctrl+Up'), self)
+        self.add_60 = QShortcut(QtGui.QKeySequence("Ctrl+Up"), self)
         self.add_60.activated.connect(self.add_60_seconds)
-        self.restart = QShortcut(QtGui.QKeySequence('Ctrl+Shift+Up'), self)
+        self.restart = QShortcut(QtGui.QKeySequence("Ctrl+Shift+Up"), self)
         self.restart.activated.connect(self.restart_timer)
         # Skip image
         # self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
         # self.skip_image_key.activated.connect(self.skip_image)
         # Frameless Window
-        self.frameless_window = QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
+        self.frameless_window = QShortcut(QtGui.QKeySequence("Ctrl+F"), self)
         self.frameless_window.activated.connect(self.toggle_frameless)
 
     def closeEvent(self, event):
@@ -831,12 +852,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         Gets the current position of the cursor as a QPoint instance.
         """
         self.old_position = event.globalPos()
-        
+
     def mouseMoveEvent(self, event):
         """
         Finds the difference of the current cursor position and self.old_position as change.
         Moves the window by change.
-        Sets self.old_position with the current position of the cursor. 
+        Sets self.old_position with the current position of the cursor.
         """
         change = QtCore.QPoint(event.globalPos() - self.old_position)
         self.move(self.x() + change.x(), self.y() + change.y())
@@ -850,66 +871,72 @@ class SessionDisplay(QWidget, Ui_session_display):
                     self.image.scaled(
                         self.size(),
                         aspectRatioMode=QtCore.Qt.KeepAspectRatio,
-                        transformMode=QtCore.Qt.SmoothTransformation))
+                        transformMode=QtCore.Qt.SmoothTransformation,
+                    )
+                )
             else:
                 self.image_display.setPixmap(
                     self.image.scaled(
                         self.image_display.size(),
                         aspectRatioMode=QtCore.Qt.KeepAspectRatio,
-                        transformMode=QtCore.Qt.SmoothTransformation))
+                        transformMode=QtCore.Qt.SmoothTransformation,
+                    )
+                )
         return super(SessionDisplay, self).eventFilter(source, event)
 
     def skip_image(self):
         # TODO add skipping restraint
-        if (os.path.basename(
-                self.playlist[self.playlist_position]
-        ) == 'break.png'):
+        if os.path.basename(self.playlist[self.playlist_position]) == "break.png":
             return
         self.skip_count += 1
         if len(self.playlist) - self.total_scheduled_images <= self.skip_count:
-            self.setWindowTitle(
-                f'Not enough images selected for another skip.'
-            )
+            self.setWindowTitle(f"Not enough images selected for another skip.")
             QTest.qWait(2500)
-            self.setWindowTitle(
-                self.playlist[self.playlist_position]
-            )
+            self.setWindowTitle(self.playlist[self.playlist_position])
             return
         # self.playlist_position += 1
         # print(self.playlist)
         print(f'amount of items: {self.entry["amount of items"]}')
-        print(f'before playlist_position: {self.playlist_position}')
-        print(f'current image: {self.playlist[self.playlist_position]} | current length: {len(self.playlist)}')
+        print(f"before playlist_position: {self.playlist_position}")
+        print(
+            f"current image: {self.playlist[self.playlist_position]} | current length: {len(self.playlist)}"
+        )
         item = self.playlist[self.playlist_position + 1]
-        print(f'next image: {item}')
+        print(f"next image: {item}")
         if self.playlist_position == 0:
             self.playlist.insert(0, item)
         else:
             self.playlist.reverse()
             self.playlist.insert(-self.playlist_position, item)
-            print(f'after insert: {self.playlist[self.playlist_position]} | after insert length: {len(self.playlist)}')
+            print(
+                f"after insert: {self.playlist[self.playlist_position]} | after insert length: {len(self.playlist)}"
+            )
             self.playlist.reverse()
         self.display_image()
         self.playlist.pop(self.playlist_position)
         # self.playlist_position -= 1
-        self.entry['amount of items'] -= 1
+        self.entry["amount of items"] -= 1
         # self.load_next_image()
 
-        print(f'after reverse: {self.playlist[self.playlist_position]} | after reverse length: {len(self.playlist)}')
+        print(
+            f"after reverse: {self.playlist[self.playlist_position]} | after reverse length: {len(self.playlist)}"
+        )
 
         # move the scheduled breaks over 1
         old = self.playlist.index(":/break/break.png")
 
-        break_index = self.playlist.index(':/break/break.png')
-        self.playlist[break_index], self.playlist[break_index + 1] = \
-            self.playlist[break_index + 1], self.playlist[break_index]
+        break_index = self.playlist.index(":/break/break.png")
+        self.playlist[break_index], self.playlist[break_index + 1] = (
+            self.playlist[break_index + 1],
+            self.playlist[break_index],
+        )
 
         if self.playlist.index(":/break/break.png") - old == 1:
-            print('Successful break move')
+            print("Successful break move")
         else:
-            print('Unsuccessful break move')
+            print("Unsuccessful break move")
         # self.display_image()
-        print(f'after playlist_position: {self.playlist_position}')
+        print(f"after playlist_position: {self.playlist_position}")
         # self.playlist.pop(self.playlist_position)
         # self.playlist_position += 1
         # self.entry['amount of items'] -= 1
@@ -926,87 +953,91 @@ class SessionDisplay(QWidget, Ui_session_display):
             mixer.music.set_volume(0.0)
 
     def load_entry(self):
-        if self.entry['current'] >= self.entry['total']:
+        if self.entry["current"] >= self.entry["total"]:
             self.timer.stop()
-            self.setWindowTitle(
-                "You've reached the end of your session! Good job!!"
-            )
+            self.setWindowTitle("You've reached the end of your session! Good job!!")
             self.image_display.clear()
-            self.timer_display.setText(f'Done!')
+            self.timer_display.setText(f"Done!")
             QTest.qWait(5000)
             self.close()
             return
-        self.entry['time'] = int(self.schedule[self.entry['current']][2])
+        self.entry["time"] = self.schedule[self.entry["current"]].time
         self.timer.stop()
-        self.time_seconds = self.entry['time']
+        self.time_seconds = self.entry["time"]
         self.timer.start(500)
-        self.entry['amount of items'] = int(self.schedule[self.entry['current']][1]) - 1
+        self.entry["amount of items"] = self.schedule[self.entry["current"]].images - 1
         self.display_image()
 
     def load_next_image(self):
-        if self.entry['current'] >= self.entry['total']:  # End of schedule
+        if self.entry["current"] >= self.entry["total"]:  # End of schedule
             return
-        if self.entry['amount of items'] == 0:  # End of entry
-            self.entry['current'] += 1
+        if self.entry["amount of items"] == 0:  # End of entry
+            self.entry["current"] += 1
             self.playlist_position += 1
             self.new_entry = True
             self.load_entry()
         else:
             self.timer.stop()
-            self.time_seconds = self.entry['time']
+            self.time_seconds = self.entry["time"]
             self.timer.start(500)
             self.update_timer_display()
             self.playlist_position += 1
-            self.entry['amount of items'] -= 1
+            self.entry["amount of items"] -= 1
             self.new_entry = False
-            if self.entry['amount of items'] == 0:
+            if self.entry["amount of items"] == 0:
                 self.end_of_entry = True
             self.display_image()
 
     def display_image(self):
         print(self.entry)
         # Sounds
+
         if self.new_entry:
-            mixer.music.load(os.path.join(self.sounds_dir, "new_entry.mp3"))
+            sound_file = Path(self.sounds_dir) / "new_entry.mp3"
+            mixer.music.load(str(sound_file))
             mixer.music.play()
             # self.new_entry = False
-        elif self.entry['amount of items'] == 0:  # Last image in entry
-            mixer.music.load(os.path.join(self.sounds_dir, "last_entry_image.mp3"))
+        elif self.entry["amount of items"] == 0:  # Last image in entry
+            sound_file = Path(self.sounds_dir) / "last_entry_image.mp3"
+            mixer.music.load(str(sound_file))
             mixer.music.play()
-        elif self.entry['time'] > 10:
-            mixer.music.load(os.path.join(self.sounds_dir, "new_image.mp3"))
+        elif self.entry["time"] > 10:
+            sound_file = Path(self.sounds_dir) / "new_image.mp3"
+            mixer.music.load(str(sound_file))
             mixer.music.play()
 
-        if self.playlist_position > len(self.playlist):  # Last image
+        if self.playlist_position >= len(self.playlist):  # Last image
             self.timer.stop()
-            self.timer_display.setText(f'Done!')
+            self.timer_display.setText(f"Done!")
             return
         else:
             # if (self.entry['amount of items'] == -1  # End of entry
             #         or os.path.basename(
             #             self.playlist[self.playlist_position]
             #         ) == 'break.png'):  # Break scheduled
-            if (os.path.basename(
-                    self.playlist[self.playlist_position]
-            ) == 'break.png'):  # Break scheduled
+            if (
+                os.path.basename(self.playlist[self.playlist_position]) == "break.png"
+            ):  # Break scheduled
                 """
                 Since the end of an entry has been reached, or a break is scheduled,
                 configure for break image.
 
                 """
-                self.image_mods['break'] = True
-                self.image_mods['break_grayscale'] = True
-                self.entry['amount of items'] = 0
-                self.setWindowTitle('Break')
-                self.session_info.setText('Break')
+                self.image_mods["break"] = True
+                self.image_mods["break_grayscale"] = True
+                self.entry["amount of items"] = 0
+                self.setWindowTitle("Break")
+                self.session_info.setText("Break")
             else:
-                self.image_mods['break'] = False
-                self.image_mods['break_grayscale'] = False
+                self.image_mods["break"] = False
+                self.image_mods["break_grayscale"] = False
                 self.setWindowTitle(self.playlist[self.playlist_position])
+                current_entry = self.schedule[self.entry["current"]]
                 self.session_info.setText(
                     f' {self.entry["current"] + 1}/{self.entry["total"]} | '
-                    f'{int(self.schedule[self.entry["current"]][1]) - self.entry["amount of items"]}'
-                    f'/{int(self.schedule[self.entry["current"]][1])}')
+                    f'{current_entry.images - self.entry["amount of items"]}'
+                    f"/{current_entry.images}"
+                )
             self.prepare_image_mods()
 
     def prepare_image_mods(self):
@@ -1015,53 +1046,53 @@ class SessionDisplay(QWidget, Ui_session_display):
         is true.
         """
         # Break scheduled
-        if self.image_mods['break']:
+        if self.image_mods["break"]:
             cvimage = self.convert_to_cvimage()
         # jpg file
-        elif self.playlist[self.playlist_position][-3:].lower() == 'jpg':
+        elif self.playlist[self.playlist_position][-3:].lower() == "jpg":
             cvimage = self.convert_to_cvimage()
         # Edge cases are handled
         else:
             cvimage = cv2.imread(self.playlist[self.playlist_position])
 
+        # Handle if cvimage is None or empty
+        if cvimage is None or cvimage.size == 0:
+            print(f"Error: Could not load image at {self.playlist[self.playlist_position]}")
+            self.setWindowTitle("Error processing image")
+            return
+
         try:
-            height, width, chanel = cvimage.shape
-            bytes_per_line = 3 * width
-        except (Exception, BufferError):
-            print('Error with processing image.')
-            self.setWindowTitle('Error processing image')
+            height, width, channels = cvimage.shape
+            # Ensure channels is 1 (grayscale), 3 (BGR), or 4 (BGRA)
+            if channels not in (1, 3, 4):
+                raise ValueError(f"Unexpected channel count: {channels}")
+            bytes_per_line = channels * width
+        except (AttributeError, ValueError, BufferError) as e:
+            print(f"Error processing image: {e}")
+            self.setWindowTitle("Error processing image")
             return
 
         # Grayscale
-        if (
-                self.image_mods['grayscale'] or
-                self.image_mods['break_grayscale']):
+        if self.image_mods["grayscale"] or self.image_mods["break_grayscale"]:
             cvimage = cv2.cvtColor(cvimage, cv2.COLOR_BGR2GRAY)
             self.image = QtGui.QImage(
-                cvimage.data,
-                width,
-                height,
-                width,
-                QtGui.QImage.Format_Grayscale8
+                cvimage.data, width, height, width, QtGui.QImage.Format_Grayscale8
             )
         else:
             self.image = QtGui.QImage(
-                cvimage.data,
-                width,
-                height,
-                bytes_per_line,
-                QtGui.QImage.Format_RGB888).rgbSwapped()
+                cvimage.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888
+            ).rgbSwapped()
 
         # Flip
-        if self.image_mods['hflip']:
+        if self.image_mods["hflip"]:
             self.image = self.image.mirrored(horizontal=True)
-            if not self.image_mods['vflip']:
+            if not self.image_mods["vflip"]:
                 self.image = self.image.mirrored(vertical=True)
             else:
                 self.image = self.image.mirrored(vertical=False)
         else:
             self.image = self.image.mirrored(horizontal=False)
-            if not self.image_mods['vflip']:
+            if not self.image_mods["vflip"]:
                 self.image = self.image.mirrored(vertical=True)
             else:
                 self.image = self.image.mirrored(vertical=False)
@@ -1073,21 +1104,24 @@ class SessionDisplay(QWidget, Ui_session_display):
                 self.image.scaled(
                     self.size(),
                     aspectRatioMode=QtCore.Qt.KeepAspectRatio,
-                    transformMode=QtCore.Qt.SmoothTransformation))
+                    transformMode=QtCore.Qt.SmoothTransformation,
+                )
+            )
             return
         # Display image scaled to window size in image display
         # If resized
         if self.size() != self.previous_size:
             resized_pixmap = self.image_display.pixmap()
             scaled_size = self.scaling_size.scaled(
-                resized_pixmap.size(),
-                QtCore.Qt.KeepAspectRatio)
+                resized_pixmap.size(), QtCore.Qt.KeepAspectRatio
+            )
             self.scaling_size = QtCore.QSize(scaled_size)
         # Get scaled pixmap
         self.image_scaled = self.image.scaled(
             self.scaling_size,
             aspectRatioMode=QtCore.Qt.KeepAspectRatioByExpanding,
-            transformMode=QtCore.Qt.SmoothTransformation)
+            transformMode=QtCore.Qt.SmoothTransformation,
+        )
 
         # Set
         self.image_display.setPixmap(self.image_scaled)
@@ -1096,7 +1130,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.resize(
             self.image_scaled.size().width(),
             # 32 is the current height of the nav bar in px
-            self.image_scaled.size().height() + 32)  
+            self.image_scaled.size().height() + 32,
+        )
         # Save current size
         self.previous_size = self.size()
 
@@ -1106,29 +1141,29 @@ class SessionDisplay(QWidget, Ui_session_display):
         file.open(QtCore.QFile.OpenModeFlag.ReadOnly)
         ba = file.readAll()
         ba = ba.data()
-        ba = np.asarray(bytearray(ba), dtype='uint8')
+        ba = np.asarray(bytearray(ba), dtype="uint8")
         file.close()
         return cv2.imdecode(ba, 1)
 
     def flip_horizontal(self):
-        if self.image_mods['hflip']:
-            self.image_mods['hflip'] = False
+        if self.image_mods["hflip"]:
+            self.image_mods["hflip"] = False
         else:
-            self.image_mods['hflip'] = True
+            self.image_mods["hflip"] = True
         self.display_image()
 
     def flip_vertical(self):
-        if self.image_mods['vflip']:
-            self.image_mods['vflip'] = False
+        if self.image_mods["vflip"]:
+            self.image_mods["vflip"] = False
         else:
-            self.image_mods['vflip'] = True
+            self.image_mods["vflip"] = True
         self.display_image()
 
     def grayscale(self):
-        if self.image_mods['grayscale']:
-            self.image_mods['grayscale'] = False
+        if self.image_mods["grayscale"]:
+            self.image_mods["grayscale"] = False
         else:
-            self.image_mods['grayscale'] = True
+            self.image_mods["grayscale"] = True
         self.display_image()
 
     def toggle_resize(self):
@@ -1143,56 +1178,48 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.toggle_always_on_top_status is not True:
             self.toggle_always_on_top_status = True
             self.setWindowFlag(
-                QtCore.Qt.X11BypassWindowManagerHint,
-                self.toggle_always_on_top_status
-                )
+                QtCore.Qt.X11BypassWindowManagerHint, self.toggle_always_on_top_status
+            )
             self.setWindowFlag(
-                QtCore.Qt.WindowStaysOnTopHint,
-                self.toggle_always_on_top_status
-                )
+                QtCore.Qt.WindowStaysOnTopHint, self.toggle_always_on_top_status
+            )
             self.show()
         else:
             self.toggle_always_on_top_status = False
             self.setWindowFlag(
-                QtCore.Qt.WindowStaysOnTopHint,
-                self.toggle_always_on_top_status
-                )
+                QtCore.Qt.WindowStaysOnTopHint, self.toggle_always_on_top_status
+            )
             self.show()
-    
+
     def toggle_frameless(self):
         if self.frameless_status is not True:
             self.frameless_status = True
-            self.setWindowFlag(
-                QtCore.Qt.FramelessWindowHint,
-                self.frameless_status
-                )
+            self.setWindowFlag(QtCore.Qt.FramelessWindowHint, self.frameless_status)
             self.show()
         else:
             self.frameless_status = False
-            self.setWindowFlag(
-                QtCore.Qt.FramelessWindowHint,
-                self.frameless_status
-                )
+            self.setWindowFlag(QtCore.Qt.FramelessWindowHint, self.frameless_status)
             self.show()
 
     def previous_playlist_position(self):
         # Skip_counter
-        # if self.skip_count > 0: 
+        # if self.skip_count > 0:
         #     self.skip_count -= 1
         # First image
-        if (self.playlist_position == 0 or
-                (self.entry['current'], self.entry['amount of items']) ==
-                (0, int(self.schedule[self.entry['current']][1]) - 1)):
+        if self.playlist_position == 0 or (
+            self.entry["current"] == 0
+            and self.entry["amount of items"] == self.schedule[0].images - 1
+        ):
             """
             If it's the first image in the playlist or if the current entry
-            is the first one and the position is at the beginning. The second 
+            is the first one and the position is at the beginning. The second
             case is in place for the skip function
 
             """
-            self.time_seconds = self.entry['time']
+            self.time_seconds = self.entry["time"]
             self.update_timer_display()
             self.timer.stop()
-            self.timer_display.setText('First image! Restarting timer...')
+            self.timer_display.setText("First image! Restarting timer...")
             QTest.qWait(1000)
             self.timer.start(500)
             self.load_entry()
@@ -1200,35 +1227,36 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         self.playlist_position -= 1  # Navigate to the previous position
         # End of entries
-        if self.entry['current'] >= self.entry['total']:
-            # self.playlist_position -= 1
-            self.entry['current'] = [*self.schedule][-1]
+        if self.entry["current"] >= self.entry["total"]:
+            self.entry["current"] = len(self.schedule) - 1
             self.timer.stop()
-            self.entry['time'] = int(self.schedule[self.entry['current']][2])
-            self.time_seconds = int(self.schedule[self.entry['current']][2])
+            self.entry["time"] = self.schedule[self.entry["current"]].time
+            self.time_seconds = self.entry["time"]
             self.timer.start(500)
-            self.entry['amount of items'] = 1
+            self.entry["amount of items"] = 0
             self.end_of_entry = True
             self.display_image()
             return
         # At the beginning of a new entry
-        if (self.entry['amount of items'] + 1 ==
-                int(self.schedule[self.entry['current']][1]) or
-                self.session_info.text() == 'Break'):
-            if self.entry['current'] != 0:
-                self.entry['current'] -= 1
+        if (
+            self.entry["amount of items"] + 1
+            == self.schedule[self.entry["current"]].images
+            or self.session_info.text() == "Break"
+        ):
+            if self.entry["current"] != 0:
+                self.entry["current"] -= 1
             self.timer.stop()
             # print(self.entry['current'])
             # print(self.schedule[self.entry['current']])
-            self.entry['time'] = int(self.schedule[self.entry['current']][2])
-            self.time_seconds = self.entry['time']
+            self.entry["time"] = self.schedule[self.entry["current"]].time
+            self.time_seconds = self.entry["time"]
             self.timer.start(500)
-            self.entry['amount of items'] = 0
+            self.entry["amount of items"] = 0
             self.new_entry = True
             self.display_image()
             return
-        self.entry['amount of items'] += 1
-        self.time_seconds = self.entry['time']
+        self.entry["amount of items"] += 1
+        self.time_seconds = self.entry["time"]
         self.update_timer_display()
         self.new_entry = False
         self.display_image()
@@ -1239,12 +1267,12 @@ class SessionDisplay(QWidget, Ui_session_display):
     def format_seconds(self, sec):
         minutes = int(sec / 60)
         sec = int(self.time_seconds - (minutes * 60))
-        return f'{minutes}:{sec}'
+        return f"{minutes}:{sec}"
 
     def countdown(self):
         self.update_timer_display()
-        if self.entry['time'] >= 30:
-            if self.time_seconds == self.entry['time'] // 2:
+        if self.entry["time"] >= 30:
+            if self.time_seconds == self.entry["time"] // 2:
                 mixer.music.load(os.path.join(self.sounds_dir, "halfway.mp3"))
                 mixer.music.play()
         if self.time_seconds <= 10:
@@ -1263,9 +1291,8 @@ class SessionDisplay(QWidget, Ui_session_display):
                     self.new_entry = False
                 if self.end_of_entry is True:
                     self.end_of_entry = False
-            if os.path.basename(
-                    self.playlist[self.playlist_position]) == 'break.png':
-                self.image_mods['break_grayscale'] = False
+            if os.path.basename(self.playlist[self.playlist_position]) == "break.png":
+                self.image_mods["break_grayscale"] = False
                 self.prepare_image_mods()
         if self.time_seconds == 0:
             QTest.qWait(500)
@@ -1277,16 +1304,17 @@ class SessionDisplay(QWidget, Ui_session_display):
         hr = int(self.time_seconds / 3600)
         self.hr_list = list(str(hr))
         if len(self.hr_list) == 1 or self.hr_list[0] == "0":
-            self.hr_list.insert(0, '0')
+            self.hr_list.insert(0, "0")
 
         minutes = int((self.time_seconds / 3600 - hr) * 60)
         self.minutes_list = list(str(minutes))
         if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
-            self.minutes_list.insert(0, '0')
-        self.sec = list(str(int(
-                    (((self.time_seconds / 3600 - hr) * 60) - minutes) * 60)))
+            self.minutes_list.insert(0, "0")
+        self.sec = list(
+            str(int((((self.time_seconds / 3600 - hr) * 60) - minutes) * 60))
+        )
         if len(self.sec) == 1 or self.sec[0] == "0":
-            self.sec.insert(0, '0')
+            self.sec.insert(0, "0")
         self.display_time()
 
     def pause(self):
@@ -1302,22 +1330,24 @@ class SessionDisplay(QWidget, Ui_session_display):
     def display_time(self):
         """
         Displays amount of time left depending on how many seconds are left.
-        
+
         """
         # Hour or longer
         if self.time_seconds >= 3600:
             self.timer_display.setText(
-                f'{self.hr_list[0]}{self.hr_list[1]}:'
-                f'{self.minutes_list[0]}{self.minutes_list[1]}:'
-                f'{self.sec[0]}{self.sec[1]}')
+                f"{self.hr_list[0]}{self.hr_list[1]}:"
+                f"{self.minutes_list[0]}{self.minutes_list[1]}:"
+                f"{self.sec[0]}{self.sec[1]}"
+            )
         # Minute or longer
         elif self.time_seconds >= 60:
             self.timer_display.setText(
-                f'{self.minutes_list[0]}{self.minutes_list[1]}:'
-                f'{self.sec[0]}{self.sec[1]}')
+                f"{self.minutes_list[0]}{self.minutes_list[1]}:"
+                f"{self.sec[0]}{self.sec[1]}"
+            )
         # Less than a minute left
         else:
-            self.timer_display.setText(f'{self.sec[0]}{self.sec[1]}')
+            self.timer_display.setText(f"{self.sec[0]}{self.sec[1]}")
 
     def add_30_seconds(self):
         self.time_seconds += 30
@@ -1328,7 +1358,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_timer_display()
 
     def restart_timer(self):
-        self.time_seconds = int(self.schedule[self.entry['current']][2])
+        self.time_seconds = self.schedule[self.entry["current"]].time
+
     # endregion
 
 
@@ -1339,8 +1370,12 @@ class FileDialog(QFileDialog):
         self.setOption(QFileDialog.DontUseNativeDialog, True)
         self.setFileMode(QFileDialog.Directory)
         self.setOption(QFileDialog.ShowDirsOnly, True)
-        self.findChildren(QListView)[0].setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.findChildren(QTreeView)[0].setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.findChildren(QListView)[0].setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )
+        self.findChildren(QTreeView)[0].setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )
 
 
 if __name__ == "__main__":
