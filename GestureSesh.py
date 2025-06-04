@@ -701,6 +701,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.setupUi(self)
         self.init_sizing()
         self.init_scaling_size()
+        self.init_button_sizes()
         self.schedule = schedule
         self.playlist = items
         self.playlist_position = 0
@@ -802,6 +803,27 @@ class SessionDisplay(QWidget, Ui_session_display):
         except:  # view.mute does not exist, so init settings with default.
             self.volume = mixer.music.get_volume()
             self.mute = False
+
+    def init_button_sizes(self):
+        """Ensure all control buttons use a consistent size on any platform"""
+        button_size = QtCore.QSize(60, 36)
+        if sys.platform == "darwin":
+            # macOS tends to render widgets slightly smaller
+            button_size = QtCore.QSize(70, 40)
+
+        icon_size = QtCore.QSize(32, 32)
+        buttons = [
+            self.previous_image,
+            self.pause_timer,
+            self.stop_session,
+            self.next_image,
+            self.grayscale_button,
+            self.flip_horizontal_button,
+            self.flip_vertical_button,
+        ]
+        for btn in buttons:
+            btn.setFixedSize(button_size)
+            btn.setIconSize(icon_size)
 
     def init_buttons(self):
         self.previous_image.clicked.connect(self.previous_playlist_position)
