@@ -6,6 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from pygame import mixer
+import subprocess
 from dataclasses import dataclass
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -708,6 +709,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.init_timer()
         self.init_entries()
         self.installEventFilter(self)
+        self.image_display.installEventFilter(self)
         self.init_image_mods()
         self.init_sounds()
         self.init_mixer()
@@ -746,6 +748,10 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.countdown)
         self.timer.start(500)
+        self.session_finished = False
+        self.close_seconds = 15
+        self.close_timer = QtCore.QTimer()
+        self.close_timer.timeout.connect(self.close_countdown)
 
     def init_entries(self):
         self.entry = {
@@ -853,6 +859,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Skip image
         # self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
         # self.skip_image_key.activated.connect(self.skip_image)
+        # Open image directory
+        self.open_dir_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+O"), self)
+        self.open_dir_shortcut.activated.connect(self.open_image_directory)
         # Frameless Window
         self.frameless_window = QShortcut(QtGui.QKeySequence("Ctrl+F"), self)
         self.frameless_window.activated.connect(self.toggle_frameless)
@@ -862,6 +871,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         Stops timer and sound on close event.
         """
         self.timer.stop()
+        self.close_timer.stop()
         view.mute = self.mute
         view.volume = self.volume
         mixer.quit()
@@ -886,6 +896,12 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     # region Session processing functions
     def eventFilter(self, source, event):
+        if self.session_finished and self.close_timer.isActive():
+            if event.type() in (QtCore.QEvent.KeyPress, QtCore.QEvent.MouseButtonPress):
+                self.cancel_close_countdown()
+        if source is self.image_display and event.type() == QtCore.QEvent.MouseButtonDblClick:
+            self.open_image_directory(event)
+            return True
         if source is self and event.type() == QtCore.QEvent.Resize:
             if self.toggle_resize_status:
                 self.image_display.setPixmap(
@@ -975,12 +991,7 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def load_entry(self):
         if self.entry["current"] >= self.entry["total"]:
-            self.timer.stop()
-            self.setWindowTitle("You've reached the end of your session! Good job!!")
-            self.image_display.clear()
-            self.timer_display.setText(f"Done!")
-            QTest.qWait(5000)
-            self.close()
+            self.end_session()
             return
         self.entry["time"] = self.schedule[self.entry["current"]].time
         self.timer.stop()
@@ -989,7 +1000,32 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.entry["amount of items"] = self.schedule[self.entry["current"]].images - 1
         self.display_image()
 
+    def end_session(self):
+        self.session_finished = True
+        self.timer.stop()
+        self.close_seconds = 15
+        self.setWindowTitle(
+            "Session complete! Navigate images with arrows"
+        )
+        self.session_info.setText(
+            "Use arrows to browse. Double-click or Ctrl+O to open folder"
+        )
+        # Reset indices so reviewing previous images works correctly
+        self.entry["current"] = max(0, self.entry["total"] - 1)
+        self.entry["amount of items"] = 0
+        self.playlist_position = max(0, len(self.playlist) - 1)
+        self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
+        self.update_close_title()
+        self.close_timer.start(1000)
+
     def load_next_image(self):
+        if self.session_finished:
+            self.cancel_close_countdown()
+            if self.playlist_position >= len(self.playlist) - 1:
+                return
+            self.playlist_position += 1
+            self.display_image()
+            return
         if self.entry["current"] >= self.entry["total"]:  # End of schedule
             return
         if self.entry["amount of items"] == 0:  # End of entry
@@ -1223,6 +1259,13 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.show()
 
     def previous_playlist_position(self):
+        if self.session_finished:
+            self.cancel_close_countdown()
+            if self.playlist_position == 0:
+                return
+            self.playlist_position -= 1
+            self.display_image()
+            return
         # Skip_counter
         # if self.skip_count > 0:
         #     self.skip_count -= 1
@@ -1380,6 +1423,46 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def restart_timer(self):
         self.time_seconds = self.schedule[self.entry["current"]].time
+
+    def update_close_title(self):
+        self.setWindowTitle(
+            f"Review mode - closing in {self.close_seconds}s (Ctrl+O opens folder)"
+        )
+
+    def close_countdown(self):
+        if not self.close_timer.isActive():
+            return
+        self.close_seconds -= 1
+        if self.close_seconds <= 0:
+            self.close_timer.stop()
+            self.close()
+            return
+        self.timer_display.setText(
+            f"Done! Closing in {self.close_seconds}s..."
+        )
+        self.update_close_title()
+
+    def cancel_close_countdown(self):
+        if self.close_timer.isActive():
+            self.close_timer.stop()
+            self.timer_display.setText("Done!")
+            self.setWindowTitle(
+                "Session complete - review mode (Ctrl+O opens folder)"
+            )
+
+    def open_image_directory(self, event=None):
+        path = self.playlist[self.playlist_position]
+        if path.startswith(":/"):
+            return
+        directory = os.path.dirname(path)
+        if sys.platform.startswith("darwin"):
+            subprocess.call(["open", directory])
+        elif os.name == "nt":
+            os.startfile(directory)
+        else:
+            subprocess.call(["xdg-open", directory])
+        if event:
+            event.accept()
 
     # endregion
 
