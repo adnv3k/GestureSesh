@@ -63,7 +63,7 @@ class Version:
         f = shelve.open('recent')
         f['last_checked'] = [datetime.now().date(), self.current_version]
         f.close()
-        os.chdir(r'..\\')
+        os.chdir(os.pardir)
         return False
 
     def is_newest(self):
@@ -119,7 +119,8 @@ class Version:
             last_checked = False
             print('last_checked not found')
         f.close()
-        os.chdir(r'..\\')
+        os.chdir(os.pardir)
+        
         return last_checked
 
     # Saves date checked
@@ -128,7 +129,8 @@ class Version:
         f = shelve.open('recent')
         f['last_checked'] = [datetime.now().date(), self.newest_version]
         f.close()
-        os.chdir(r'..\\')
+        os.chdir(os.pardir)
+        
 
     def update_type(self):
         if self.patch_available:
