@@ -273,6 +273,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             if column == 0:
                 item.setFlags(QtCore.Qt.ItemIsEnabled)
             self.entry_table.setItem(row, column, item)
+        self.set_number_of_images.setFocus()
+        self.set_number_of_images.selectAll()
 
     def remove_row(self):
         # Save current row
