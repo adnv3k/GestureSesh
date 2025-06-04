@@ -528,11 +528,6 @@ class Ui_MainWindow(object):
             else "Nanum Gothic" if sys.platform.startswith("win")
             else "Noto Sans CJK"
         )
-        font.setFamily(
-            "Apple SD Gothic Neo" if sys.platform == "darwin"
-            else "Nanum Gothic" if sys.platform.startswith("win")
-            else "Noto Sans CJK"
-        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
