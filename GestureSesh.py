@@ -8,8 +8,7 @@ import numpy as np
 from pygame import mixer
 from dataclasses import dataclass
 
-from PyQt5 import QtCore
-from PyQt5 import QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import *
 
@@ -1369,6 +1368,7 @@ class FileDialog(QFileDialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    QtWidgets.QApplication.setStyle("Fusion")
     view = MainApp()
     view.show()
     sys.exit(app.exec())
