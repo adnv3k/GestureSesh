@@ -83,8 +83,14 @@ class Ui_MainWindow(object):
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
         MainWindow.setPalette(palette)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
+        font.setPointSize(12)
         font.setBold(True)
-        font.setWeight(75)
+        font.setWeight(85)
         MainWindow.setFont(font)
         MainWindow.setFocusPolicy(QtCore.Qt.ClickFocus)
         MainWindow.setAcceptDrops(True)
@@ -168,6 +174,11 @@ class Ui_MainWindow(object):
         self.select_images = QtWidgets.QLabel(self.centralwidget)
         self.select_images.setMaximumSize(QtCore.QSize(16777215, 24))
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(15)
         font.setBold(True)
         font.setWeight(75)
@@ -182,6 +193,11 @@ class Ui_MainWindow(object):
         self.selected_items.setMaximumSize(QtCore.QSize(16777215, 80))
         self.selected_items.setBaseSize(QtCore.QSize(0, 0))
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setStyleStrategy(QtGui.QFont.PreferDefault)
         self.selected_items.setFont(font)
@@ -266,6 +282,11 @@ class Ui_MainWindow(object):
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
         self.add_folder.setPalette(palette)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -283,6 +304,11 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.add_folder)
         self.add_items = QtWidgets.QPushButton(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -309,6 +335,11 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.addLayout(self.horizontalLayout)
         self.session_settings = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(15)
         font.setBold(True)
         font.setWeight(75)
@@ -468,6 +499,11 @@ class Ui_MainWindow(object):
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
         self.randomize_selection.setPalette(palette)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -487,6 +523,16 @@ class Ui_MainWindow(object):
         self.remove_duplicates = QtWidgets.QPushButton(self.centralwidget)
         self.remove_duplicates.setMinimumSize(QtCore.QSize(290, 20))
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -500,6 +546,11 @@ class Ui_MainWindow(object):
         self.gridLayout.setObjectName("gridLayout")
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -509,6 +560,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.label_7, 0, 0, 1, 1)
         self.label_5 = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -519,6 +575,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.label_5, 0, 3, 1, 1)
         self.label_6 = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -529,6 +590,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.label_6, 0, 4, 1, 1)
         self.image_amount_label = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -538,6 +604,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.image_amount_label, 1, 0, 1, 1)
         self.set_number_of_images = QtWidgets.QSpinBox(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -549,6 +620,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.set_number_of_images, 1, 1, 1, 1)
         self.duration_label = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -559,6 +635,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.duration_label, 1, 2, 1, 1)
         self.set_minutes = QtWidgets.QSpinBox(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -575,6 +656,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.set_minutes, 1, 3, 1, 1)
         self.set_seconds = QtWidgets.QSpinBox(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -591,6 +677,11 @@ class Ui_MainWindow(object):
         self.add_entry = QtWidgets.QPushButton(self.centralwidget)
         self.add_entry.setMinimumSize(QtCore.QSize(97, 0))
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -609,6 +700,11 @@ class Ui_MainWindow(object):
         self.label_8 = QtWidgets.QLabel(self.centralwidget)
         self.label_8.setMaximumSize(QtCore.QSize(143, 16777215))
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -694,6 +790,11 @@ class Ui_MainWindow(object):
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
         self.preset_loader_box.setPalette(palette)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -705,6 +806,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.preset_loader_box)
         self.save_preset = QtWidgets.QPushButton(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -714,6 +820,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.save_preset)
         self.delete_preset = QtWidgets.QPushButton(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
         font.setWeight(75)
@@ -822,6 +933,11 @@ class Ui_MainWindow(object):
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
         self.entry_table.setPalette(palette)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(11)
         font.setBold(True)
         font.setWeight(75)
@@ -857,7 +973,7 @@ class Ui_MainWindow(object):
         # Try to set the preferred font, fallback if not available
         font.setFamily(
             "Apple SD Gothic Neo" if sys.platform == "darwin"
-            else "MS Shell Dlg 2" if sys.platform.startswith("win")
+            else "Nanum Gothic" if sys.platform.startswith("win")
             else "Noto Sans CJK"
         )
         font.setPointSize(10)
@@ -874,7 +990,7 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily(
             "Apple SD Gothic Neo" if sys.platform == "darwin"
-            else "MS Shell Dlg 2" if sys.platform.startswith("win")
+            else "Nanum Gothic" if sys.platform.startswith("win")
             else "Noto Sans CJK"
         )
         font.setPointSize(10)
@@ -891,7 +1007,7 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily(
             "Apple SD Gothic Neo" if sys.platform == "darwin"
-            else "MS Shell Dlg 2" if sys.platform.startswith("win")
+            else "Nanum Gothic" if sys.platform.startswith("win")
             else "Noto Sans CJK"
         )
         font.setPointSize(10)
@@ -918,7 +1034,7 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily(
             "Apple SD Gothic Neo" if sys.platform == "darwin"
-            else "MS Shell Dlg 2" if sys.platform.startswith("win")
+            else "Nanum Gothic" if sys.platform.startswith("win")
             else "Noto Sans CJK"
         )
         font.setPointSize(12)
@@ -950,6 +1066,11 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.remove_entry = QtWidgets.QPushButton(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         self.remove_entry.setFont(font)
         self.remove_entry.setStyleSheet("background: rgb(68,201,176); color: \'black\';")
@@ -998,15 +1119,22 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.addLayout(self.horizontalLayout_3)
         self.dialog_buttons = QtWidgets.QDialogButtonBox(self.centralwidget)
         font = QtGui.QFont()
+        font.setFamily(
+            "Apple SD Gothic Neo" if sys.platform == "darwin"
+            else "Nanum Gothic" if sys.platform.startswith("win")
+            else "Noto Sans CJK"
+        )
         font.setPointSize(10)
         font.setBold(True)
-        font.setWeight(75)
+        font.setWeight(85)
         self.dialog_buttons.setFont(font)
         self.dialog_buttons.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.dialog_buttons.setStyleSheet("background: rgb(68,201,176); color: \'black\';")
         self.dialog_buttons.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.dialog_buttons.setCenterButtons(False)
         self.dialog_buttons.setObjectName("dialog_buttons")
+        for button in self.dialog_buttons.buttons():
+            button.setFont(font)
         self.verticalLayout_4.addWidget(self.dialog_buttons)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -1046,53 +1174,53 @@ class Ui_MainWindow(object):
         self.selected_items.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.selected_items.setPlaceholderText(_translate("MainWindow", "Add files and/or folders. Supported file types: jpg, jpeg, png, gif, bmp. Selection is not randomized by default."))
         self.add_folder.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Open folder(s). Does not open folders in chosen folder</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">F</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">F</span></p></body></html>"))
         self.add_folder.setText(_translate("MainWindow", "..."))
         self.add_folder.setShortcut(_translate("MainWindow", "F"))
         self.add_items.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Open file(s)</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + F</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">Ctrl + F</span></p></body></html>"))
         self.add_items.setText(_translate("MainWindow", "..."))
         self.add_items.setShortcut(_translate("MainWindow", "Ctrl+F"))
         self.clear_items.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Clear selection of items</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + Shift + C</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">Ctrl + Shift + C</span></p></body></html>"))
         self.clear_items.setShortcut(_translate("MainWindow", "Ctrl+Shift+C"))
         self.session_settings.setText(_translate("MainWindow", "Session Settings"))
         self.randomize_selection.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Toggle randomization of selection</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + R</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">Ctrl + R</span></p></body></html>"))
         self.randomize_selection.setText(_translate("MainWindow", "Randomize"))
         self.randomize_selection.setShortcut(_translate("MainWindow", "Ctrl+R"))
         self.remove_duplicates.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Remove duplicate selections</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + 1</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">Ctrl + 1</span></p></body></html>"))
         self.remove_duplicates.setText(_translate("MainWindow", "Remove Duplicates"))
         self.remove_duplicates.setShortcut(_translate("MainWindow", "Ctrl+1"))
         self.label_7.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:13pt; font-weight:400; font-style:normal;color:\'white\';\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:13pt; font-weight:400; font-style:normal;color:\'white\';\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">An entry will display a set number of images for a set duration of time</p></body></html>"))
         self.label_7.setText(_translate("MainWindow", "Set Entry"))
         self.label_5.setText(_translate("MainWindow", "Minutes"))
@@ -1102,21 +1230,22 @@ class Ui_MainWindow(object):
         self.add_entry.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Add entry to the schedule below</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + A</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">Ctrl + A</span></p>\n"
 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.add_entry.setText(_translate("MainWindow", "Add"))
+        self.add_entry.setShortcut(_translate("MainWindow", "Ctrl+A"))
         self.label_8.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:13pt; font-weight:400; font-style:normal;color:\'black\';\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:13pt; font-weight:400; font-style:normal;color:\'white\';\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Presets are saved schedules </p></body></html>"))
         self.label_8.setText(_translate("MainWindow", "Preset:"))
         self.preset_loader_box.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:13pt; font-weight:400; font-style:normal;color:\'black\';\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:13pt; font-weight:400; font-style:normal;color:\'white\';\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Load a preset schedule onto the table below. Duplicate saves will be overwritten</p></body></html>"))
         self.preset_loader_box.setCurrentText(_translate("MainWindow", "<New Preset>"))
         self.preset_loader_box.setPlaceholderText(_translate("MainWindow", "<Name of new preset>"))
@@ -1124,24 +1253,24 @@ class Ui_MainWindow(object):
         self.save_preset.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Saves preset under the name entered in the dropdown menu</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + S</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; font-weight: 550; color:#000000;\">Ctrl + S</span></p></body></html>"))
         self.save_preset.setText(_translate("MainWindow", "Save Preset"))
         self.save_preset.setShortcut(_translate("MainWindow", "Ctrl+S"))
         self.delete_preset.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Deletes preset selected in the dropdown menu</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Ctrl + Shift + D</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">Ctrl + Shift + D</span></p></body></html>"))
         self.delete_preset.setText(_translate("MainWindow", "Delete Preset"))
         self.delete_preset.setShortcut(_translate("MainWindow", "Ctrl+Shift+D"))
         self.entry_table.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; } \n"
 "QTableWidget::item{ selection-background-color: black;}\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#FFFFFF;\">Double-click to modify.</span></p></body></html>"))
         self.entry_table.setSortingEnabled(False)
         item = self.entry_table.horizontalHeaderItem(0)
@@ -1153,29 +1282,29 @@ class Ui_MainWindow(object):
         self.remove_entry.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Delete entry</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">D</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">D</span></p></body></html>"))
         self.remove_entry.setShortcut(_translate("MainWindow", "D"))
         self.move_entry_up.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Move entry up</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">W</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">W</span></p></body></html>"))
         self.move_entry_up.setShortcut(_translate("MainWindow", "W"))
         self.move_entry_down.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Move entry down</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">S</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">S</span></p></body></html>"))
         self.move_entry_down.setShortcut(_translate("MainWindow", "S"))
         self.reset_table.setToolTip(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:\'Nanum Gothic\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">Clear all entries</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; color:#000000;\">C</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:13pt; font-weight:550; color:#000000;\">C</span></p></body></html>"))
         self.reset_table.setShortcut(_translate("MainWindow", "C"))
         self.statusbar.setAccessibleDescription(_translate("MainWindow", "SDF"))
