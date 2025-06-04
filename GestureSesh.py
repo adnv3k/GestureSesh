@@ -1474,20 +1474,22 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.sec.insert(0, "0")
         self.display_time()
 
+    # Constants for timer visuals
+    PAUSE_BUTTON_RUNNING_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
+    PAUSE_BUTTON_PAUSED_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
+    TIMER_DISPLAY_RUNNING_STYLE = "color: white;"
+    TIMER_DISPLAY_PAUSED_STYLE = "color: white; border:1px solid white;"
+
     def _set_timer_visuals(self, running: bool) -> None:
         """Update pause button and display border based on running state."""
         if running:
             self.pause_timer.setIcon(QtGui.QIcon(":/icons/icons/Pause.png"))
-            self.pause_timer.setStyleSheet(
-                "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
-            )
-            self.timer_display.setStyleSheet("color: white;")
+            self.pause_timer.setStyleSheet(self.PAUSE_BUTTON_RUNNING_STYLE)
+            self.timer_display.setStyleSheet(self.TIMER_DISPLAY_RUNNING_STYLE)
         else:
             self.pause_timer.setIcon(QtGui.QIcon(":/icons/icons/Play2.png"))
-            self.pause_timer.setStyleSheet(
-                "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
-            )
-            self.timer_display.setStyleSheet("color: white; border:1px solid white;")
+            self.pause_timer.setStyleSheet(self.PAUSE_BUTTON_PAUSED_STYLE)
+            self.timer_display.setStyleSheet(self.TIMER_DISPLAY_PAUSED_STYLE)
 
     def pause(self):
         # Do nothing if the session has finished
