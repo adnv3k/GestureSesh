@@ -133,3 +133,7 @@ dmypy.json
 *.bak
 *.bak
 *.bak
+
+
+*presets/
+*recent/
