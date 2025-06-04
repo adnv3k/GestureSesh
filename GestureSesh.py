@@ -212,9 +212,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Displays status
 
         """
-        if os.path.exists(r'.\recent'):
+        if Path('recent').exists():
             try:
-                os.chdir(r'.\recent')
+                os.chdir(Path('recent'))
                 recent = shelve.open('recent')
                 if recent['recent'].get('folders'):
                     self.selection['folders'] = recent['recent']['folders']
@@ -222,7 +222,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.preset_loader_box.setCurrentIndex(recent['recent_preset'])
                 self.randomize_selection.setChecked(recent['randomized'])
                 recent.close()
-                os.chdir(r'..\\')
+                os.chdir(Path('..'))
             except (Exception, KeyError):
                 print('load_recent error')
                 print(os.getcwd())
@@ -412,22 +412,22 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.presets = {}
         # If the presets folder does not exist in file directory, then 
         # create it and create shelve files there.
-        if not os.path.exists(r'.\presets'):
-            os.mkdir(r'.\presets')
-            os.chdir(r'.\presets')
+        if not Path('presets').exists():
+            Path('presets').mkdir(exist_ok=True)
+            os.chdir(Path('presets'))
             preset = shelve.open('preset')
             preset.close()
-            os.chdir(r'..\\')
+            os.chdir(Path('..'))
         # Load data from preset files then update presets
         else:
             try:
-                os.chdir(r'.\presets')
+                os.chdir(Path('presets'))
                 pre = shelve.open('preset')
                 preset_list = list(pre.keys())
                 for preset in preset_list:
                     self.presets[preset] = pre[preset]
                 pre.close()
-                os.chdir(r'..\\')
+                os.chdir(Path('..'))
                 self.update_presets()
             except (Exception, KeyError):
                 print('init_preset error')
@@ -465,11 +465,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
             for column in range(self.entry_table.columnCount()):
                 tmppreset[row].append(self.entry_table.item(row, column).text())
         # Save preset to file
-        os.chdir(r'.\presets')
+        os.chdir(Path('presets'))
         preset = shelve.open('preset')
         preset[preset_name] = tmppreset
         preset.close()
-        os.chdir(r'..\\')
+        os.chdir(Path('..'))
         # Load preset to new name
         self.selected_items.setText(f'{preset_name} saved!')
         if self.presets.get(preset_name):
@@ -488,11 +488,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
             QTest.qWait(4000)
             self.display_status()
             return
-        os.chdir(r'.\presets')
+        os.chdir(Path('presets'))
         preset = shelve.open('preset')
         del preset[preset_name]
         preset.close()
-        os.chdir(r'..\\')
+        os.chdir(Path('..'))
         del self.presets[preset_name]
         self.selected_items.setText(f'{preset_name} deleted!')
         self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
@@ -634,15 +634,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def save_to_recent(self):
         """Saves current selection, selected preset, and randomization setting"""
         self.recent = {}
-        if os.path.exists(r'.\recent') is not True:
-            os.mkdir(r'.\recent')
-        os.chdir(r'.\recent')
+        if not Path('recent').exists():
+            Path('recent').mkdir(exist_ok=True)
+        os.chdir(Path('recent'))
         file = shelve.open('recent')
         file['recent'] = self.selection
         file['recent_preset'] = self.preset_loader_box.currentIndex()
         file['randomized'] = self.randomize_selection.isChecked()
         file.close()
-        os.chdir(r'..\\')
+        os.chdir(Path('..'))
 
     # endregion
 
@@ -936,14 +936,14 @@ class SessionDisplay(QWidget, Ui_session_display):
         print(self.entry)
         # Sounds
         if self.new_entry:
-            mixer.music.load(self.sounds_dir + "\\new_entry.mp3")
+            mixer.music.load(os.path.join(self.sounds_dir, "new_entry.mp3"))
             mixer.music.play()
             # self.new_entry = False
         elif self.entry['amount of items'] == 0:  # Last image in entry
-            mixer.music.load(self.sounds_dir + "\\last_entry_image.mp3")
+            mixer.music.load(os.path.join(self.sounds_dir, "last_entry_image.mp3"))
             mixer.music.play()
         elif self.entry['time'] > 10:
-            mixer.music.load(self.sounds_dir + "\\new_image.mp3")
+            mixer.music.load(os.path.join(self.sounds_dir, "new_image.mp3"))
             mixer.music.play()
 
         if self.playlist_position > len(self.playlist):  # Last image
@@ -1214,18 +1214,18 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_timer_display()
         if self.entry['time'] >= 30:
             if self.time_seconds == self.entry['time'] // 2:
-                mixer.music.load(self.sounds_dir + "\\halfway.mp3")
+                mixer.music.load(os.path.join(self.sounds_dir, "halfway.mp3"))
                 mixer.music.play()
         if self.time_seconds <= 10:
             if self.new_entry is False and self.end_of_entry is False:
                 if self.time_seconds == 10:
-                    mixer.music.load(self.sounds_dir + "\\first_alert.mp3")
+                    mixer.music.load(os.path.join(self.sounds_dir, "first_alert.mp3"))
                     mixer.music.play()
                 elif self.time_seconds == 5:
-                    mixer.music.load(self.sounds_dir + "\\second_alert.mp3")
+                    mixer.music.load(os.path.join(self.sounds_dir, "second_alert.mp3"))
                     mixer.music.play()
                 elif self.time_seconds == 0.5:
-                    mixer.music.load(self.sounds_dir + "\\third_alert.mp3")
+                    mixer.music.load(os.path.join(self.sounds_dir, "third_alert.mp3"))
                     mixer.music.play()
             else:
                 if self.new_entry is True:
