@@ -2,12 +2,14 @@ import os
 import sys
 import random
 import shelve
+import subprocess
+import platform
 from pathlib import Path
+from dataclasses import dataclass
+
 import cv2
 import numpy as np
 from pygame import mixer
-import subprocess
-from dataclasses import dataclass
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
@@ -18,12 +20,21 @@ from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 import resources_config
 
+# Set application support directories
+if platform.system() == "Darwin":
+    BASE_DIR = Path.home() / "Library/Application Support/GestureSesh"
+elif platform.system() == "Windows":
+    BASE_DIR = Path(os.getenv("APPDATA")) / "GestureSesh"
+else:
+    BASE_DIR = Path.home() / ".config" / "GestureSesh"
+
+PRESET_DIR = BASE_DIR / "presets"
+PRESET_DIR.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class ScheduleEntry:
     images: int
     time: int
-
 
 __version__ = "0.4.3"
 
@@ -215,6 +226,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
         QTest.qWait(2000)
         self.display_status()
 
+    def get_app_support_dir(self, subdir=None):
+        # Deprecated: Use BASE_DIR and PRESET_DIR for presets
+        if subdir == "presets":
+            return PRESET_DIR
+        base = BASE_DIR
+        if subdir:
+            base = base / subdir
+        base.mkdir(parents=True, exist_ok=True)
+        return base
+
     def load_recent(self):
         """
         Loads most recent session settings:
@@ -223,23 +244,19 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Randomization
         Removes breaks in case entire program closed during a session
         Displays status
-
         """
-        if Path("recent").exists():
+        recent_dir = self.get_app_support_dir()
+        recent_path = recent_dir / "recent"
+        if recent_path.exists():
             try:
-                os.chdir(Path("recent"))
-                recent = shelve.open("recent")
-                if recent["recent"].get("folders"):
+                recent = shelve.open(str(recent_path))
+                if recent.get("recent", {}).get("folders"):
                     self.selection["folders"] = recent["recent"]["folders"]
                     self.scan_directories(self.selection["folders"])
-                self.preset_loader_box.setCurrentIndex(recent["recent_preset"])
-                self.randomize_selection.setChecked(recent["randomized"])
+                self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
+                self.randomize_selection.setChecked(recent.get("randomized", False))
                 recent.close()
-                os.chdir(Path(".."))
             except (Exception, KeyError):
-                print("load_recent error")
-                print(os.getcwd())
-                os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
                 return
             self.remove_breaks()
             self.display_status()
@@ -427,29 +444,20 @@ class MainApp(QMainWindow, Ui_MainWindow):
     # region Presets
     def init_preset(self):
         self.presets = {}
-        # If the presets folder does not exist in file directory, then
-        # create it and create shelve files there.
-        if not Path("presets").exists():
-            Path("presets").mkdir(exist_ok=True)
-            os.chdir(Path("presets"))
-            preset = shelve.open("preset")
+        preset_dir = PRESET_DIR
+        preset_path = preset_dir / "preset"
+        if not preset_path.exists():
+            preset = shelve.open(str(preset_path))
             preset.close()
-            os.chdir(Path(".."))
-        # Load data from preset files then update presets
-        else:
-            try:
-                os.chdir(Path("presets"))
-                pre = shelve.open("preset")
-                preset_list = list(pre.keys())
-                for preset in preset_list:
-                    self.presets[preset] = pre[preset]
-                pre.close()
-                os.chdir(Path(".."))
-                self.update_presets()
-            except (Exception, KeyError):
-                print("init_preset error")
-                print(os.getcwd())
-                os.chdir(os.path.abspath(os.path.dirname(sys.argv[0])))
+        try:
+            pre = shelve.open(str(preset_path))
+            preset_list = list(pre.keys())
+            for preset in preset_list:
+                self.presets[preset] = pre[preset]
+            pre.close()
+            self.update_presets()
+        except (Exception, KeyError):
+            return
 
     def update_presets(self):
         """
@@ -475,19 +483,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
             QTest.qWait(5500)
             self.display_status()
             return
-        # Get table entries
         tmppreset = {}
         for row in range(self.entry_table.rowCount()):
             tmppreset[row] = []
             for column in range(self.entry_table.columnCount()):
                 tmppreset[row].append(self.entry_table.item(row, column).text())
-        # Save preset to file
-        os.chdir(Path("presets"))
-        preset = shelve.open("preset")
+        preset_dir = PRESET_DIR
+        preset_path = preset_dir / "preset"
+        preset = shelve.open(str(preset_path))
         preset[preset_name] = tmppreset
         preset.close()
-        os.chdir(Path(".."))
-        # Load preset to new name
         self.selected_items.setText(f"{preset_name} saved!")
         if self.presets.get(preset_name):
             self.presets[preset_name] = tmppreset
@@ -505,11 +510,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
             QTest.qWait(4000)
             self.display_status()
             return
-        os.chdir(Path("presets"))
-        preset = shelve.open("preset")
+        preset_dir = PRESET_DIR
+        preset_path = preset_dir / "preset"
+        preset = shelve.open(str(preset_path))
         del preset[preset_name]
         preset.close()
-        os.chdir(Path(".."))
         del self.presets[preset_name]
         self.selected_items.setText(f"{preset_name} deleted!")
         self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
@@ -654,34 +659,24 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def save_to_recent(self):
         """Saves current selection, selected preset, and randomization setting"""
-        self.recent = {}
-        if not Path("recent").exists():
-            Path("recent").mkdir(exist_ok=True)
-        os.chdir(Path("recent"))
-        file = shelve.open("recent")
+        recent_dir = self.get_app_support_dir()
+        file = shelve.open(str(recent_dir / "recent"))
         file["recent"] = self.selection
         file["recent_preset"] = self.preset_loader_box.currentIndex()
         file["randomized"] = self.randomize_selection.isChecked()
         file.close()
-        os.chdir(Path(".."))
 
     # endregion
 
     # region
     # Updates
     def check_version(self):
-        """
-        Checks if the current version is the newest one. If not, an update
-        notice is displayed in the display.
-
-        """
         current_version = Version(__version__)
         if not current_version.is_newest():
             update_type = current_version.update_type()
-            if type(update_type) == str:
+            if isinstance(update_type, str):
                 self.selected_items.append(
-                    f"\n{update_type} available!"
-                    f"\nPlease visit the site to download!"
+                    f"\n{update_type} available!\nPlease visit the site to download!"
                 )
                 content = current_version.content()
                 self.selected_items.append(
@@ -689,9 +684,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 )
         else:
             if current_version.allowed is True:
-                self.selected_items.append(f"Up to date.")
+                self.selected_items.append("Up to date.")
 
-    # endregion
+    def show_and_activate(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
 
 class SessionDisplay(QWidget, Ui_session_display):
@@ -1074,7 +1072,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.time_seconds = self.entry["time"]
             if was_timer_active:
                 self.timer.start(500)
-            self.update_timer_display()
             self.playlist_position += 1
             self.entry["amount of items"] -= 1
             self.new_entry = False
@@ -1564,6 +1561,14 @@ class FileDialog(QFileDialog):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     QtWidgets.QApplication.setStyle("Fusion")
+
+    # Disable Qt state restoration help button
+    app.setAttribute(QtCore.Qt.AA_DisableWindowContextHelpButton, True)
+    # Session manager attribute is not universally supported, so ignore if not present
+    if hasattr(QtCore.Qt, "AA_DisableSessionManager"):
+        app.setAttribute(QtCore.Qt.AA_DisableSessionManager, True)
+
     view = MainApp()
-    view.show()
-    sys.exit(app.exec())
+    view.show_and_activate()
+
+    sys.exit(app.exec_())
