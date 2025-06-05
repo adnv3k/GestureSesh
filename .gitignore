@@ -139,3 +139,4 @@ dmypy.json
 *recent/
 
 .DS_Store
+/.vscode
