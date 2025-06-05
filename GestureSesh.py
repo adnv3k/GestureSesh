@@ -915,9 +915,11 @@ class SessionDisplay(QWidget, Ui_session_display):
             (event.globalPos() - self.drag_start_position).manhattanLength()
             > self.drag_threshold
         ):
-            if not self.session_finished and not self.drag_timer_was_active:
-                self.timer.stop()
-                self._set_timer_visuals(False)
+            if not self.drag_timer_was_active:
+                # Only pause timer if session is not finished
+                if not self.session_finished and self.timer.isActive():
+                    self.timer.stop()
+                    self._set_timer_visuals(False)
                 self.drag_timer_was_active = True
 
         if self.drag_timer_was_active:
