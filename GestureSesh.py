@@ -2,10 +2,10 @@ import os
 import sys
 import random
 import shelve
-import subprocess
 import platform
 from pathlib import Path
 from dataclasses import dataclass
+from importlib import resources
 
 import cv2
 import numpy as np
@@ -18,7 +18,12 @@ from PyQt5.QtWidgets import *
 from check_update import Version
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
-import resources_config
+
+import resources_config # This is a generated file from resources.qrc DO NOT REMOVE 
+
+def sound_file(name: str):
+    """Return a context manager yielding the path to an embedded sound file."""
+    return resources.as_file(resources.files("sounds") / name)
 
 # Set application support directories
 if platform.system() == "Darwin":
@@ -725,7 +730,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             btn.setMinimumSize(60, 32)
             btn.setStyleSheet(pause_style)
         self.init_image_mods()
-        self.init_sounds()
         self.init_mixer()
         self.load_entry()
         self.init_buttons()
@@ -792,21 +796,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             "vflip": False,
             "break_grayscale": False,
         }
-
-    def init_sounds(self):
-        """
-        Gets absolute path to sounds.
-        PyInstaller creates a temp folder, and stores dependencies path in _MEIPASS.
-        If the temp folder is not found, then use the current file path.
-
-        """
-        relative_path = "sounds"
-        try:
-            base_path = sys._MEIPASS
-        except (Exception, FileNotFoundError):
-            print("Temp folder not found.")
-            base_path = os.path.abspath(".")
-        self.sounds_dir = os.path.join(base_path, relative_path)
 
     def init_mixer(self):
         mixer.init()
@@ -1128,17 +1117,17 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Sounds
 
         if self.new_entry:
-            sound_file = Path(self.sounds_dir) / "new_entry.mp3"
-            mixer.music.load(str(sound_file))
+            with sound_file("new_entry.mp3") as p:
+                mixer.music.load(str(p))
             mixer.music.play()
             # self.new_entry = False
         elif self.entry["amount of items"] == 0:  # Last image in entry
-            sound_file = Path(self.sounds_dir) / "last_entry_image.mp3"
-            mixer.music.load(str(sound_file))
+            with sound_file("last_entry_image.mp3") as p:
+                mixer.music.load(str(p))
             mixer.music.play()
         elif self.entry["time"] > 10:
-            sound_file = Path(self.sounds_dir) / "new_image.mp3"
-            mixer.music.load(str(sound_file))
+            with sound_file("new_image.mp3") as p:
+                mixer.music.load(str(p))
             mixer.music.play()
 
         if self.playlist_position >= len(self.playlist):  # Last image
@@ -1432,18 +1421,22 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_timer_display()
         if self.entry["time"] >= 30:
             if self.time_seconds == self.entry["time"] // 2:
-                mixer.music.load(os.path.join(self.sounds_dir, "halfway.mp3"))
+                with sound_file("halfway.mp3") as p:
+                    mixer.music.load(str(p))
                 mixer.music.play()
         if self.time_seconds <= 10:
             if self.new_entry is False and self.end_of_entry is False:
                 if self.time_seconds == 10:
-                    mixer.music.load(os.path.join(self.sounds_dir, "first_alert.mp3"))
+                    with sound_file("first_alert.mp3") as p:
+                        mixer.music.load(str(p))
                     mixer.music.play()
                 elif self.time_seconds == 5:
-                    mixer.music.load(os.path.join(self.sounds_dir, "second_alert.mp3"))
+                    with sound_file("second_alert.mp3") as p:
+                        mixer.music.load(str(p))
                     mixer.music.play()
                 elif self.time_seconds == 0.5:
-                    mixer.music.load(os.path.join(self.sounds_dir, "third_alert.mp3"))
+                    with sound_file("third_alert.mp3") as p:
+                        mixer.music.load(str(p))
                     mixer.music.play()
             else:
                 if self.new_entry is True:
@@ -1572,12 +1565,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         if path.startswith(":/"):
             return
         directory = os.path.dirname(path)
-        if sys.platform.startswith("darwin"):
-            subprocess.call(["open", "-R", path])
-        elif os.name == "nt":
-            subprocess.call(["explorer", "/select,", path.replace("/", "\\")])
-        if sys.platform.startswith("linux"):
-            subprocess.call(["xdg-open", directory])
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(directory))
         if event:
             event.accept()
 
