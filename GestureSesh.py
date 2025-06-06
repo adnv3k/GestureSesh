@@ -1081,7 +1081,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Reset indices so reviewing previous images works correctly
         self.entry["current"] = max(0, self.entry["total"] - 1)
         self.entry["amount of items"] = 0
-        self.playlist_position = max(0, len(self.playlist) - 1)
+
+        self.playlist_position = max(0, int(self.total_scheduled_images))
         self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
         self.update_close_title()
         self.close_timer.start(1000)
@@ -1092,7 +1093,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.session_finished:
             self.cancel_close_countdown()
             self.timer.blockSignals(True)
-            if self.playlist_position >= len(self.playlist) - 1:
+            if self.playlist_position == self.total_scheduled_images:
                 return
             self.playlist_position += 1
             self.display_image()
@@ -1343,6 +1344,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.session_finished:
             self.cancel_close_countdown()
             if self.playlist_position == 0:
+                self.display_image()
+                self._set_timer_visuals(False)
                 return
             self.playlist_position -= 1
             self.display_image()
