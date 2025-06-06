@@ -1,7 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+import os
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.building.osx import BUNDLE
+from PyInstaller.building.api import COLLECT, EXE, PYZ
+from PyInstaller.building.build_main import Analysis
 
 block_cipher = None
 hiddenimports = collect_submodules('pygame')
