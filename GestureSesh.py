@@ -15,7 +15,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import *
 
-from check_update import Version
+from check_update import UpdateChecker
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
@@ -24,6 +24,7 @@ import resources_config # This is a generated file from resources.qrc DO NOT REM
 def sound_file(name: str):
     """Return a context manager yielding the path to an embedded sound file."""
     return resources.as_file(resources.files("sounds") / name)
+
 
 # Set application support directories
 if platform.system() == "Darwin":
@@ -36,10 +37,12 @@ else:
 PRESET_DIR = BASE_DIR / "presets"
 PRESET_DIR.mkdir(parents=True, exist_ok=True)
 
+
 @dataclass
 class ScheduleEntry:
     images: int
     time: int
+
 
 __version__ = "0.4.3"
 
@@ -140,10 +143,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             directories = [x[0] for x in os.walk(selected_dir.selectedFiles()[0])]
             total_valid_files, total_invalid_files = self.scan_directories(directories)
             self.selected_items.append(
-                f"{total_valid_files} file(s) added from "
-                f"{len(directories)} folders!"
+                f"{total_valid_files} file(s) added from {len(directories)} folders!"
             )
-            # TODO update error handling here to accomodate subfolder inclusion
             if total_invalid_files > 0:
                 self.selected_items.append(
                     f"{total_invalid_files} file(s) not added. "
@@ -619,7 +620,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     f"Has the location or file name been changed?"
                 )
                 self.selected_items.append(
-                    f'Image removed from selection. {len(self.selection["files"])} total files.'
+                    "Image removed from selection."
+                    f' {len(self.selection["files"])} total files.'
                 )
                 self.selected_items.append(
                     f"Previous directory: \n{os.path.dirname(file)}"
@@ -629,7 +631,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Check if there are enough selected images for the schedule
         if self.total_scheduled_images > len(self.selection["files"]):
             self.selected_items.setText(
-                f"Not enough images selected. Add more images, or schedule fewer images."
+                f"Not enough images selected. Add more images, or schedule fewer"
+                f" images."
             )
             return False
         return True
@@ -676,20 +679,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
     # region
     # Updates
     def check_version(self):
-        current_version = Version(__version__)
-        if not current_version.is_newest():
-            update_type = current_version.update_type()
-            if isinstance(update_type, str):
-                self.selected_items.append(
-                    f"\n{update_type} available!\nPlease visit the site to download!"
-                )
-                content = current_version.content()
-                self.selected_items.append(
-                    f"v{current_version.newest_version}\n" f"{content}"
-                )
+        # Use the new UpdateChecker from check_update.py
+        checker = UpdateChecker(__version__)
+        update = checker.check_for_updates()
+        if update:
+            self.selected_items.append(
+                f"\nUpdate available!\nPlease visit the site to download!"
+            )
+            self.selected_items.append(f"v{update['version']}\n{update['notes']}")
         else:
-            if current_version.allowed is True:
-                self.selected_items.append("Up to date.")
+            self.selected_items.append("Up to date.")
 
     def show_and_activate(self):
         self.show()
@@ -700,8 +699,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()  # Needed here for close event to work.
 
-    def __init__(self, schedule=None, items=None, total=None):
-        super().__init__()
+    def __init__(self, schedule=None, items=None, total=None, parent=None):
+        super().__init__(parent)
         self.setupUi(self)
         self.init_sizing()
         self.init_scaling_size()
@@ -904,9 +903,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         """
         # Start a drag only if the cursor moved beyond the threshold
         if (
-            (event.globalPos() - self.drag_start_position).manhattanLength()
-            > self.drag_threshold
-        ):
+            event.globalPos() - self.drag_start_position
+        ).manhattanLength() > self.drag_threshold:
             if not self.drag_timer_was_active:
                 # Only pause timer if session is not finished
                 if not self.session_finished and self.timer.isActive():
@@ -989,7 +987,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         print(f'amount of items: {self.entry["amount of items"]}')
         print(f"before playlist_position: {self.playlist_position}")
         print(
-            f"current image: {self.playlist[self.playlist_position]} | current length: {len(self.playlist)}"
+            f"current image: {self.playlist[self.playlist_position]} | current length:"
+            f" {len(self.playlist)}"
         )
         item = self.playlist[self.playlist_position + 1]
         print(f"next image: {item}")
@@ -999,7 +998,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.playlist.reverse()
             self.playlist.insert(-self.playlist_position, item)
             print(
-                f"after insert: {self.playlist[self.playlist_position]} | after insert length: {len(self.playlist)}"
+                f"after insert: {self.playlist[self.playlist_position]} | after insert"
+                f" length: {len(self.playlist)}"
             )
             self.playlist.reverse()
         self.display_image()
@@ -1009,7 +1009,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         # self.load_next_image()
 
         print(
-            f"after reverse: {self.playlist[self.playlist_position]} | after reverse length: {len(self.playlist)}"
+            f"after reverse: {self.playlist[self.playlist_position]} | after reverse"
+            f" length: {len(self.playlist)}"
         )
 
         # move the scheduled breaks over 1
@@ -1182,7 +1183,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Handle if cvimage is None or empty
         if cvimage is None or cvimage.size == 0:
             print(
-                f"Error: Could not load image at {self.playlist[self.playlist_position]}"
+                "Error: Could not load image at"
+                f" {self.playlist[self.playlist_position]}"
             )
             self.setWindowTitle("Error processing image")
             return
@@ -1470,8 +1472,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.display_time()
 
     # Constants for timer visuals
-    PAUSE_BUTTON_RUNNING_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
-    PAUSE_BUTTON_PAUSED_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
+    PAUSE_BUTTON_RUNNING_STYLE = (
+        "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
+    )
+    PAUSE_BUTTON_PAUSED_STYLE = (
+        "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
+    )
     TIMER_DISPLAY_RUNNING_STYLE = "color: white;"
     TIMER_DISPLAY_PAUSED_STYLE = "color: white; border:1px solid white;"
 
