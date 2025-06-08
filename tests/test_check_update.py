@@ -1,120 +1,100 @@
+# test_check_update.py
+
 import unittest
 from unittest.mock import patch, MagicMock
+from pathlib import Path
+import tempfile
+from datetime import datetime, timedelta
+import requests
 
-from check_update import Version
+from check_update import UpdateChecker
 
-# Patch sys.modules to avoid actual shelve and requests usage
-with patch.dict('sys.modules', {'shelve': __import__('shelve'), 'requests': __import__('requests')}):
-    class TestVersion(unittest.TestCase):
-        @patch('check_update.shelve.open')
-        def test_get_last_checked_no_file(self, mock_shelve_open):
-            # Simulate no last_checked in shelve
-            mock_db = {}
-            mock_shelve_open.return_value.__enter__.return_value = mock_db
-            v = Version('1.0.0')
-            self.assertIn(v.last_checked, (False, [unittest.mock.ANY, '1.0.0']))
 
-        @patch('check_update.shelve.open')
-        def test_get_last_checked_existing(self, mock_shelve_open):
-            # Simulate existing last_checked in shelve
-            mock_db = {'last_checked': ['2024-01-01', '1.0.0']}
-            mock_shelve_open.return_value.__enter__.return_value = mock_db
-            v = Version('1.0.0')
-            self.assertEqual(v.last_checked, ['2024-01-01', '1.0.0'])
+class TestUpdateChecker(unittest.TestCase):
+    def setUp(self):
+        # Create a temporary directory for config files
+        self.temp_dir = tempfile.TemporaryDirectory()
+        # Revised: point config_path at the temp directory
+        self.config_path = Path(self.temp_dir.name) / "config.json"
+        self.current_version = "0.3.0"
 
-        @patch('check_update.requests.get')
-        @patch('check_update.shelve.open')
-        def test_get_newest_version_allowed(self, mock_shelve_open, mock_requests_get):
-            # Simulate allowed check and GitHub response
-            mock_db = {'last_checked': ['2024-01-01', '1.0.0']}
-            mock_shelve_open.return_value.__enter__.return_value = mock_db
-            mock_response = MagicMock()
-            mock_response.json.return_value = [{'tag_name': 'v1.2.3', 'name': 'Release', 'target_commitish': 'main', 'prerelease': False, 'draft': False}]
-            mock_response.raise_for_status.return_value = None
-            mock_requests_get.return_value = mock_response
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
-            v = Version('1.0.0')
-            v.allowed = True
-            newest = v.get_newest_version()
-            self.assertEqual(newest, '1.2.3')
+    @patch("check_update.requests.get")
+    def test_check_for_updates_new_version(self, mock_get):
+        # Simulate GitHub API response with a newer version (0.4.2)
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "tag_name": "v0.4.2",
+            "body": "Release notes for 0.4.2",
+            "html_url": "https://github.com/adnv3k/GestureSesh/releases/tag/v0.4.2",
+            "published_at": "2024-06-01T00:00:00Z",
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
 
-        @patch('check_update.requests.get')
-        @patch('check_update.shelve.open')
-        def test_get_newest_version_not_allowed(self, mock_shelve_open, mock_requests_get):
-            mock_db = {'last_checked': ['2024-01-01', '1.0.0']}
-            mock_shelve_open.return_value.__enter__.return_value = mock_db
-            v = Version('1.0.0')
-            v.allowed = False
-            v.last_checked = ['2024-01-01', '1.1.0']
-            newest = v.get_newest_version()
-            self.assertEqual(newest, '1.1.0')
+        checker = UpdateChecker(self.current_version)
+        # Override config_path and ensure no prior state
+        checker.config_path = self.config_path
+        checker.config = {}
+        update = checker.check_for_updates()
+        self.assertIsInstance(update, dict)
+        self.assertEqual(update["version"], "0.4.2")
+        self.assertIn("Release notes for 0.4.2", update["notes"])
 
-        @patch('check_update.requests.get')
-        @patch('check_update.shelve.open')
-        def test_is_newest_patch(self, mock_shelve_open, mock_requests_get):
-            mock_db = {'last_checked': ['2024-01-01', '1.0.0']}
-            mock_shelve_open.return_value.__enter__.return_value = mock_db
-            mock_response = MagicMock()
-            mock_response.json.return_value = [{
-                'tag_name': 'v1.0.0',
-                'name': 'Patch release',
-                'target_commitish': 'main',
-                'prerelease': False,
-                'draft': False,
-                'body': 'Patch notes'
-            }]
-            mock_response.raise_for_status.return_value = None
-            mock_requests_get.return_value = mock_response
+    @patch("check_update.requests.get")
+    def test_check_for_updates_no_new_version(self, mock_get):
+        # Simulate GitHub API response with same version (0.4.2)
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "tag_name": "v0.4.2",
+            "body": "No updates",
+            "html_url": "https://github.com/adnv3k/GestureSesh/releases/tag/v0.4.2",
+            "published_at": "2024-06-01T00:00:00Z",
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
 
-            v = Version('1.0.0')
-            v.allowed = True
-            v.r_json = mock_response.json.return_value
-            v.newest_version = '1.0.0'
-            self.assertFalse(v.is_newest())
-            self.assertTrue(v.patch_available)
+        checker = UpdateChecker("0.4.2")
+        checker.config_path = self.config_path
+        checker.config = {}
+        update = checker.check_for_updates()
+        self.assertIsNone(update)
 
-        @patch('check_update.requests.get')
-        @patch('check_update.shelve.open')
-        def test_is_valid_update(self, mock_shelve_open, mock_requests_get):
-            mock_db = {'last_checked': ['2024-01-01', '1.0.0']}
-            mock_shelve_open.return_value.__enter__.return_value = mock_db
-            v = Version('1.0.0')
-            v.r_json = [{
-                'tag_name': 'v1.1.0',
-                'name': 'Release',
-                'target_commitish': 'main',
-                'prerelease': False,
-                'draft': False
-            }]
-            self.assertTrue(v.is_valid_update())
-            v.r_json[0]['target_commitish'] = 'dev'
-            self.assertFalse(v.is_valid_update())
-            v.r_json[0]['target_commitish'] = 'main'
-            v.r_json[0]['prerelease'] = True
-            self.assertFalse(v.is_valid_update())
-            v.r_json[0]['prerelease'] = False
-            v.r_json[0]['draft'] = True
-            self.assertFalse(v.is_valid_update())
+    def test_is_check_needed_first_time(self):
+        checker = UpdateChecker(self.current_version)
+        checker.config_path = self.config_path
+        checker.config = {}
+        self.assertTrue(checker._is_check_needed())
 
-        def test_update_type(self):
-            v = Version('1.0.0')
-            v.newest_version = '2.0.0'
-            self.assertEqual(v.update_type(), 'Major update')
-            v.newest_version = '1.1.0'
-            self.assertEqual(v.update_type(), 'Feature update')
-            v.newest_version = '1.0.1'
-            self.assertEqual(v.update_type(), 'Minor update')
-            v.newest_version = '1.0.0'
-            self.assertIsNone(v.update_type())
-            v.patch_available = True
-            self.assertEqual(v.update_type(), 'Patch')
+    def test_is_check_needed_recent(self):
+        checker = UpdateChecker(self.current_version)
+        checker.config_path = self.config_path
+        # Revised: nest last_checked under update_check
+        checker.config = {"update_check": {"last_checked": datetime.now().isoformat()}}
+        self.assertFalse(checker._is_check_needed())
 
-        def test_content(self):
-            v = Version('1.0.0')
-            v.r_json = [{'body': 'Release notes'}]
-            self.assertEqual(v.content(), 'Release notes')
-            v.r_json = None
-            self.assertEqual(v.content(), '')
+    def test_is_check_needed_old(self):
+        checker = UpdateChecker(self.current_version)
+        checker.config_path = self.config_path
+        old_time = (datetime.now() - timedelta(days=2)).isoformat()
+        # Revised: nest last_checked under update_check
+        checker.config = {"update_check": {"last_checked": old_time}}
+        self.assertTrue(checker._is_check_needed())
 
-if __name__ == '__main__':
-    unittest.main()
+    @patch("check_update.requests.get")
+    def test_check_for_updates_network_error(self, mock_get):
+        # Simulate a realistic network error from the requests library
+        mock_get.side_effect = requests.exceptions.RequestException("Network error")
+
+        checker = UpdateChecker(self.current_version)
+        checker.config_path = self.config_path
+        checker.config = {}
+
+        update = checker.check_for_updates()
+        self.assertIsNone(update)
+
+
+if __name__ == "__main__":
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)

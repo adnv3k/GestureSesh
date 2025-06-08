@@ -315,8 +315,8 @@ class Ui_session_display(object):
         self.session_info.setText(_translate("session_display", "{session info}"))
         self.grayscale_button.setToolTip(
             _translate(
-            "session_display",
-            "Grayscale<br><span style='font-weight:650;'>G</span>",
+                "session_display",
+                "Grayscale<br><span style='font-weight:650;'>G</span>",
             )
         )
         self.grayscale_button.setShortcut(_translate("session_display", "G"))
@@ -337,7 +337,8 @@ class Ui_session_display(object):
         self.previous_image.setToolTip(
             _translate(
                 "session_display",
-                "Previous image<br><span style='font-weight:650;'>Left arrow key</span>",
+                "Previous image<br><span style='font-weight:650;'>Left arrow"
+                " key</span>",
             )
         )
         self.previous_image.setShortcut(_translate("session_display", "Left"))
@@ -351,7 +352,8 @@ class Ui_session_display(object):
         self.stop_session.setToolTip(
             _translate(
                 "session_display",
-                "Stop Session. Closes window.<br><span style='font-weight:650;'>Esc</span>",
+                "Stop Session. Closes window.<br><span"
+                " style='font-weight:650;'>Esc</span>",
             )
         )
         self.stop_session.setShortcut(_translate("session_display", "Esc"))
