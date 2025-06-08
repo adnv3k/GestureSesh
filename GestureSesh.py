@@ -1,4 +1,3 @@
-# GestureSesh.py
 import os
 import sys
 import random
@@ -14,8 +13,17 @@ from pygame import mixer
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import *
-
+from PyQt5.QtWidgets import (
+    QApplication,
+    QShortcut,
+    QFileDialog,
+    QTableWidgetItem,
+    QListView,
+    QTreeView,
+    QAbstractItemView,
+    QWidget,
+    QMainWindow,
+)
 from check_update import UpdateChecker, save_config, load_config, get_config_dir
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
