@@ -1,3 +1,4 @@
+
 import os
 import json
 import platform
@@ -71,26 +72,18 @@ class UpdateChecker:
         self.config = load_config(self.config_path)
 
     def _is_check_needed(self) -> bool:
-        """Determines if an update check should be performed based on time."""
-        last_checked_str = self.config.get("last_checked")
+        last_checked_str = self.config.get("update_check", {}).get("last_checked")
         if not last_checked_str:
-            print("No last check time found. A check is needed.")
             return True
 
         try:
             last_checked_dt = datetime.fromisoformat(last_checked_str)
-            if datetime.now() - last_checked_dt > timedelta(hours=24):
-                print(
-                    "More than 24 hours have passed since the last check. A check is"
-                    " needed."
-                )
-                return True
+            return datetime.now() - last_checked_dt > timedelta(hours=24)
+        except ValueError:
+            return True
         except ValueError:
             print("Invalid date format in config for 'last_checked'. Checking again.")
             return True
-
-        # print("An update check was performed within the last 24 hours. Skipping.")
-        return False
 
     def check_for_updates(self) -> Optional[UpdateInfo]:
         """
@@ -102,45 +95,33 @@ class UpdateChecker:
         if not self._is_check_needed():
             return None
 
-        print(f"Checking for new releases at {GITHUB_RELEASES_URL}...")
         try:
-            # We specifically ask for the 'latest' release, which is the most recent
-            # non-prerelease, non-draft release.
             response = requests.get(GITHUB_RELEASES_URL, timeout=10)
             response.raise_for_status()
-
-            # Update the check timestamp regardless of whether an update is found
-            self.config["last_checked"] = datetime.now().isoformat()
-            save_config(self.config_path, self.config)
 
             data = response.json()
             latest_tag = data.get("tag_name", "").lstrip("v")
             if not latest_tag:
-                print("Latest release found has no tag name.")
                 return None
 
             latest_v = version.parse(latest_tag)
 
-            print(
-                f"Current version: {self.current_v}, Latest version found: {latest_v}"
-            )
+            # Update the check timestamp regardless
+            self.config.setdefault("update_check", {})[
+                "last_checked"
+            ] = datetime.now().isoformat()
+            self.config["update_check"]["cached_version"] = latest_tag
+            save_config(self.config_path, self.config)
 
             if latest_v > self.current_v:
-                print(f"A new version is available: {latest_v}")
-                update_info: UpdateInfo = {
-                    "version": str(latest_v),
-                    "notes": data.get("body", "No release notes provided."),
-                    "url": data.get("html_url", ""),
-                    "pub_date": data.get("published_at", ""),
-                }
-                return update_info
+                return UpdateInfo(
+                    version=str(latest_v),
+                    notes=data.get("body", "No release notes provided."),
+                    url=data.get("html_url", ""),
+                    pub_date=data.get("published_at", ""),
+                )
 
-        except requests.exceptions.RequestException as e:
-            print(f"Update check failed due to a network error: {e}")
-            # Don't update the timestamp on failure, so it will try again next time.
-            return None
-        except (KeyError, json.JSONDecodeError) as e:
-            print(f"Failed to parse API response from GitHub: {e}")
+        except requests.exceptions.RequestException:
             return None
 
         return None
