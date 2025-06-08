@@ -36,15 +36,21 @@ Start-Sleep -Milliseconds 500
 try {
     $p = Get-Process -Id $proc.Id -ErrorAction SilentlyContinue
     $retries = 0
-    while ($p -and $retries -lt 5) {
+    while ($p -and $retries -lt 10) {
         Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 1000
         $p = Get-Process -Id $proc.Id -ErrorAction SilentlyContinue
         $retries++
     }
-    if ($p) {
-        Write-Host "[WARN] Main process still running, killing all GestureSesh.exe with taskkill..." -ForegroundColor Yellow
-        taskkill /F /IM GestureSesh.exe /T | Out-Null
+    # Always run taskkill as a last resort
+    Write-Host "[INFO] Ensuring all GestureSesh.exe processes are killed..." -ForegroundColor Yellow
+    taskkill /F /IM GestureSesh.exe /T | Out-Null
+    Start-Sleep -Seconds 2
+    # Double-check if any remain
+    $stillRunning = Get-Process -Name "GestureSesh" -ErrorAction SilentlyContinue
+    if ($stillRunning) {
+        Write-Host "[ERROR] GestureSesh.exe still running after taskkill!" -ForegroundColor Red
+        exit 1
     }
     Write-Host "[INFO] GestureSesh.exe closed after testing." -ForegroundColor Gray
 } catch {
