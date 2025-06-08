@@ -1,3 +1,4 @@
+# GestureSesh.py
 import os
 import sys
 import random
@@ -15,11 +16,12 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import *
 
-from check_update import UpdateChecker
+from check_update import UpdateChecker, save_config, load_config, get_config_dir
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
 
-import resources_config # This is a generated file from resources.qrc DO NOT REMOVE 
+import resources_config  # This is a generated file from resources.qrc DO NOT REMOVE
+
 
 def sound_file(name: str):
     """Return a context manager yielding the path to an embedded sound file."""
@@ -54,6 +56,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowTitle(f"Reference Practice")
+        self.config_path = get_config_dir() / "config.json"
+        self.config = load_config(self.config_path)
         self.session_schedule = []
         self.has_break = False
         self.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
@@ -251,23 +255,18 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Removes breaks in case entire program closed during a session
         Displays status
         """
-        recent_dir = self.get_app_support_dir()
-        recent_path = recent_dir / "recent"
-        if recent_path.exists():
-            try:
-                recent = shelve.open(str(recent_path))
-                if recent.get("recent", {}).get("folders"):
-                    self.selection["folders"] = recent["recent"]["folders"]
-                    self.scan_directories(self.selection["folders"])
-                self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
-                self.randomize_selection.setChecked(recent.get("randomized", False))
-                recent.close()
-            except (Exception, KeyError):
-                return
-            self.remove_breaks()
-            self.display_status()
-            self.selected_items.append(f"Recent session settings loaded!")
-            self.update_total()
+        recent = self.config.get("recent_session", {})
+        folders = recent.get("folders", [])
+        if folders:
+            self.selection["folders"] = folders
+            self.scan_directories(folders)
+
+        self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
+        self.randomize_selection.setChecked(recent.get("randomized", False))
+        self.remove_breaks()
+        self.display_status()
+        self.selected_items.append("Recent session settings loaded!")
+        self.update_total()
 
     # endregion
 
@@ -666,25 +665,32 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.session_schedule.append(ScheduleEntry(images, time))
 
     def save_to_recent(self):
-        """Saves current selection, selected preset, and randomization setting"""
-        recent_dir = self.get_app_support_dir()
-        file = shelve.open(str(recent_dir / "recent"))
-        file["recent"] = self.selection
-        file["recent_preset"] = self.preset_loader_box.currentIndex()
-        file["randomized"] = self.randomize_selection.isChecked()
-        file.close()
+        """
+        Saves current session settings into unified config.json.
+        """
+        # --- Updated to write into self.config["recent_session"] ---
+        self.config["recent_session"] = {
+            "folders": self.selection["folders"],
+            "files": self.selection["files"],
+            "recent_preset": self.preset_loader_box.currentIndex(),
+            "randomized": self.randomize_selection.isChecked(),
+        }
+        save_config(self.config_path, self.config)
 
     # endregion
 
     # region
     # Updates
     def check_version(self):
-        # Use the new UpdateChecker from check_update.py
+        """
+        Checks for updates via UpdateChecker, which itself updates
+        self.config["update_check"] in config.json.
+        """
         checker = UpdateChecker(__version__)
         update = checker.check_for_updates()
         if update:
             self.selected_items.append(
-                f"\nUpdate available!\nPlease visit the site to download!"
+                "\nUpdate available! Please visit the site to download!"
             )
             self.selected_items.append(f"v{update['version']}\n{update['notes']}")
         else:
