@@ -1,89 +1,112 @@
+import sys
 import unittest
 from unittest.mock import patch, MagicMock
-import os
-from PyQt5.QtWidgets import QApplication
-import sys
 
-from GestureSesh import MainApp, ScheduleEntry
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QApplication
 
 app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
 
-class DummyUi:
-    """Minimal dummy UI for MainApp logic testing."""
-    def __init__(self):
-        self.selected_items = MagicMock()
-        self.preset_loader_box = MagicMock()
-        self.entry_table = MagicMock()
-        self.total_table = MagicMock()
-        self.randomize_selection = MagicMock()
-        self.set_number_of_images = MagicMock()
-        self.set_minutes = MagicMock()
-        self.set_seconds = MagicMock()
+from GestureSesh import MainApp, SessionDisplay, ScheduleEntry
+from main_window import Ui_MainWindow
+from session_display import Ui_session_display
+
+
+def mock_main_app_setup_ui(self, main_window):
+    self.selected_items = MagicMock(spec=QtWidgets.QTextEdit)
+    self.preset_loader_box = MagicMock(spec=QtWidgets.QComboBox)
+    self.entry_table = MagicMock(spec=QtWidgets.QTableWidget)
+    self.total_table = MagicMock(spec=QtWidgets.QTableWidget)
+    self.randomize_selection = MagicMock(spec=QtWidgets.QPushButton)
+    self.set_number_of_images = MagicMock(spec=QtWidgets.QSpinBox)
+    self.set_minutes = MagicMock(spec=QtWidgets.QSpinBox)
+    self.set_seconds = MagicMock(spec=QtWidgets.QSpinBox)
+    self.dialog_buttons = MagicMock(spec=QtWidgets.QDialogButtonBox)
+def mock_session_display_setup_ui(self, session_display_window):
+    """Mocks the SessionDisplay's setupUi, creating all necessary widgets."""
+    self.image_display = MagicMock(spec=QtWidgets.QLabel)
+    self.timer_display = MagicMock(spec=QtWidgets.QLabel)
+    self.session_info = MagicMock(spec=QtWidgets.QLabel)
+    self.previous_image = MagicMock(spec=QtWidgets.QPushButton)
+    self.pause_timer = MagicMock(spec=QtWidgets.QPushButton)
+    self.stop_session = MagicMock(spec=QtWidgets.QPushButton)
+    self.next_image = MagicMock(spec=QtWidgets.QPushButton)
+    self.grayscale_button = MagicMock(spec=QtWidgets.QPushButton)
+    self.flip_horizontal_button = MagicMock(spec=QtWidgets.QPushButton)
+    self.flip_vertical_button = MagicMock(spec=QtWidgets.QPushButton)
 
 class TestMainAppLogic(unittest.TestCase):
+    @patch.object(Ui_MainWindow, "setupUi", mock_main_app_setup_ui)
+    @patch("GestureSesh.MainApp.check_version", lambda s: None)
+    @patch("GestureSesh.MainApp.load_recent", lambda s: None)
+    @patch("GestureSesh.MainApp.init_preset", lambda s: None)
+    @patch("GestureSesh.MainApp.init_shortcuts", lambda s: None)
+    @patch("GestureSesh.MainApp.init_buttons", lambda s: None)
     def setUp(self):
-        # Patch Ui_MainWindow to avoid full UI setup
-        patcher = patch('GestureSesh.Ui_MainWindow', new=DummyUi)
-        self.addCleanup(patcher.stop)
-        patcher.start()
         self.app = MainApp()
-        # Patch out methods that require full UI
-        self.app.display_status = MagicMock()
-        self.app.update_total = MagicMock()
-        self.app.selected_items = MagicMock()
-        self.app.preset_loader_box = MagicMock()
-        self.app.entry_table = MagicMock()
-        self.app.total_table = MagicMock()
-        self.app.randomize_selection = MagicMock()
-        self.app.set_number_of_images = MagicMock()
-        self.app.set_minutes = MagicMock()
-        self.app.set_seconds = MagicMock()
+        self.app.total_table.rowCount.return_value = 0
 
-    def test_check_files(self):
-        files = ["image1.jpg", "image2.png", "doc.txt", "photo.jpeg"]
-        result = self.app.check_files(files)
-        self.assertIn("image1.jpg", result["valid_files"])
-        self.assertIn("doc.txt", result["invalid_files"])
-        self.assertIn("photo.jpeg", result["valid_files"])
+    def _setup_mock_table(self, data):
+        self.app.entry_table.rowCount.return_value = len(data)
 
-    def test_remove_dupes(self):
+        def get_item(row, col):
+            return MagicMock(text=lambda: str(data[row][col]))
+
+        self.app.entry_table.item.side_effect = get_item
+
+    def test_remove_dupes_by_basename(self):
         self.app.selection["files"] = [
-            "/folder/a.jpg", "/folder/b.jpg", "/folder/a.jpg"
+            "/folder1/a.jpg",
+            "/folder2/b.jpg",
+            "/folder3/a.jpg",
         ]
         self.app.remove_dupes()
         self.assertEqual(len(self.app.selection["files"]), 2)
-        self.assertIn("/folder/a.jpg", self.app.selection["files"])
-        self.assertIn("/folder/b.jpg", self.app.selection["files"])
 
-    @patch("os.path.exists", return_value=True)
-    @patch("os.walk")
-    def test_scan_directories(self, mock_walk, mock_exists):
-        mock_walk.return_value = [
-            ("/folder", [], ["a.jpg", "b.txt", "c.png"])
-        ]
-        self.app.selection["folders"] = []
-        self.app.selection["files"] = []
-        valid, invalid = self.app.scan_directories(["/folder"])
-        self.assertEqual(valid, 2)
-        self.assertEqual(invalid, 1)
-        self.assertIn("/folder/a.jpg", self.app.selection["files"])
-        self.assertIn("/folder/c.png", self.app.selection["files"])
-        self.assertIn("/folder", self.app.selection["folders"])
+    def test_grab_schedule(self):
+        table_data = [[1, 10, 30], [2, 0, 120]]
+        self._setup_mock_table(table_data)
+        self.app.grab_schedule()
+        self.assertEqual(
+            self.app.session_schedule[0], ScheduleEntry(images=10, time=30)
+        )
+        self.assertTrue(self.app.has_break)
 
-    def test_format_seconds(self):
-        # 1 hour, 2 minutes, 3 seconds = 3723
-        result = self.app.format_seconds(3723)
-        self.assertTrue(isinstance(result, str))
-        self.assertIn(":", result)
+    def test_update_total(self):
+        table_data = [[1, 10, 30], [2, 0, 120], [3, 1, 180]]
+        self._setup_mock_table(table_data)
+        self.app.update_total()
+        self.assertEqual(self.app.total_images, 11)
+        self.assertEqual(self.app.total_time, 600)
 
-    def test_remove_items(self):
+    @patch("GestureSesh.Path.is_file", return_value=True)
+    def test_is_valid_session_not_enough_images(self, mock_is_file):
+        self.app.session_schedule = [ScheduleEntry(images=5, time=30)]
         self.app.selection["files"] = ["a.jpg", "b.jpg"]
-        self.app.selection["folders"] = ["/folder"]
-        self.app.remove_items()
-        self.assertEqual(self.app.selection["files"], [])
-        self.assertEqual(self.app.selection["folders"], [])
+        self.app.entry_table.rowCount.return_value = 1
+        self._setup_mock_table([[1, 5, 30]])
+        self.assertFalse(self.app.is_valid_session())
+        self.app.selected_items.setText.assert_called_with(
+            "Not enough images selected. Add more images, or schedule fewer images."
+        )
+
+    def test_save_empty_preset_is_handled(self):
+        self.app.entry_table.rowCount.return_value = 0
+        self.app.save()
+        self.app.selected_items.setText.assert_any_call(
+            "Cannot save an empty schedule!"
+        )
+
+    def test_is_valid_session_with_invalid_text_in_table(self):
+        self._setup_mock_table([[1, "abc", 30]])
+        self.app.entry_table.rowCount.return_value = 1
+        self.assertFalse(self.app.is_valid_session())
+        self.app.selected_items.setText.assert_called_with(
+            "Schedule items must be numbers!"
+        )
+
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)

@@ -1,17 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.building.osx import BUNDLE
+from pathlib import Path
+from PyInstaller.building.api import COLLECT, EXE, PYZ
+from PyInstaller.building.build_main import Analysis
 
 block_cipher = None
-hiddenimports = collect_submodules('pygame')
+
+project_root = Path(".").resolve()
+
 
 a = Analysis(
     ['GestureSesh.py'],
-    pathex=[],
+    pathex=[str(project_root)],
     binaries=[],
     datas=[('sounds/*.mp3', 'sounds')],
-    hiddenimports=hiddenimports,
+    hiddenimports=[],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
@@ -26,14 +29,18 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    [],
-    exclude_binaries=True,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     name='GestureSesh',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
     console=False,
+    icon=str(project_root / 'ui' / 'resources' / 'icons' / 'brush.ico'),
 )
 
 coll = COLLECT(
@@ -42,15 +49,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
+    upx_exclude=[],
     name='GestureSesh',
-)
-
-app = BUNDLE(
-    coll,
-    name='GestureSesh.app',
-    icon='ui/resources/icons/brush.icns',
-    bundle_identifier='com.gesturesesh.gesturesesh',
-    version='0.4.3',
-    codesign_identity=os.environ.get('CODESIGN_IDENTITY'),
 )

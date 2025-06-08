@@ -1,11 +1,10 @@
 import os
 import sys
 import random
-import shelve
-import subprocess
 import platform
 from pathlib import Path
 from dataclasses import dataclass
+from importlib import resources
 
 import cv2
 import numpy as np
@@ -13,28 +12,34 @@ from pygame import mixer
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import *
-
-from check_update import Version
+from PyQt5.QtWidgets import (
+    QApplication,
+    QShortcut,
+    QFileDialog,
+    QTableWidgetItem,
+    QListView,
+    QTreeView,
+    QAbstractItemView,
+    QWidget,
+    QMainWindow,
+)
+from check_update import UpdateChecker, save_config, load_config, get_config_dir
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
-import resources_config
 
-# Set application support directories
-if platform.system() == "Darwin":
-    BASE_DIR = Path.home() / "Library/Application Support/GestureSesh"
-elif platform.system() == "Windows":
-    BASE_DIR = Path(os.getenv("APPDATA")) / "GestureSesh"
-else:
-    BASE_DIR = Path.home() / ".config" / "GestureSesh"
+import resources_config  # This is a generated file from resources.qrc DO NOT REMOVE
 
-PRESET_DIR = BASE_DIR / "presets"
-PRESET_DIR.mkdir(parents=True, exist_ok=True)
+
+def sound_file(name: str):
+    """Return a context manager yielding the path to an embedded sound file."""
+    return resources.as_file(resources.files("sounds") / name)
+
 
 @dataclass
 class ScheduleEntry:
     images: int
     time: int
+
 
 __version__ = "0.4.3"
 
@@ -46,6 +51,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowTitle(f"Reference Practice")
+        self.config = load_config(self)
         self.session_schedule = []
         self.has_break = False
         self.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
@@ -135,10 +141,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
             directories = [x[0] for x in os.walk(selected_dir.selectedFiles()[0])]
             total_valid_files, total_invalid_files = self.scan_directories(directories)
             self.selected_items.append(
-                f"{total_valid_files} file(s) added from "
-                f"{len(directories)} folders!"
+                f"{total_valid_files} file(s) added from {len(directories)} folders!"
             )
-            # TODO update error handling here to accomodate subfolder inclusion
             if total_invalid_files > 0:
                 self.selected_items.append(
                     f"{total_invalid_files} file(s) not added. "
@@ -226,63 +230,63 @@ class MainApp(QMainWindow, Ui_MainWindow):
         QTest.qWait(2000)
         self.display_status()
 
-    def get_app_support_dir(self, subdir=None):
-        # Deprecated: Use BASE_DIR and PRESET_DIR for presets
-        if subdir == "presets":
-            return PRESET_DIR
-        base = BASE_DIR
-        if subdir:
-            base = base / subdir
-        base.mkdir(parents=True, exist_ok=True)
-        return base
-
     def load_recent(self):
         """
-        Loads most recent session settings:
-        Selected items
-        Preset
-        Randomization
-        Removes breaks in case entire program closed during a session
-        Displays status
+        Loads most recent session settings from unified config.json.
         """
-        recent_dir = self.get_app_support_dir()
-        recent_path = recent_dir / "recent"
-        if recent_path.exists():
-            try:
-                recent = shelve.open(str(recent_path))
-                if recent.get("recent", {}).get("folders"):
-                    self.selection["folders"] = recent["recent"]["folders"]
-                    self.scan_directories(self.selection["folders"])
-                self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
-                self.randomize_selection.setChecked(recent.get("randomized", False))
-                recent.close()
-            except (Exception, KeyError):
-                return
-            self.remove_breaks()
-            self.display_status()
-            self.selected_items.append(f"Recent session settings loaded!")
-            self.update_total()
+        recent = self.config.get("recent_session", {})
+        if not recent: # First time launch or no recent session 
+            return self.selected_items.clear()
+
+        folders = recent.get("folders", [])
+        loaded_any = False
+        if folders:
+            self.selection["folders"] = folders
+            self.scan_directories(folders)
+            loaded_any = True
+
+        if "recent_preset" in recent:
+            self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
+            loaded_any = True
+        if "randomized" in recent:
+            self.randomize_selection.setChecked(recent.get("randomized", False))
+            loaded_any = True
+
+        self.remove_breaks()
+        self.display_status()
+        if loaded_any:
+            self.selected_items.append("Recent session settings loaded!")
+        self.update_total()
 
     # endregion
 
     # region Session Settings
     def append_schedule(self):
         """
-        Adds entry information as a new row in the schedule
+        Adds entry information as a new row in the schedule.
         Resets scrollboxes to 0.
         Updates total amount.
-
+        Prevents adding an entry if both minutes and seconds are 0.
         """
+        minutes = self.set_minutes.value()
+        seconds = self.set_seconds.value()
+        if minutes == 0 and seconds == 0:
+            self.selected_items.setText("Time must be greater than 0 seconds!")
+            QTest.qWait(3000)
+            self.display_status()
+            return
+
         row = self.entry_table.rowCount()
         entry = [
             row + 1,  # entry number
             self.set_number_of_images.value(),
-            self.set_minutes.value() * 60 + self.set_seconds.value(),
+            minutes * 60 + seconds,
         ]
         self.set_number_of_images.setValue(0)
         self.set_minutes.setValue(0)
         self.set_seconds.setValue(0)
         self.entry_table.insertRow(row)
+
         for column, item in enumerate(entry):
             item = QTableWidgetItem(str(item))
             item.setTextAlignment(4)
@@ -370,6 +374,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def update_total(self):
+        """
+        Updates the total number of images and total time based on the entries in the entry_table.
+
+        This method iterates through all rows in the entry_table, summing up the values in the image and time columns.
+        It handles cases where the row is incomplete or contains invalid data, printing debug information if an error occurs.
+        The computed totals are then displayed in the total_table, adding a new row if necessary.
+
+        Returns:
+            None
+        """
         # Check if the row is completely set
         rows = self.entry_table.rowCount()
         if (
@@ -443,35 +457,24 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     # region Presets
     def init_preset(self):
-        self.presets = {}
-        preset_dir = PRESET_DIR
-        preset_path = preset_dir / "preset"
-        if not preset_path.exists():
-            preset = shelve.open(str(preset_path))
-            preset.close()
-        try:
-            pre = shelve.open(str(preset_path))
-            preset_list = list(pre.keys())
-            for preset in preset_list:
-                self.presets[preset] = pre[preset]
-            pre.close()
-            self.update_presets()
-        except (Exception, KeyError):
-            return
+        # Load presets from config.json under 'presets' key
+        self.presets = self.config.get("presets", {})
+        self.update_presets()
 
     def update_presets(self):
         """
         Populates the configuration with preset.
         """
+        if not self.presets:
+            self.preset_loader_box.setCurrentText("Default")
+            self.preset_names = ["Default"]
+            return
         self.preset_loader_box.clear()
-        self.preset_names = []
-        for p in [*self.presets]:
-            if p not in self.preset_names:
-                self.preset_names.append(p)
+        self.preset_names = list(self.presets.keys())
         self.preset_loader_box.addItems(self.preset_names)
         self.update_total()
 
-    def save(self):
+    def save(self, wait_status: bool = True):
         if self.entry_table.rowCount() <= 0:
             self.selected_items.setText(f"Cannot save an empty schedule!")
             QTest.qWait(4000)
@@ -488,20 +491,17 @@ class MainApp(QMainWindow, Ui_MainWindow):
             tmppreset[row] = []
             for column in range(self.entry_table.columnCount()):
                 tmppreset[row].append(self.entry_table.item(row, column).text())
-        preset_dir = PRESET_DIR
-        preset_path = preset_dir / "preset"
-        preset = shelve.open(str(preset_path))
-        preset[preset_name] = tmppreset
-        preset.close()
-        self.selected_items.setText(f"{preset_name} saved!")
-        if self.presets.get(preset_name):
-            self.presets[preset_name] = tmppreset
-        else:
-            self.presets[preset_name] = tmppreset
+        # Save to config.json under 'presets'
+        self.presets[preset_name] = tmppreset
+        self.config["presets"] = self.presets
+        if preset_name not in self.preset_names:
             self.update_presets()
             self.preset_loader_box.setCurrentIndex(self.preset_loader_box.count() - 1)
-        QTest.qWait(3000)
-        self.display_status()
+        if wait_status:
+            self.selected_items.setText(f"{preset_name} saved!")
+            QTest.qWait(3000)
+            self.display_status()
+        save_config(self.config_path, self.config)
 
     def delete(self):
         preset_name = self.preset_loader_box.currentText()
@@ -510,12 +510,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
             QTest.qWait(4000)
             self.display_status()
             return
-        preset_dir = PRESET_DIR
-        preset_path = preset_dir / "preset"
-        preset = shelve.open(str(preset_path))
-        del preset[preset_name]
-        preset.close()
-        del self.presets[preset_name]
+        if preset_name in self.presets:
+            del self.presets[preset_name]
+            self.config["presets"] = self.presets
+            save_config(self.config_path, self.config)
         self.selected_items.setText(f"{preset_name} deleted!")
         self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
         QTest.qWait(2000)
@@ -525,18 +523,27 @@ class MainApp(QMainWindow, Ui_MainWindow):
         preset_name = self.preset_loader_box.currentText()
         # If the current text in the preset field exists as the key for a saved
         # preset, then update the schedule
-        if self.presets.get(preset_name):
+        preset = self.presets.get(preset_name)
+        if preset:
             self.remove_rows()
-            rows = list(self.presets[preset_name].keys())
-            columns = list(self.presets[preset_name][0])
-            for row in range(len(rows)):
-                self.entry_table.insertRow(row)
-                for column in range(len(columns)):
-                    item = QTableWidgetItem(self.presets[preset_name][row][column])
-                    item.setTextAlignment(4)
-                    if column == 0:
-                        item.setFlags(QtCore.Qt.ItemIsEnabled)
-                    self.entry_table.setItem(row, column, item)
+            # preset is a dict: {row_index: [col1, col2, ...], ...}
+            # Sort by row index to preserve order
+            try:
+                for row_idx, row_data in sorted(
+                    preset.items(), key=lambda x: int(x[0])
+                ):
+                    row = self.entry_table.rowCount()
+                    self.entry_table.insertRow(row)
+                    for column, value in enumerate(row_data):
+                        item = QTableWidgetItem(value)
+                        item.setTextAlignment(4)
+                        if column == 0:
+                            item.setFlags(QtCore.Qt.ItemIsEnabled)
+                        self.entry_table.setItem(row, column, item)
+            except Exception as e:
+                self.selected_items.setText(f"Error loading preset: {e}")
+                QTest.qWait(4000)
+                self.display_status()
 
     # endregion
     # endregion
@@ -562,6 +569,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.randomize_items()
         # Save to recent folder
         self.save_to_recent()
+
+        # save config
+        self.save(wait_status=False)
+
         self.insert_breaks()
         self.display = SessionDisplay(
             schedule=self.session_schedule,
@@ -614,7 +625,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     f"Has the location or file name been changed?"
                 )
                 self.selected_items.append(
-                    f'Image removed from selection. {len(self.selection["files"])} total files.'
+                    "Image removed from selection."
+                    f' {len(self.selection["files"])} total files.'
                 )
                 self.selected_items.append(
                     f"Previous directory: \n{os.path.dirname(file)}"
@@ -624,8 +636,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Check if there are enough selected images for the schedule
         if self.total_scheduled_images > len(self.selection["files"]):
             self.selected_items.setText(
-                f"Not enough images selected. Add more images, or schedule fewer images."
+                f"Not enough images selected. Add more images, or schedule fewer"
+                f" images."
             )
+            QTest.qWait(10000)
             return False
         return True
 
@@ -640,6 +654,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 current_index += entry.images
 
     def remove_breaks(self):
+        """
+        Removes all occurrences of 'break.png' from the list of selected files.
+
+        Iterates through the 'files' list in reverse order and removes any file whose
+        basename is 'break.png'. This prevents issues with changing list indices during removal.
+
+        Returns:
+            None
+        """
         """Removes breaks images from the selection of files"""
         i = len(self.selection["files"])
         while i > 0:
@@ -658,33 +681,38 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.session_schedule.append(ScheduleEntry(images, time))
 
     def save_to_recent(self):
-        """Saves current selection, selected preset, and randomization setting"""
-        recent_dir = self.get_app_support_dir()
-        file = shelve.open(str(recent_dir / "recent"))
-        file["recent"] = self.selection
-        file["recent_preset"] = self.preset_loader_box.currentIndex()
-        file["randomized"] = self.randomize_selection.isChecked()
-        file.close()
+        """
+        Saves current session settings into unified config.json.
+        """
+        self.config["recent_session"] = {
+            "folders": self.selection["folders"],
+            "files": self.selection["files"],
+            "recent_preset": self.preset_loader_box.currentIndex(),
+            "randomized": self.randomize_selection.isChecked(),
+        }
+        save_config(self.config_path, self.config)
 
     # endregion
 
     # region
     # Updates
     def check_version(self):
-        current_version = Version(__version__)
-        if not current_version.is_newest():
-            update_type = current_version.update_type()
-            if isinstance(update_type, str):
-                self.selected_items.append(
-                    f"\n{update_type} available!\nPlease visit the site to download!"
-                )
-                content = current_version.content()
-                self.selected_items.append(
-                    f"v{current_version.newest_version}\n" f"{content}"
-                )
-        else:
-            if current_version.allowed is True:
-                self.selected_items.append("Up to date.")
+        """
+        Checks for updates via UpdateChecker, which itself updates
+        self.config["update_check"] in config.json.
+        """
+        checker = UpdateChecker(__version__)
+        update = (
+            checker.check_for_updates() if self.config.get("update_check") else None
+        )
+        if update:
+            self.selected_items.append(
+                "\nUpdate available! Please visit the site to download!"
+            )
+            self.selected_items.append(f"v{update['version']}\n{update['notes']}")
+        self.config_path = checker.config_path
+        # else:
+        #     self.selected_items.append("Up to date.")
 
     def show_and_activate(self):
         self.show()
@@ -695,8 +723,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()  # Needed here for close event to work.
 
-    def __init__(self, schedule=None, items=None, total=None):
-        super().__init__()
+    def __init__(self, schedule=None, items=None, total=None, parent=None):
+        super().__init__(parent)
         self.setupUi(self)
         self.init_sizing()
         self.init_scaling_size()
@@ -725,7 +753,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             btn.setMinimumSize(60, 32)
             btn.setStyleSheet(pause_style)
         self.init_image_mods()
-        self.init_sounds()
         self.init_mixer()
         self.load_entry()
         self.init_buttons()
@@ -792,21 +819,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             "vflip": False,
             "break_grayscale": False,
         }
-
-    def init_sounds(self):
-        """
-        Gets absolute path to sounds.
-        PyInstaller creates a temp folder, and stores dependencies path in _MEIPASS.
-        If the temp folder is not found, then use the current file path.
-
-        """
-        relative_path = "sounds"
-        try:
-            base_path = sys._MEIPASS
-        except (Exception, FileNotFoundError):
-            print("Temp folder not found.")
-            base_path = os.path.abspath(".")
-        self.sounds_dir = os.path.join(base_path, relative_path)
 
     def init_mixer(self):
         mixer.init()
@@ -912,9 +924,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         """
         # Start a drag only if the cursor moved beyond the threshold
         if (
-            (event.globalPos() - self.drag_start_position).manhattanLength()
-            > self.drag_threshold
-        ):
+            event.globalPos() - self.drag_start_position
+        ).manhattanLength() > self.drag_threshold:
             if not self.drag_timer_was_active:
                 # Only pause timer if session is not finished
                 if not self.session_finished and self.timer.isActive():
@@ -1045,7 +1056,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Reset indices so reviewing previous images works correctly
         self.entry["current"] = max(0, self.entry["total"] - 1)
         self.entry["amount of items"] = 0
-        self.playlist_position = max(0, len(self.playlist) - 1)
+
+        self.playlist_position = max(0, int(self.total_scheduled_images))
         self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
         self.update_close_title()
         self.close_timer.start(1000)
@@ -1056,7 +1068,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.session_finished:
             self.cancel_close_countdown()
             self.timer.blockSignals(True)
-            if self.playlist_position >= len(self.playlist) - 1:
+            if self.playlist_position == self.total_scheduled_images:
                 return
             self.playlist_position += 1
             self.display_image()
@@ -1091,17 +1103,17 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Sounds
 
         if self.new_entry:
-            sound_file = Path(self.sounds_dir) / "new_entry.mp3"
-            mixer.music.load(str(sound_file))
+            with sound_file("new_entry.mp3") as p:
+                mixer.music.load(str(p))
             mixer.music.play()
             # self.new_entry = False
         elif self.entry["amount of items"] == 0:  # Last image in entry
-            sound_file = Path(self.sounds_dir) / "last_entry_image.mp3"
-            mixer.music.load(str(sound_file))
+            with sound_file("last_entry_image.mp3") as p:
+                mixer.music.load(str(p))
             mixer.music.play()
         elif self.entry["time"] > 10:
-            sound_file = Path(self.sounds_dir) / "new_image.mp3"
-            mixer.music.load(str(sound_file))
+            with sound_file("new_image.mp3") as p:
+                mixer.music.load(str(p))
             mixer.music.play()
 
         if self.playlist_position >= len(self.playlist):  # Last image
@@ -1156,7 +1168,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Handle if cvimage is None or empty
         if cvimage is None or cvimage.size == 0:
             print(
-                f"Error: Could not load image at {self.playlist[self.playlist_position]}"
+                "Error: Could not load image at"
+                f" {self.playlist[self.playlist_position]}"
             )
             self.setWindowTitle("Error processing image")
             return
@@ -1307,6 +1320,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         if self.session_finished:
             self.cancel_close_countdown()
             if self.playlist_position == 0:
+                self.display_image()
+                self._set_timer_visuals(False)
                 return
             self.playlist_position -= 1
             self.display_image()
@@ -1393,18 +1408,22 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_timer_display()
         if self.entry["time"] >= 30:
             if self.time_seconds == self.entry["time"] // 2:
-                mixer.music.load(os.path.join(self.sounds_dir, "halfway.mp3"))
+                with sound_file("halfway.mp3") as p:
+                    mixer.music.load(str(p))
                 mixer.music.play()
         if self.time_seconds <= 10:
             if self.new_entry is False and self.end_of_entry is False:
                 if self.time_seconds == 10:
-                    mixer.music.load(os.path.join(self.sounds_dir, "first_alert.mp3"))
+                    with sound_file("first_alert.mp3") as p:
+                        mixer.music.load(str(p))
                     mixer.music.play()
                 elif self.time_seconds == 5:
-                    mixer.music.load(os.path.join(self.sounds_dir, "second_alert.mp3"))
+                    with sound_file("second_alert.mp3") as p:
+                        mixer.music.load(str(p))
                     mixer.music.play()
                 elif self.time_seconds == 0.5:
-                    mixer.music.load(os.path.join(self.sounds_dir, "third_alert.mp3"))
+                    with sound_file("third_alert.mp3") as p:
+                        mixer.music.load(str(p))
                     mixer.music.play()
             else:
                 if self.new_entry is True:
@@ -1438,8 +1457,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.display_time()
 
     # Constants for timer visuals
-    PAUSE_BUTTON_RUNNING_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
-    PAUSE_BUTTON_PAUSED_STYLE = "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
+    PAUSE_BUTTON_RUNNING_STYLE = (
+        "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
+    )
+    PAUSE_BUTTON_PAUSED_STYLE = (
+        "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
+    )
     TIMER_DISPLAY_RUNNING_STYLE = "color: white;"
     TIMER_DISPLAY_PAUSED_STYLE = "color: white; border:1px solid white;"
 
@@ -1533,12 +1556,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         if path.startswith(":/"):
             return
         directory = os.path.dirname(path)
-        if sys.platform.startswith("darwin"):
-            subprocess.call(["open", "-R", path])
-        elif os.name == "nt":
-            subprocess.call(["explorer", "/select,", path.replace("/", "\\")])
-        if sys.platform.startswith("linux"):
-            subprocess.call(["xdg-open", directory])
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(directory))
         if event:
             event.accept()
 
