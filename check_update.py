@@ -4,7 +4,9 @@ import platform
 from pathlib import Path
 from typing import Optional, Dict, Any, TypedDict
 from datetime import datetime, timedelta
+from collections import OrderedDict
 
+from PyQt5.QtWidgets import QMainWindow
 import requests
 from packaging import version
 
@@ -38,10 +40,17 @@ def get_config_dir() -> Path:
 
 
 # --- Configuration File Handling (using JSON) ---
-def load_config(path: Path) -> Dict[str, Any]:
+def load_config(app: QMainWindow) -> Dict[str, Any]:
     """Loads configuration from a JSON file."""
+    path = get_config_dir() / "config.json"
+    # Check if config file exists for first-time launch
     if not path.exists():
+        config = {}
+        # Save a default config to mark as initialized
+        app.selected_items.clear()
+        save_config(path, config)
         return {}
+
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -51,11 +60,20 @@ def load_config(path: Path) -> Dict[str, Any]:
 
 
 def save_config(path: Path, config: Dict[str, Any]):
-    """Saves configuration to a JSON file."""
+    """Saves configuration to a JSON file with 'update_check' as the first key."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure 'update_check' is first, then all other keys in their original order
+        ordered = OrderedDict()
+        if "update_check" in config:
+            ordered["update_check"] = config["update_check"]
+        if "recent_session" in config:
+            ordered["recent_session"] = config["recent_session"]
+        for k, v in config.items():
+            if k not in ["update_check", "recent_session"]:
+                ordered[k] = v
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=4)
+            json.dump(ordered, f, indent=4)
     except IOError as e:
         print(f"Failed to save config file at {path}: {e}")
 
