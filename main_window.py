@@ -1250,8 +1250,9 @@ class Ui_MainWindow(object):
         self.selected_items.setPlaceholderText(
             _translate(
                 "MainWindow",
-                "Add files and/or folders. Supported file types: jpg, jpeg, png, gif,"
-                " bmp. Selection is not randomized by default.",
+                "Add files and/or folders. Supported file types: jpg, jpeg, png,"
+                " bmp.\nAdding a folder adds all the files inside it and its"
+                " subfolders.\nSelection is not randomized by default. ",
             )
         )
         self.add_folder.setToolTip(
@@ -1426,7 +1427,7 @@ class Ui_MainWindow(object):
         self.preset_loader_box.setPlaceholderText(
             _translate("MainWindow", "<Name of new preset>")
         )
-        self.preset_loader_box.setItemText(0, _translate("MainWindow", "New Item"))
+        self.preset_loader_box.setItemText(0, _translate("MainWindow", "Default"))
         self.save_preset.setToolTip(
             _translate(
                 "MainWindow",
