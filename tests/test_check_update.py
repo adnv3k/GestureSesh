@@ -1,3 +1,5 @@
+# test_check_update.py
+
 import unittest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
@@ -12,6 +14,7 @@ class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
         # Create a temporary directory for config files
         self.temp_dir = tempfile.TemporaryDirectory()
+        # Revised: point config_path at the temp directory
         self.config_path = Path(self.temp_dir.name) / "config.json"
         self.current_version = "0.3.0"
 
@@ -32,7 +35,7 @@ class TestUpdateChecker(unittest.TestCase):
         mock_get.return_value = mock_response
 
         checker = UpdateChecker(self.current_version)
-        # Override config path to use temp file
+        # Override config_path and ensure no prior state
         checker.config_path = self.config_path
         checker.config = {}
         update = checker.check_for_updates()
@@ -68,15 +71,16 @@ class TestUpdateChecker(unittest.TestCase):
     def test_is_check_needed_recent(self):
         checker = UpdateChecker(self.current_version)
         checker.config_path = self.config_path
-        # Set last_checked to now
-        checker.config = {"last_checked": (datetime.now().isoformat())}
+        # Revised: nest last_checked under update_check
+        checker.config = {"update_check": {"last_checked": datetime.now().isoformat()}}
         self.assertFalse(checker._is_check_needed())
 
     def test_is_check_needed_old(self):
         checker = UpdateChecker(self.current_version)
         checker.config_path = self.config_path
         old_time = (datetime.now() - timedelta(days=2)).isoformat()
-        checker.config = {"last_checked": old_time}
+        # Revised: nest last_checked under update_check
+        checker.config = {"update_check": {"last_checked": old_time}}
         self.assertTrue(checker._is_check_needed())
 
     @patch("check_update.requests.get")
@@ -89,7 +93,8 @@ class TestUpdateChecker(unittest.TestCase):
         checker.config = {}
 
         update = checker.check_for_updates()
-
-        # Assert that the function correctly returns None on network failure
         self.assertIsNone(update)
 
+
+if __name__ == "__main__":
+    unittest.main(argv=["first-arg-is-ignored"], exit=False)
