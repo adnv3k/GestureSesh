@@ -156,16 +156,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
         selected_files = QFileDialog().getOpenFileNames()
         checked_files = self.check_files(selected_files[0])
         self.selection["files"].extend(checked_files["valid_files"])
-        self.selected_items.setText(
-            f'{len(checked_files["valid_files"])} file(s) added!'
+        self.show_temporary_message(
+            f'{len(checked_files["valid_files"])} file(s) added!', 2000
         )
         if len(checked_files["invalid_files"]) > 0:
-            self.selected_items.append(
+            self.show_temporary_message(
                 f'{len(checked_files["invalid_files"])} file(s) not added. '
-                f'Supported file types: {", ".join(self.valid_file_types)}.'
+                f'Supported file types: {", ".join(self.valid_file_types)}.',
+                4000,
             )
-            QTest.qWait(500)
-        QTest.qWait(3000)
         self.display_status()
 
     def open_folder(self):
@@ -902,7 +901,17 @@ class SessionDisplay(QWidget, Ui_session_display):
             "hflip": False,
             "vflip": False,
             "break_grayscale": False,
+            "brightness": 0,
+            "contrast": 1.0,
+            "threshold": False,
+            "edge": False,
+            "grayscale_mode": "perceptual",  # or "simple"
         }
+
+    def reset_image_mods(self):
+        """Reset all image modifications to their default values and update the display."""
+        self.init_image_mods()
+        self.display_image(play_sound=False)
 
     def init_mixer(self):
         mixer.init()
@@ -977,7 +986,24 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.open_dir_shortcut.activated.connect(self.open_image_directory)
         # Frameless Window
         self.frameless_window = QShortcut(QtGui.QKeySequence("Ctrl+F"), self)
-        self.frameless_window.activated.connect(self.toggle_frameless)
+        self.frameless_window.activated.connect(self.toggle_frameless)        
+        # Image adjustments
+        self.brightness_up = QShortcut(QtGui.QKeySequence("Ctrl+PgUp"), self)
+        self.brightness_up.activated.connect(self.increase_brightness)
+        self.brightness_down = QShortcut(QtGui.QKeySequence("Ctrl+PgDown"), self)
+        self.brightness_down.activated.connect(self.decrease_brightness)
+        self.contrast_up = QShortcut(QtGui.QKeySequence("PgUp"), self)
+        self.contrast_up.activated.connect(self.increase_contrast)
+        self.contrast_down = QShortcut(QtGui.QKeySequence("PgDown"), self)
+        self.contrast_down.activated.connect(self.decrease_contrast)
+        self.threshold_toggle = QShortcut(QtGui.QKeySequence("T"), self)
+        self.threshold_toggle.activated.connect(self.toggle_threshold)
+        self.edge_toggle = QShortcut(QtGui.QKeySequence("E"), self)
+        self.edge_toggle.activated.connect(self.toggle_edge)
+        self.reset_mods = QShortcut(QtGui.QKeySequence("Ctrl+0"), self)
+        self.reset_mods.activated.connect(self.reset_image_mods)
+        self.toggle_grayscale_mode_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+G"), self)
+        self.toggle_grayscale_mode_shortcut.activated.connect(self.toggle_grayscale_mode)
 
     def closeEvent(self, event):
         """
@@ -1286,7 +1312,10 @@ class SessionDisplay(QWidget, Ui_session_display):
             cvimage = self.convert_to_cvimage()
         # Edge cases are handled
         else:
-            cvimage = cv2.imread(self.playlist[self.playlist_position])
+            # Read image as bytes and decode to preserve all channels (including alpha)
+            with open(self.playlist[self.playlist_position], "rb") as f:
+                file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
+                cvimage = cv2.imdecode(file_bytes, cv2.IMREAD_UNCHANGED)
 
         # Handle if cvimage is None or empty
         if cvimage is None or cvimage.size == 0:
@@ -1296,42 +1325,68 @@ class SessionDisplay(QWidget, Ui_session_display):
             )
             self.setWindowTitle("Error processing image")
             return
-
         try:
-            height, width, channels = cvimage.shape
-            # Ensure channels is 1 (grayscale), 3 (BGR), or 4 (BGRA)
+            height, width = cvimage.shape[:2]
+            channels = 1 if len(cvimage.shape) == 2 else cvimage.shape[2]
             if channels not in (1, 3, 4):
                 raise ValueError(f"Unexpected channel count: {channels}")
-            bytes_per_line = channels * width
+            bytes_per_line = channels * width if channels > 1 else width
         except (AttributeError, ValueError, BufferError) as e:
-            print(f"Error processing image: {e}")
             self.setWindowTitle("Error processing image")
             return
+        # Brightness and contrast
+        b = self.image_mods["brightness"]
+        c = self.image_mods["contrast"]
+        if b != 0 or c != 1.0:
+            cvimage = cv2.convertScaleAbs(cvimage, alpha=c, beta=b)
+        print(f"cvimage shape: {cvimage.shape}, channels: {channels}")
+        # if channels == 4:
+        #     return
 
-        # Grayscale
-        if self.image_mods["grayscale"] or self.image_mods["break_grayscale"]:
-            cvimage = cv2.cvtColor(cvimage, cv2.COLOR_BGR2GRAY)
-            self.image = QtGui.QImage(
-                cvimage.data, width, height, width, QtGui.QImage.Format_Grayscale8
-            )
-        else:
-            self.image = QtGui.QImage(
-                cvimage.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888
-            ).rgbSwapped()
+        # Grayscale/threshold/edge
+        grayscale_active = self.image_mods["grayscale"] or self.image_mods["break_grayscale"]
+        if grayscale_active or self.image_mods["threshold"] or self.image_mods["edge"]:
+            if self.image_mods.get("grayscale_mode", "perceptual") == "simple":
+                gray = self.to_simple_grayscale(cvimage)
+            else:
+                gray = self.to_fidelous_grayscale(cvimage)
+
+        if grayscale_active:
+            cvimage = gray
+
+        if self.image_mods["threshold"]:
+            _, cvimage = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+        if self.image_mods["edge"]:
+            cvimage = cv2.Canny(gray, 100, 200)
 
         # Flip
         if self.image_mods["hflip"]:
-            self.image = self.image.mirrored(horizontal=True)
-            if not self.image_mods["vflip"]:
-                self.image = self.image.mirrored(vertical=True)
-            else:
-                self.image = self.image.mirrored(vertical=False)
+            cvimage = cv2.flip(cvimage, 1)
+        if self.image_mods["vflip"]:
+            cvimage = cv2.flip(cvimage, 0)
+
+        # Convert to QImage
+        height, width = cvimage.shape[:2]
+        if cvimage.ndim == 2: # Grayscale image
+            bytes_per_line = width
+            self.image = QtGui.QImage(
+                cvimage.data, width, height, bytes_per_line, QtGui.QImage.Format_Grayscale8
+            )
         else:
-            self.image = self.image.mirrored(horizontal=False)
-            if not self.image_mods["vflip"]:
-                self.image = self.image.mirrored(vertical=True)
+            channels = cvimage.shape[2]
+            if channels == 4: # If image has an alpha channel
+                cvimage = cv2.cvtColor(cvimage, cv2.COLOR_BGRA2RGBA)
+                fmt = QtGui.QImage.Format_RGBA8888
+            elif channels == 3:
+                cvimage = cv2.cvtColor(cvimage, cv2.COLOR_BGR2RGB)
+                fmt = QtGui.QImage.Format_RGB888
             else:
-                self.image = self.image.mirrored(vertical=False)
+                self.setWindowTitle("Error processing image")
+                return
+            bytes_per_line = width * channels
+            self.image = QtGui.QImage(
+                cvimage.data, width, height, bytes_per_line, fmt
+            )
 
         # Convert to QPixmap
         self.image = QtGui.QPixmap.fromImage(self.image)
@@ -1381,6 +1436,37 @@ class SessionDisplay(QWidget, Ui_session_display):
         file.close()
         return cv2.imdecode(ba, 1)
 
+    def to_fidelous_grayscale(self, image):
+        # Convert to RGB, handling alpha by compositing on white if present
+        if image.ndim == 3 and image.shape[2] == 4:
+            # Split channels
+            b, g, r, a = cv2.split(image)
+            rgb = cv2.merge([r, g, b]).astype(np.float32)
+            gray = np.dot(rgb, [0.2126, 0.7152, 0.0722])
+            gray = np.clip(gray, 0, 255).astype(np.uint8)
+            # Stack grayscale and alpha back together as BGRA
+            result = cv2.merge([gray, gray, gray, a])
+            return result
+        else:
+            rgb = image[..., ::-1].astype(np.float32)  # BGR to RGB
+            gray = np.dot(rgb, [0.2126, 0.7152, 0.0722])
+            gray = np.clip(gray, 0, 255).astype(np.uint8)
+            return gray
+
+    def to_simple_grayscale(self, image):
+        """Simple grayscale: convert BGR image to single channel grayscale."""
+        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    def toggle_grayscale_mode(self):
+        """Toggle between perceptual and simple grayscale modes."""
+        if self.image_mods["grayscale_mode"] == "perceptual":
+            self.image_mods["grayscale_mode"] = "simple"
+            self.setWindowTitle("Simple Grayscale Mode")
+        else:
+            self.image_mods["grayscale_mode"] = "perceptual"
+            self.setWindowTitle("Perceptual Grayscale Mode")
+        self.display_image(play_sound=False)
+
     def flip_horizontal(self):
         if self.image_mods["hflip"]:
             self.image_mods["hflip"] = False
@@ -1401,6 +1487,30 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self.image_mods["grayscale"] = True
         self.display_image(play_sound=False)
+
+    def increase_brightness(self):
+        self.image_mods["brightness"] = min(self.image_mods["brightness"] + 10, 100)
+        self.display_image()
+
+    def decrease_brightness(self):
+        self.image_mods["brightness"] = max(self.image_mods["brightness"] - 10, -100)
+        self.display_image()
+
+    def increase_contrast(self):
+        self.image_mods["contrast"] = min(self.image_mods["contrast"] + 0.1, 3.0)
+        self.display_image()
+
+    def decrease_contrast(self):
+        self.image_mods["contrast"] = max(self.image_mods["contrast"] - 0.1, 0.1)
+        self.display_image()
+
+    def toggle_threshold(self):
+        self.image_mods["threshold"] = not self.image_mods["threshold"]
+        self.display_image()
+
+    def toggle_edge(self):
+        self.image_mods["edge"] = not self.image_mods["edge"]
+        self.display_image()
 
     def toggle_resize(self):
         if self.toggle_resize_status is not True:
