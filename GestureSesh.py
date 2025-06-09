@@ -1175,23 +1175,23 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self._set_timer_visuals(False)
 
-    def display_image(self):
+    def display_image(self, play_sound=True):
         print(self.entry)
         # Sounds
-
-        if self.new_entry:
-            with sound_file("new_entry.mp3") as p:
-                mixer.music.load(str(p))
-            mixer.music.play()
-            # self.new_entry = False
-        elif self.entry["amount of items"] == 0:  # Last image in entry
-            with sound_file("last_entry_image.mp3") as p:
-                mixer.music.load(str(p))
-            mixer.music.play()
-        elif self.entry["time"] > 10:
-            with sound_file("new_image.mp3") as p:
-                mixer.music.load(str(p))
-            mixer.music.play()
+        if play_sound:
+            if self.new_entry:
+                with sound_file("new_entry.mp3") as p:
+                    mixer.music.load(str(p))
+                mixer.music.play()
+                # self.new_entry = False
+            elif self.entry["amount of items"] == 0:  # Last image in entry
+                with sound_file("last_entry_image.mp3") as p:
+                    mixer.music.load(str(p))
+                mixer.music.play()
+            elif self.entry["time"] > 10:
+                with sound_file("new_image.mp3") as p:
+                    mixer.music.load(str(p))
+                mixer.music.play()
 
         if self.playlist_position >= len(self.playlist):  # Last image
             self.timer.stop()
@@ -1340,21 +1340,21 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.image_mods["hflip"] = False
         else:
             self.image_mods["hflip"] = True
-        self.display_image()
+        self.display_image(play_sound=False)
 
     def flip_vertical(self):
         if self.image_mods["vflip"]:
             self.image_mods["vflip"] = False
         else:
             self.image_mods["vflip"] = True
-        self.display_image()
+        self.display_image(play_sound=False)
 
     def grayscale(self):
         if self.image_mods["grayscale"]:
             self.image_mods["grayscale"] = False
         else:
             self.image_mods["grayscale"] = True
-        self.display_image()
+        self.display_image(play_sound=False)
 
     def toggle_resize(self):
         if self.toggle_resize_status is not True:
