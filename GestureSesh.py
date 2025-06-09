@@ -1619,7 +1619,7 @@ class FileDialog(QFileDialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    QtWidgets.QApplication.setStyle("Fusion")
+    app.setStyle("Fusion")
 
     # Disable Qt state restoration help button
     app.setAttribute(QtCore.Qt.AA_DisableWindowContextHelpButton, True)
