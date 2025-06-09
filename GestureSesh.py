@@ -1600,18 +1600,13 @@ class SessionDisplay(QWidget, Ui_session_display):
             QtCore.QProcess.startDetached(
                 "explorer.exe",
                 [f"/select,{Path(path).resolve()}"]
+                "explorer.exe", [f"/select,{Path(path).resolve()}"]
             )
         elif system == "Darwin":  # macOS
-            QtCore.QProcess.startDetached(
-                "open", 
-                ["-R", path]
-            )
+            QtCore.QProcess.startDetached("open", ["-R", path])
         else:  # Linux and other systems
             # Use xdg-open for Linux
-            QtCore.QProcess.startDetached(
-                "xdg-open",
-                ["-R", path]
-            )
+            QtCore.QProcess.startDetached("xdg-open", ["-R", path])
         if event:
             event.accept()
 
