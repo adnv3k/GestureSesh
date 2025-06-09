@@ -99,17 +99,18 @@ class Ui_session_display(object):
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setSpacing(1)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.grayscale_button = QtWidgets.QPushButton(session_display)
-        sizePolicy = QtWidgets.QSizePolicy(
+        # Consistent size policy and minimum size for all image modification buttons
+        mod_button_size_policy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
         )
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(
+        mod_button_min_size = QtCore.QSize(50, 0)
+        # Grayscale button
+        self.grayscale_button = QtWidgets.QPushButton(session_display)
+        mod_button_size_policy.setHeightForWidth(
             self.grayscale_button.sizePolicy().hasHeightForWidth()
         )
-        self.grayscale_button.setSizePolicy(sizePolicy)
-        self.grayscale_button.setMinimumSize(QtCore.QSize(50, 0))
+        self.grayscale_button.setSizePolicy(mod_button_size_policy)
+        self.grayscale_button.setMinimumSize(mod_button_min_size)
         self.grayscale_button.setMouseTracking(False)
         self.grayscale_button.setFocusPolicy(QtCore.Qt.NoFocus)
         self.grayscale_button.setStyleSheet("background: rgb(119, 153, 146);")
@@ -125,17 +126,13 @@ class Ui_session_display(object):
         self.grayscale_button.setCheckable(True)
         self.grayscale_button.setObjectName("grayscale_button")
         self.horizontalLayout_2.addWidget(self.grayscale_button)
+        # Flip horizontal button
         self.flip_horizontal_button = QtWidgets.QPushButton(session_display)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
-        )
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(
+        mod_button_size_policy.setHeightForWidth(
             self.flip_horizontal_button.sizePolicy().hasHeightForWidth()
         )
-        self.flip_horizontal_button.setSizePolicy(sizePolicy)
-        self.flip_horizontal_button.setMinimumSize(QtCore.QSize(50, 0))
+        self.flip_horizontal_button.setSizePolicy(mod_button_size_policy)
+        self.flip_horizontal_button.setMinimumSize(mod_button_min_size)
         self.flip_horizontal_button.setMouseTracking(False)
         self.flip_horizontal_button.setFocusPolicy(QtCore.Qt.NoFocus)
         self.flip_horizontal_button.setStyleSheet("background: rgb(119, 153, 146);")
@@ -151,17 +148,13 @@ class Ui_session_display(object):
         self.flip_horizontal_button.setCheckable(True)
         self.flip_horizontal_button.setObjectName("flip_horizontal_button")
         self.horizontalLayout_2.addWidget(self.flip_horizontal_button)
+        # Flip vertical button
         self.flip_vertical_button = QtWidgets.QPushButton(session_display)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
-        )
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(
+        mod_button_size_policy.setHeightForWidth(
             self.flip_vertical_button.sizePolicy().hasHeightForWidth()
         )
-        self.flip_vertical_button.setSizePolicy(sizePolicy)
-        self.flip_vertical_button.setMinimumSize(QtCore.QSize(50, 0))
+        self.flip_vertical_button.setSizePolicy(mod_button_size_policy)
+        self.flip_vertical_button.setMinimumSize(mod_button_min_size)
         self.flip_vertical_button.setMouseTracking(False)
         self.flip_vertical_button.setFocusPolicy(QtCore.Qt.NoFocus)
         self.flip_vertical_button.setStyleSheet("background: rgb(119, 153, 146);")
