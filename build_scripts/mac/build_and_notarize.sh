@@ -1,4 +1,5 @@
-#!/bin/zsh
+#!/usr/bin/env bash
+
 
 ###############################################################################
 # GestureSesh macOS Build, Sign, Notarize, and Staple Script
@@ -75,7 +76,7 @@ function clean_build_artifacts {
 
 function build_app {
     echo "🏗️ Building .app from spec..."
-    sudo pyinstaller GestureSesh.spec --noconfirm || { echo "❌ PyInstaller build failed."; exit 1; }
+    sudo pyinstaller GestureSesh_macOS.spec --noconfirm || { echo "❌ PyInstaller build failed."; exit 1; }
     if [[ ! -f "$APP_PATH/Contents/MacOS/$APP_NAME" ]]; then
         echo "❌ Main executable not found after build: $APP_PATH/Contents/MacOS/$APP_NAME"
         exit 1

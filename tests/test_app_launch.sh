@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 
 APP_PATH="dist/GestureSesh.app"
 
