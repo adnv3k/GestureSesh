@@ -134,16 +134,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Subclassed QFileDialog
         selected_dir = FileDialog()
         if selected_dir.exec():
-            # Example of result
-            # ['D:/.../image_displayer/atest2',
-            # 'D:/.../image_displayer/atest1']
-            total_valid_files, total_invalid_files = 0, 0
             self.selected_items.clear()
-            # TODO refactor so that calling os.walk is done just once
-            directories = [x[0] for x in os.walk(selected_dir.selectedFiles()[0])]
+            # Get all selected folders (supporting multi-selection)
+            directories = selected_dir.selectedFiles()
             total_valid_files, total_invalid_files = self.scan_directories(directories)
             self.selected_items.append(
-                f"{total_valid_files} file(s) added from {len(directories)} folders!"
+                f"{total_valid_files} file(s) added from {len(directories)} folder(s)!"
             )
             if total_invalid_files > 0:
                 self.selected_items.append(
@@ -159,33 +155,75 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
 
     def scan_directories(self, directories):
+        """Scan a list of directories and collect valid files from all subfolders, robust to symlinks, permissions, and case."""
         total_valid_files, total_invalid_files = 0, 0
+        visited = set()  
+        seen_paths = set()  
+
+        # Normalize allowed directories for safety check
+        allowed_dirs = [os.path.abspath(d) for d in directories]
+
+        def is_within_allowed_dirs(path, allowed_dirs):
+            abs_path = os.path.abspath(path)
+            for folder in allowed_dirs:
+                if abs_path.startswith(folder + os.sep):
+                    return True
+            return False
+
         for directory in directories:
             if not os.path.exists(directory):
-                self.selection["folders"].remove(directory)
+                if directory in self.selection['folders']:
+                    self.selection['folders'].remove(directory)
                 continue
-            checked_files = self.check_files([x[2] for x in os.walk(directory)][0])
-            total_valid_files += len(checked_files["valid_files"])
-            total_invalid_files += len(checked_files["invalid_files"])
-            if directory not in self.selection["folders"]:
-                self.selection["folders"].append(directory)
-            for file in checked_files["valid_files"]:
-                self.selection["files"].append(f"{directory}/{file}")
+            # Save folder that was explicitly selected
+            if directory not in self.selection['folders']:
+                self.selection['folders'].append(directory)
+            for root, dirs, files in os.walk(directory, followlinks=True):
+                # Prevent infinite recursion via symlinks
+                try:
+                    stat = os.stat(root)
+                    key = (stat.st_dev, stat.st_ino)
+                    if key in visited:
+                        continue
+                    visited.add(key)
+                except OSError:
+                    continue  # Skip directories we can't stat
+
+                # Check files for type and accessibility first
+                potential_files = self.check_files([os.path.join(root, f) for f in files])
+                total_invalid_files += len(potential_files['invalid_files']) # Add initial invalid files
+
+                # Now, filter the potentially valid files
+                for file in potential_files['valid_files']:
+                    norm_path = os.path.abspath(file).lower()
+
+                    # Perform all rejection checks first
+                    if norm_path in seen_paths:
+                        continue # Skip duplicate
+
+                    if not is_within_allowed_dirs(file, allowed_dirs):
+                        total_invalid_files += 1 # This file is ultimately invalid
+                        continue # Skip files outside allowed dirs
+
+                    # If all checks pass, it's a confirmed valid file
+                    seen_paths.add(norm_path)
+                    self.selection['files'].append(file)
+                    total_valid_files += 1 # Increment valid count here
         return total_valid_files, total_invalid_files
 
     def check_files(self, files):
-        """Checks if files are supported file types"""
+        """Checks if files are supported file types and are accessible."""
         res = {"valid_files": [], "invalid_files": []}
         for file in files:
-            if (
-                file[-4:].lower() not in self.valid_file_types
-                and file[-5:].lower() not in self.valid_file_types  # .jpeg
-            ):
-                # Since the file extension is not a valid file type,
-                # add it to list of invalid files.
+            ext = os.path.splitext(file)[1].lower()
+            if ext not in self.valid_file_types:
                 res["invalid_files"].append(file)
-            else:
+                continue
+            # Only check file accessibility, not by opening
+            if os.path.isfile(file):
                 res["valid_files"].append(file)
+            else:
+                res["invalid_files"].append(file)
         return res
 
     def remove_items(self):
@@ -669,7 +707,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         i = len(self.selection["files"])
         while i > 0:
             i -= 1
-            if os.path.basename(self.selection["files"][i]) == "break.png":
+            if self.selection["files"][i] == ":/break/break.png":
                 self.selection["files"].pop(i)
 
     def grab_schedule(self):
@@ -1128,7 +1166,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             #             self.playlist[self.playlist_position]
             #         ) == 'break.png'):  # Break scheduled
             if (
-                os.path.basename(self.playlist[self.playlist_position]) == "break.png"
+                self.playlist[self.playlist_position] == ":/break/break.png"
             ):  # Break scheduled
                 """
                 Since the end of an entry has been reached, or a break is scheduled,
@@ -1432,7 +1470,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                     self.new_entry = False
                 if self.end_of_entry is True:
                     self.end_of_entry = False
-            if os.path.basename(self.playlist[self.playlist_position]) == "break.png":
+            if self.playlist[self.playlist_position] == ":/break/break.png":
                 self.image_mods["break_grayscale"] = False
                 self.prepare_image_mods()
         if self.time_seconds == 0:
