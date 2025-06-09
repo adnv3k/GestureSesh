@@ -177,16 +177,6 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.select_images = QtWidgets.QLabel(self.centralwidget)
         self.select_images.setMaximumSize(QtCore.QSize(16777215, 24))
-        font = QtGui.QFont()
-        font.setFamily(
-            "Apple SD Gothic Neo"
-            if sys.platform == "darwin"
-            else "Nanum Gothic" if sys.platform.startswith("win") else "Noto Sans CJK"
-        )
-        font.setPointSize(15)
-        font.setBold(True)
-        font.setWeight(75)
-        self.select_images.setFont(font)
         self.select_images.setStyleSheet("color: 'white';")
         self.select_images.setObjectName("select_images")
         self.verticalLayout_4.addWidget(self.select_images)
@@ -202,8 +192,8 @@ class Ui_MainWindow(object):
             if sys.platform == "darwin"
             else "Nanum Gothic" if sys.platform.startswith("win") else "Noto Sans CJK"
         )
-        font.setPointSize(10)
-        font.setStyleStrategy(QtGui.QFont.PreferDefault)
+        font.setPointSize(15)
+        font.setWeight(75)
         self.selected_items.setFont(font)
         self.selected_items.setFocusPolicy(QtCore.Qt.NoFocus)
         self.selected_items.setStyleSheet("color: 'white';")
@@ -529,7 +519,7 @@ class Ui_MainWindow(object):
             if sys.platform == "darwin"
             else "Nanum Gothic" if sys.platform.startswith("win") else "Noto Sans CJK"
         )
-        font.setPointSize(10)
+        font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
         self.randomize_selection.setFont(font)
@@ -555,7 +545,7 @@ class Ui_MainWindow(object):
             if sys.platform == "darwin"
             else "Nanum Gothic" if sys.platform.startswith("win") else "Noto Sans CJK"
         )
-        font.setPointSize(10)
+        font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
         self.remove_duplicates.setFont(font)
