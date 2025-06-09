@@ -57,9 +57,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.session_schedule = []
         self.has_break = False
         self.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
-        self.total_time = 0
-        self.total_images = 0
-        self.selection = {"folders": [], "files": []}
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
@@ -67,6 +64,55 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.check_version()
         self.entry_table.itemChanged.connect(self.update_total)
         self.dialog_buttons.accepted.connect(self.start_session)
+        # Add: Initial dynamic font sizing
+        self.update_dynamic_fonts()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_dynamic_fonts()
+
+    def update_dynamic_fonts(self):
+        """Dynamically update font sizes based on window height."""
+        base_height = self.height()
+        # Calculate font size as a percentage of window height (tweak as needed)
+        font_size = max(10, int(base_height * 0.0230))  # Minimum 10pt
+        # font_size = max(10, int(base_height * 0.0225))  # Minimum 10pt
+        large_font_size = max(14, int(base_height * 0.0325))
+        # Main font
+        font = QtGui.QFont("Apple SD Gothic Neo", font_size, QtGui.QFont.Bold)
+        # Large font for headers
+        large_font = QtGui.QFont(
+            "Apple SD Gothic Neo", large_font_size, QtGui.QFont.Bold
+        )
+        # Apply to key widgets
+        self.select_images.setFont(large_font)
+        self.session_settings.setFont(large_font)
+        self.label_7.setFont(font)
+        self.label_5.setFont(font)
+        self.label_6.setFont(font)
+        self.image_amount_label.setFont(font)
+        self.duration_label.setFont(font)
+        self.label_8.setFont(font)
+        self.add_folder.setFont(font)
+        self.add_items.setFont(font)
+        self.clear_items.setFont(font)
+        self.randomize_selection.setFont(font)
+        self.remove_duplicates.setFont(font)
+        self.add_entry.setFont(font)
+        self.preset_loader_box.setFont(font)
+        self.save_preset.setFont(font)
+        self.delete_preset.setFont(font)
+        self.entry_table.setFont(font)
+        self.total_table.setFont(font)
+        self.remove_entry.setFont(font)
+        self.move_entry_up.setFont(font)
+        self.move_entry_down.setFont(font)
+        self.reset_table.setFont(font)
+        self.dialog_buttons.setFont(font)
+        self.selected_items.setFont(font)
+        self.set_number_of_images.setFont(font)
+        self.set_minutes.setFont(font)
+        self.set_seconds.setFont(font)
 
     def init_buttons(self):
         # Buttons for selection
