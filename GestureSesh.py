@@ -1269,13 +1269,13 @@ class SessionDisplay(QWidget, Ui_session_display):
                 resized_pixmap.size(), QtCore.Qt.KeepAspectRatio
             )
             self.scaling_size = QtCore.QSize(scaled_size)
+
         # Get scaled pixmap
         self.image_scaled = self.image.scaled(
             self.scaling_size,
             aspectRatioMode=QtCore.Qt.KeepAspectRatioByExpanding,
             transformMode=QtCore.Qt.SmoothTransformation,
         )
-
         # Set
         self.image_display.setPixmap(self.image_scaled)
         # Resize
@@ -1598,8 +1598,6 @@ class SessionDisplay(QWidget, Ui_session_display):
         system = platform.system()
         if system == "Windows":
             QtCore.QProcess.startDetached(
-                "explorer.exe",
-                [f"/select,{Path(path).resolve()}"]
                 "explorer.exe", [f"/select,{Path(path).resolve()}"]
             )
         elif system == "Darwin":  # macOS
