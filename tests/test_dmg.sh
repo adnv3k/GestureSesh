@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 
 DMG="GestureSesh.dmg"
 VOLUME_NAME="GestureSesh"
