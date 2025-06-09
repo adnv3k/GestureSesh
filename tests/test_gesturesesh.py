@@ -1,5 +1,8 @@
 import sys
 import unittest
+import tempfile
+import os
+import shutil
 from unittest.mock import patch, MagicMock
 
 from PyQt5 import QtWidgets
@@ -107,6 +110,75 @@ class TestMainAppLogic(unittest.TestCase):
             "Schedule items must be numbers!"
         )
 
+    def test_check_files_valid_and_invalid(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            valid_file = os.path.join(tempdir, "image1.jpg")
+            invalid_file = os.path.join(tempdir, "notimage.txt")
+            with open(valid_file, "w") as f:
+                f.write("fake image data")
+            with open(invalid_file, "w") as f:
+                f.write("not an image")
+            subdir = os.path.join(tempdir, "sub")
+            os.makedirs(subdir)
+            valid_file2 = os.path.join(subdir, "image2.png")
+            with open(valid_file2, "w") as f:
+                f.write("fake image data")
+            self.app.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
+            files = [valid_file, invalid_file, valid_file2]
+            result = self.app.check_files(files)
+            self.assertIn(valid_file, result["valid_files"])
+            self.assertIn(valid_file2, result["valid_files"])
+            self.assertIn(invalid_file, result["invalid_files"])
+
+    def test_scan_directories_valid_and_invalid(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            valid_file = os.path.join(tempdir, "image1.jpg")
+            invalid_file = os.path.join(tempdir, "notimage.txt")
+            with open(valid_file, "w") as f:
+                f.write("fake image data")
+            with open(invalid_file, "w") as f:
+                f.write("not an image")
+            subdir = os.path.join(tempdir, "sub")
+            os.makedirs(subdir)
+            valid_file2 = os.path.join(subdir, "image2.png")
+            with open(valid_file2, "w") as f:
+                f.write("fake image data")
+            self.app.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
+            self.app.selection = {"folders": [], "files": []}
+            total_valid, total_invalid = self.app.scan_directories([tempdir])
+            self.assertEqual(total_valid, 2)
+            self.assertEqual(total_invalid, 1)
+            self.assertIn(valid_file, self.app.selection["files"])
+            self.assertIn(valid_file2, self.app.selection["files"])
+            self.assertIn(tempdir, self.app.selection["folders"])
+
+    def test_scan_directories_duplicate_detection(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            valid_file = os.path.join(tempdir, "image1.jpg")
+            dup_file = os.path.join(tempdir, "IMAGE1.JPG")
+            with open(valid_file, "w") as f:
+                f.write("fake image data")
+            with open(dup_file, "w") as f:
+                f.write("fake image data")
+            self.app.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
+            self.app.selection = {"folders": [], "files": []}
+            total_valid, total_invalid = self.app.scan_directories([tempdir])
+            files_lower = [f.lower() for f in self.app.selection["files"]]
+            self.assertEqual(files_lower.count(valid_file.lower()), 1)
+
+    def test_scan_directories_outside_allowed_dirs(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            valid_file = os.path.join(tempdir, "image1.jpg")
+            with open(valid_file, "w") as f:
+                f.write("fake image data")
+            outside_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+            outside_file.close()
+            self.app.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
+            self.app.selection = {"folders": [], "files": []}
+            total_valid, total_invalid = self.app.scan_directories([outside_file.name])
+            self.assertEqual(total_valid, 0)
+            self.assertNotIn(outside_file.name, self.app.selection["files"])
+            os.unlink(outside_file.name)
 
 if __name__ == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)
