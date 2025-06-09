@@ -1595,8 +1595,23 @@ class SessionDisplay(QWidget, Ui_session_display):
         path = self.playlist[self.playlist_position]
         if path.startswith(":/"):
             return
-        directory = os.path.dirname(path)
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(directory))
+        system = platform.system()
+        if system == "Windows":
+            QtCore.QProcess.startDetached(
+                "explorer.exe",
+                [f"/select,{Path(path).resolve()}"]
+            )
+        elif system == "Darwin":  # macOS
+            QtCore.QProcess.startDetached(
+                "open", 
+                ["-R", path]
+            )
+        else:  # Linux and other systems
+            # Use xdg-open for Linux
+            QtCore.QProcess.startDetached(
+                "xdg-open",
+                ["-R", path]
+            )
         if event:
             event.accept()
 
