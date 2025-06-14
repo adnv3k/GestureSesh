@@ -58,7 +58,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
-        self.load_recent()
+        self.initialize_app_data()
         self.check_version()
         self.entry_table.itemChanged.connect(self.update_total)
         self.dialog_buttons.accepted.connect(self.start_session)
@@ -313,13 +313,27 @@ class MainApp(QMainWindow, Ui_MainWindow):
         QTest.qWait(2000)
         self.display_status()
 
-    def load_recent(self):
+    def initialize_app_data(self):
+        """
+        Initializes application data structures and loads from config if available
+        """    
+        self.selection = dict()
+        self.selection["folders"] = list()
+        self.selection["files"] = list()
+
+        self.selected_items.clear()
+        self.load_settings_from_config()
+        self.remove_breaks()
+        self.display_status()
+        self.update_total()
+
+    def load_settings_from_config(self):
         """
         Loads most recent session settings from unified config.json.
-        """
+        """       
         recent = self.config.get("recent_session", {})
-        if not recent: # First time launch or no recent session 
-            return self.selected_items.clear()
+        if not recent: # First time launch or no recent session
+            return
 
         folders = recent.get("folders", [])
         loaded_any = False
@@ -331,15 +345,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if "recent_preset" in recent:
             self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
             loaded_any = True
+
         if "randomized" in recent:
             self.randomize_selection.setChecked(recent.get("randomized", False))
             loaded_any = True
 
-        self.remove_breaks()
-        self.display_status()
         if loaded_any:
             self.selected_items.append("Recent session settings loaded!")
-        self.update_total()
 
     # endregion
 
