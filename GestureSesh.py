@@ -809,8 +809,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.restart = QShortcut(QtGui.QKeySequence('Ctrl+Shift+Up'), self)
         self.restart.activated.connect(self.restart_timer)
         # Skip image
-        # self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
-        # self.skip_image_key.activated.connect(self.skip_image)
+        self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
+        self.skip_image_key.activated.connect(self.skip_image)
         # Frameless Window
         self.frameless_window = QShortcut(QtGui.QKeySequence('Ctrl+F'), self)
         self.frameless_window.activated.connect(self.toggle_frameless)
@@ -860,61 +860,30 @@ class SessionDisplay(QWidget, Ui_session_display):
         return super(SessionDisplay, self).eventFilter(source, event)
 
     def skip_image(self):
-        # TODO add skipping restraint
-        if (os.path.basename(
-                self.playlist[self.playlist_position]
-        ) == 'break.png'):
-            return
-        self.skip_count += 1
-        if len(self.playlist) - self.total_scheduled_images <= self.skip_count:
-            self.setWindowTitle(
-                f'Not enough images selected for another skip.'
+        if self.playlist[self.playlist_position] == "break.png":
+            print(
+                "No images to skip on break"
+                f" {self.playlist[self.playlist_position]}"
             )
-            QTest.qWait(2500)
-            self.setWindowTitle(
-                self.playlist[self.playlist_position]
-            )
+            self.setWindowTitle("No images to skip on break")
             return
-        # self.playlist_position += 1
-        # print(self.playlist)
-        print(f'amount of items: {self.entry["amount of items"]}')
-        print(f'before playlist_position: {self.playlist_position}')
-        print(f'current image: {self.playlist[self.playlist_position]} | current length: {len(self.playlist)}')
-        item = self.playlist[self.playlist_position + 1]
-        print(f'next image: {item}')
-        if self.playlist_position == 0:
-            self.playlist.insert(0, item)
+
+        swap_indicies = list(range(self.playlist_position + 1, len(self.playlist)))
+        random.shuffle(swap_indicies)
+        while swap_indicies:
+            swap_index = swap_indicies.pop()
+            if self.playlist[swap_index] != "break.png":
+                self.playlist[self.playlist_position], self.playlist[swap_index] = self.playlist[swap_index], self.playlist[self.playlist_position]
+                break
         else:
-            self.playlist.reverse()
-            self.playlist.insert(-self.playlist_position, item)
-            print(f'after insert: {self.playlist[self.playlist_position]} | after insert length: {len(self.playlist)}')
-            self.playlist.reverse()
+            print(
+                "No images to skip to"
+                f" {self.playlist[self.playlist_position]}"
+            )
+            self.setWindowTitle("No remaining unused images to skip to")
+            return
         self.display_image()
-        self.playlist.pop(self.playlist_position)
-        # self.playlist_position -= 1
-        self.entry['amount of items'] -= 1
-        # self.load_next_image()
-
-        print(f'after reverse: {self.playlist[self.playlist_position]} | after reverse length: {len(self.playlist)}')
-
-        # move the scheduled breaks over 1
-        old = self.playlist.index(":/break/break.png")
-
-        break_index = self.playlist.index(':/break/break.png')
-        self.playlist[break_index], self.playlist[break_index + 1] = \
-            self.playlist[break_index + 1], self.playlist[break_index]
-
-        if self.playlist.index(":/break/break.png") - old == 1:
-            print('Successful break move')
-        else:
-            print('Unsuccessful break move')
-        # self.display_image()
-        print(f'after playlist_position: {self.playlist_position}')
-        # self.playlist.pop(self.playlist_position)
-        # self.playlist_position += 1
-        # self.entry['amount of items'] -= 1
-        # print(self.playlist)
-        print(f'amount of items: {self.entry["amount of items"]}')
+        self.restart_timer()
 
     def toggle_mute(self):
         if self.mute is True:
