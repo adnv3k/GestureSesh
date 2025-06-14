@@ -22,7 +22,9 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QWidget,
     QMainWindow,
+    QGraphicsOpacityEffect,
 )
+from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QSequentialAnimationGroup, pyqtProperty
 from check_update import UpdateChecker, save_config, load_config, get_config_dir
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
@@ -40,6 +42,23 @@ class ScheduleEntry:
     images: int
     time: int
 
+@dataclass
+class StatusMessage:
+    text: str
+    duration: int                # milliseconds
+    is_error: bool = False
+    timer: QtCore.QTimer | None = None
+    blink_timer: QtCore.QTimer | None = None
+    fade_timer: QtCore.QTimer | None = None
+    is_blinking: bool = False
+    fade_step: int = 0
+    _blink_cycle_count: int = 0
+    _current_fade_step: int = 0
+    _fade_direction: str = 'out'
+    _max_blink_cycles: int = 0
+    _fade_steps: int = 0
+    _is_fading_out: bool = False
+
 
 __version__ = "0.4.3"
 
@@ -55,6 +74,28 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.session_schedule = []
         self.has_break = False
         self.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
+        # Initialize selection before loading recent session
+        self.selection = {"files": [], "folders": []}
+        
+        # Initialize enhanced status message system
+        self.status_timer = QtCore.QTimer()
+        self.status_timer.setSingleShot(True)
+        self.status_timer.timeout.connect(self.display_status)
+        
+        # Status message queue and animation system
+        self.status_messages = []  # Queue of active status messages
+        self.current_animation_group = None
+        self.showing_default_status = True
+        
+        # Debounce timer for status updates to prevent UI freezing
+        self.status_update_timer = QtCore.QTimer()
+        self.status_update_timer.setSingleShot(True)
+        self.status_update_timer.timeout.connect(self._update_status_display_text)
+        
+        # Setup opacity effect for selected_items
+        self.status_opacity_effect = QGraphicsOpacityEffect()
+        self.selected_items.setGraphicsEffect(self.status_opacity_effect)
+        
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
@@ -156,17 +197,19 @@ class MainApp(QMainWindow, Ui_MainWindow):
         selected_files = QFileDialog().getOpenFileNames()
         checked_files = self.check_files(selected_files[0])
         self.selection["files"].extend(checked_files["valid_files"])
-        self.selected_items.setText(
-            f'{len(checked_files["valid_files"])} file(s) added!'
+        
+        # Use new status system for file adding messages
+        self.show_temporary_status(
+            f'{len(checked_files["valid_files"])} file(s) added!', 4000
         )
+        
         if len(checked_files["invalid_files"]) > 0:
-            self.selected_items.append(
+            self.show_temporary_status(
                 f'{len(checked_files["invalid_files"])} file(s) not added. '
-                f'Supported file types: {", ".join(self.valid_file_types)}.'
+                f'Supported file types: {", ".join(self.valid_file_types)}.', 
+                duration_ms=4000,
+                is_error=True
             )
-            QTest.qWait(500)
-        QTest.qWait(3000)
-        self.display_status()
 
     def open_folder(self):
         """
@@ -178,25 +221,26 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Subclassed QFileDialog
         selected_dir = FileDialog()
         if selected_dir.exec():
-            self.selected_items.clear()
             # Get all selected folders (supporting multi-selection)
             directories = selected_dir.selectedFiles()
             total_valid_files, total_invalid_files = self.scan_directories(directories)
-            self.selected_items.append(
-                f"{total_valid_files} file(s) added from {len(directories)} folder(s)!"
+            
+            # Use new status system for folder adding messages
+            self.show_temporary_status(
+                f"{total_valid_files} file(s) added from {len(directories)} folder(s)!", 4000
             )
+            
             if total_invalid_files > 0:
-                self.selected_items.append(
+                self.show_temporary_status(
                     f"{total_invalid_files} file(s) not added. "
-                    f'Supported file types: {", ".join(self.valid_file_types)}.'
+                    f'Supported file types: {", ".join(self.valid_file_types)}.', 
+                    duration_ms=4000,
+                    is_error=True
                 )
-                QTest.qWait(1000)
-            QTest.qWait(4000)
-            self.display_status()
             return
-        self.selected_items.setText(f"0 folder(s) added!")
-        QTest.qWait(2000)
-        self.display_status()
+        
+        # No folders selected
+        self.show_temporary_status("0 folder(s) added!", 2000)
 
     def scan_directories(self, directories):
         """Scan a list of directories and collect valid files from all subfolders, robust to symlinks, permissions, and case."""
@@ -274,9 +318,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """Clears entire selection"""
         self.selection["files"].clear()
         self.selection["folders"].clear()
-        self.selected_items.setText(f"All files and folders cleared!")
-        QTest.qWait(2000)
-        self.display_status()
+        self.show_temporary_status("All files and folders cleared!", 2000)
 
     def remove_dupes(self):
         """
@@ -294,25 +336,267 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 self.duplicates.append(self.selection["files"].pop(i))
             else:
                 files.append(os.path.basename(self.selection["files"][i]))
-        self.selected_items.setText(f"Removed {len(self.duplicates)} duplicates!")
-        QTest.qWait(2000)
-        self.display_status()
+        self.show_temporary_status(f"Removed {len(self.duplicates)} duplicates!", 2000)
 
     def display_status(self):
         """Displays amount of files, and folders selected"""
-        self.selected_items.setText(
+        default_message = (
             f'{len(self.selection["files"])} total files added from '
             f'{len(self.selection["folders"])} folder(s).'
         )
+        
+        # If there are no active status messages, show default message directly
+        if not self.status_messages:
+            if self.showing_default_status and self.selected_items.toPlainText() == default_message:
+                return  # Already showing this default message
+            
+            # Restore full opacity for default message
+            self.status_opacity_effect.setOpacity(0.8)
+            
+            # Style default message to prevent white flash
+            self.selected_items.setHtml(
+                f'<div>{default_message}</div>'
+            )
+            # Mark as showing default status
+            self.showing_default_status = True
+    
+    def show_temporary_status(self, message, duration_ms=2000, is_error=False):
+        """Shows a temporary status message with sophisticated animations"""
+        self._add_status_message(message, duration_ms, is_error)
+    
+    def show_error_status(self, message, duration_ms=3000):
+        """Shows an error/warning status message with faster, more attention-grabbing animations"""
+        self._add_status_message(message, duration_ms, is_error=True)
+    
+    def _remove_status_message(self, status_msg):
+        """Start fade‑out animation and remove a status message after its timer expires."""
+        # If a fade‑out is already running for this message, do nothing.
+        if getattr(status_msg, "_is_fading_out", False):
+            return
+
+        status_msg._is_fading_out = True  # Mark so we don't start two fades.
+
+        # Stop and delete the timer that originally triggered removal.
+        status_msg.timer.stop()
+        status_msg.timer.deleteLater()
+
+        # Begin a smooth fade‑out; the message will be dropped at the end.
+        self._fade_out_and_remove(status_msg)
+
+
+    def _fade_out_and_remove(self, status_msg):
+        """Fade a status message out smoothly, then remove it from the queue."""
+        fade_steps = 20
+        fade_duration = 400  # milliseconds
+        start_opacity = 0.6  # Begin fade‑out at dim opacity to avoid white flash
+        step_duration = fade_duration // fade_steps
+
+        status_msg._fade_step = 0
+
+        fade_timer = QtCore.QTimer()
+        fade_timer.setSingleShot(False)
+
+        def _step():
+            # Compute opacity: 1.0 ➜ 0.0 over `fade_steps`.
+
+            progress = status_msg._fade_step / fade_steps
+            opacity = start_opacity * (1 - progress)
+            self._update_display_with_selective_opacity(status_msg, opacity)
+
+            status_msg._fade_step += 1
+            if status_msg._fade_step > fade_steps:
+                # End of fade: clean up and finally drop the message.
+                fade_timer.stop()
+                fade_timer.deleteLater()
+                if status_msg in self.status_messages:
+                    self.status_messages.remove(status_msg)
+                self._update_status_display()
+
+        fade_timer.timeout.connect(_step)
+        fade_timer.start(step_duration)
+        status_msg._fade_timer = fade_timer  # keep a reference
+    
+    def _add_status_message(self, message, duration_ms, is_error=False):
+        """Add a new status message to the queue and display it"""
+        # Create timer for this message
+        message_timer = QtCore.QTimer()
+        message_timer.setSingleShot(True)
+
+        # Create status message object
+        status_msg = StatusMessage(message, duration_ms, is_error)
+        status_msg.timer = message_timer
+
+        # Connect timer to removal function
+        message_timer.timeout.connect(lambda: self._remove_status_message(status_msg))
+
+        # Stop any existing blinking animations before adding new message
+        for existing_msg in self.status_messages:
+            try:
+                existing_msg.is_blinking = False
+            except Exception:
+                pass  # Handle case where is_blinking attribute doesn't exist
+            try:
+                existing_msg._blink_timer.stop()
+            except Exception as e:
+                print(f"excepetion while stopping blink timer: {e}")
+                pass
+
+        # Add to queue (newest messages at the end, so they appear at top when reversed)
+        self.status_messages.append(status_msg)
+
+        # Update display immediately
+        self._update_status_display_text()
+
+        # Start blinking animation for this specific new message only
+        self._start_message_blink_animation(status_msg, is_error)
+
+        message_timer.start(7000)
+
+    def _debounced_update_status_display(self):
+        """Debounce status display updates to prevent UI freezing"""
+        self.status_update_timer.start(50)  # single‑shot; restart is safe
+
+    def _update_status_display(self):
+        """Update the status display with current messages"""
+        if self.status_messages:
+            self._debounced_update_status_display()
+        else:
+            # No status messages, show default
+            self.display_status()
+
+    def _start_message_blink_animation(self, status_msg, is_error=False):
+        """Start blinking animation for a specific message"""
+        # Mark this message as blinking
+        status_msg.is_blinking = True
+        
+        # Animation parameters
+        max_blink_cycles = 3 if is_error else 2
+        fade_duration = 300 if is_error else 400
+        fade_steps = 20
+        fade_step_duration = fade_duration // fade_steps
+        
+        # Store animation state in the message object
+        status_msg._blink_cycle_count = 0
+        status_msg._current_fade_step = 0
+        status_msg._fade_direction = 'out'
+        status_msg._max_blink_cycles = max_blink_cycles
+        status_msg._fade_steps = fade_steps
+        
+        # Create timer for this specific message's animation
+        blink_timer = QtCore.QTimer()
+        blink_timer.setSingleShot(False)
+        
+        status_msg._blink_timer = blink_timer
+        
+        def animate_message_fade():
+            if not status_msg.is_blinking or status_msg not in self.status_messages:
+                blink_timer.stop()
+                blink_timer.deleteLater()
+                return
+            
+            # Calculate current opacity
+            if status_msg._fade_direction == 'out':
+                progress = status_msg._current_fade_step / status_msg._fade_steps
+                current_opacity = 1.0 - (0.8 * progress)  # 1.0 -> 0.2
+            else:  # fade_direction == 'in'
+                progress = status_msg._current_fade_step / status_msg._fade_steps
+                current_opacity = 0.2 + (0.8 * progress)  # 0.2 -> 1.0
+            
+            # Update display with selective opacity for this message
+            self._update_display_with_selective_opacity(status_msg, current_opacity)
+            
+            status_msg._current_fade_step += 1
+            
+            # Check if this fade direction is complete
+            if status_msg._current_fade_step >= status_msg._fade_steps:
+                if status_msg._fade_direction == 'out':
+                    status_msg._fade_direction = 'in'
+                    status_msg._current_fade_step = 0
+                else:
+                    # Fade in complete, cycle is done
+                    status_msg._blink_cycle_count += 1
+                    
+                    if status_msg._blink_cycle_count < status_msg._max_blink_cycles:
+                        # Brief pause between cycles, then start next cycle
+                        blink_timer.stop()
+                        
+                        def restart_cycle():
+                            if status_msg.is_blinking and status_msg in self.status_messages:
+                                status_msg._current_fade_step = 0
+                                status_msg._fade_direction = 'out'
+                                blink_timer.start(fade_step_duration)
+                        
+                        QtCore.QTimer.singleShot(200, restart_cycle)
+                        return
+                    else:
+                        # All cycles complete
+                        self._finish_message_blink_animation(status_msg)
+                        blink_timer.stop()
+                        blink_timer.deleteLater()
+                        return
+        
+        blink_timer.timeout.connect(animate_message_fade)
+        blink_timer.start(fade_step_duration)
+
+    def _finish_message_blink_animation(self, status_msg):
+        """Restore normal state for a specific message after blinking completes"""
+        status_msg.is_blinking = False
+        if hasattr(status_msg, '_blink_timer'):
+            delattr(status_msg, '_blink_timer')
+        
+        # Restore the main widget's opacity to full
+        self.status_opacity_effect.setOpacity(1.0)
+        
+        # Update the display to show the final, non-transparent state
+        self._update_status_display_text()
+
+    # --- unified renderer --------------------------------------------------
+    def _render_status(self,
+                       highlight: StatusMessage | None = None,
+                       opacity: float | None = None) -> None:
+        """
+        Draw all status messages.  If *highlight* is supplied, that message is
+        rendered in the given *opacity* (0‑1).  All others use full colour.
+        """
+        if not self.status_messages:
+            self.display_status()
+            return
+
+        # Always show widget fully – we tint via text colour.
+        self.status_opacity_effect.setOpacity(1.0)
+
+        html = ['<div style="line-height:1.1;">']
+        visible = list(reversed(self.status_messages))  # newest first
+        for i, msg in enumerate(visible):
+            margin = 'margin-top:3px;' if i else ''
+
+            if msg is highlight:
+                base_rgb = "220, 20, 60" if msg.is_error else "225, 225, 225"
+                css = f'font-weight:bold; color:rgba({base_rgb}, {opacity}); {margin}'
+            elif i == 0:
+                css = f'font-weight:bold; {"color:#DC143C;" if msg.is_error else ""} {margin}'
+            else:
+                css = f'color:rgb(102,102,102); {margin}'
+
+            html.append(f'<div style="{css}">{msg.text}</div>')
+        html.append("</div>")
+
+        self.selected_items.setHtml("".join(html))
+        self.showing_default_status = False
+
+    def _update_display_with_selective_opacity(self, blinking_msg, opacity):
+        self._render_status(blinking_msg, opacity)
+
+    def _update_status_display_text(self):
+        self._render_status()
+
 
     def display_random_status(self):
         """Displays the randomization setting"""
         if self.randomize_selection.isChecked():
-            self.selected_items.setText(f"Randomization on!")
+            self.show_temporary_status("Randomization on!", 2000)
         else:
-            self.selected_items.setText(f"Randomization off!")
-        QTest.qWait(2000)
-        self.display_status()
+            self.show_temporary_status("Randomization off!", 2000)
 
     def load_recent(self):
         """
@@ -339,7 +623,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.remove_breaks()
         self.display_status()
         if loaded_any:
-            self.selected_items.append("Recent session settings loaded!")
+            self.show_temporary_status("Recent session settings loaded!", 3000)
         self.update_total()
 
     # endregion
@@ -355,9 +639,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         minutes = self.set_minutes.value()
         seconds = self.set_seconds.value()
         if minutes == 0 and seconds == 0:
-            self.selected_items.setText("Time must be greater than 0 seconds!")
-            QTest.qWait(3000)
-            self.display_status()
+            self.show_error_status("Time must be greater than 0 seconds!", 3000)
             return
 
         row = self.entry_table.rowCount()
@@ -410,9 +692,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     self.entry_table.item(row, column).text()
                 ), QTableWidgetItem(self.entry_table.item(row - 1, column).text())
             except (Exception, ValueError):
-                self.selected_items.append("\nSelect a row in the table!")
-                QTest.qWait(2000)
-                self.display_status()
+                self.show_error_status("Select a row in the table!", 2000)
                 return
             current.setTextAlignment(4)
             above.setTextAlignment(4)
@@ -433,9 +713,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     self.entry_table.item(row, column).text()
                 ), QTableWidgetItem(self.entry_table.item(row + 1, column).text())
             except (Exception, ValueError):
-                self.selected_items.append("\nSelect a row in the table!")
-                QTest.qWait(2000)
-                self.display_status()
+                self.show_error_status("Select a row in the table!", 2000)
                 return
             current.setTextAlignment(4)
             below.setTextAlignment(4)
@@ -560,15 +838,11 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def save(self, wait_status: bool = True):
         if self.entry_table.rowCount() <= 0:
-            self.selected_items.setText(f"Cannot save an empty schedule!")
-            QTest.qWait(4000)
-            self.display_status()
+            self.show_error_status("Cannot save an empty schedule!", 4000)
             return
         preset_name = self.preset_loader_box.currentText()
         if preset_name == "":
-            self.selected_items.setText(f"Cannot save an empty name!")
-            QTest.qWait(5500)
-            self.display_status()
+            self.show_error_status("Cannot save an empty name!", 5500)
             return
         tmppreset = {}
         for row in range(self.entry_table.rowCount()):
@@ -582,26 +856,20 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.update_presets()
             self.preset_loader_box.setCurrentIndex(self.preset_loader_box.count() - 1)
         if wait_status:
-            self.selected_items.setText(f"{preset_name} saved!")
-            QTest.qWait(3000)
-            self.display_status()
+            self.show_temporary_status(f"{preset_name} saved!", 3000)
         save_config(self.config_path, self.config)
 
     def delete(self):
         preset_name = self.preset_loader_box.currentText()
         if preset_name == "":
-            self.selected_items.setText(f"Cannot delete an empty field!")
-            QTest.qWait(4000)
-            self.display_status()
+            self.show_error_status("Cannot delete an empty field!", 4000)
             return
         if preset_name in self.presets:
             del self.presets[preset_name]
             self.config["presets"] = self.presets
             save_config(self.config_path, self.config)
-        self.selected_items.setText(f"{preset_name} deleted!")
+        self.show_temporary_status(f"{preset_name} deleted!", 2000)
         self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
-        QTest.qWait(2000)
-        self.display_status()
 
     def load(self):
         preset_name = self.preset_loader_box.currentText()
@@ -625,9 +893,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                             item.setFlags(QtCore.Qt.ItemIsEnabled)
                         self.entry_table.setItem(row, column, item)
             except Exception as e:
-                self.selected_items.setText(f"Error loading preset: {e}")
-                QTest.qWait(4000)
-                self.display_status()
+                self.show_error_status(f"Error loading preset: {e}", 4000)
 
     # endregion
     # endregion
@@ -672,7 +938,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.display_status()
         self.activateWindow()
         self.raise_()
-        self.selected_items.append(f"Recent session settings saved!")
+        self.show_temporary_status("Recent session settings saved!", 3000)
 
     def is_valid_session(self):
         """
@@ -687,12 +953,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 for i in range(2):
                     items.append(int(self.entry_table.item(row, i + 1).text()))
             except (Exception, ValueError):
-                self.selected_items.setText(f"Schedule items must be numbers!")
+                self.show_error_status("Schedule items must be numbers!")
                 return False
 
         # Check if empty schedule
         if len(self.session_schedule) == 0:
-            self.selected_items.setText(f"Schedule cannot be empty.")
+            self.show_error_status("Schedule cannot be empty.")
             return False
         # Count scheduled images
         self.total_scheduled_images = 0
@@ -719,11 +985,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
         # Check if there are enough selected images for the schedule
         if self.total_scheduled_images > len(self.selection["files"]):
-            self.selected_items.setText(
-                f"Not enough images selected. Add more images, or schedule fewer"
-                f" images."
+            self.show_error_status(
+                "Not enough images selected. Add more images, or schedule fewer images.",
+                7000
             )
-            QTest.qWait(10000)
             return False
         return True
 
@@ -790,10 +1055,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
             checker.check_for_updates() if self.config.get("update_check") else None
         )
         if update:
-            self.selected_items.append(
-                "\nUpdate available! Please visit the site to download!"
+            self.show_temporary_status(
+                "Update available! Please visit the site to download!", 5000
             )
-            self.selected_items.append(f"v{update['version']}\n{update['notes']}")
+            self.show_temporary_status(
+                f"v{update['version']}: {update['notes']}", 6000
+            )
         self.config_path = checker.config_path
         # else:
         #     self.selected_items.append("Up to date.")
@@ -911,13 +1178,18 @@ class SessionDisplay(QWidget, Ui_session_display):
             If view.mute exists, then a session has been started before.
             Set mute and volume according to previous session's sound settings.
             """
-            if view.mute is True:  # if view.mute exists and is True
-                self.mute = True
+            import __main__
+            if hasattr(__main__, 'view') and hasattr(__main__.view, 'mute'):
+                if __main__.view.mute is True:  # if view.mute exists and is True
+                    self.mute = True
+                    self.volume = mixer.music.get_volume()
+                    mixer.music.set_volume(0.0)
+                else:  # if view.mute exists and is False
+                    self.mute = False
+                    self.volume = __main__.view.volume
+            else:
                 self.volume = mixer.music.get_volume()
-                mixer.music.set_volume(0.0)
-            else:  # if view.mute exists and is False
                 self.mute = False
-                self.volume = view.volume
         except:  # view.mute does not exist, so init settings with default.
             self.volume = mixer.music.get_volume()
             self.mute = False
@@ -985,8 +1257,14 @@ class SessionDisplay(QWidget, Ui_session_display):
         """
         self.timer.stop()
         self.close_timer.stop()
-        view.mute = self.mute
-        view.volume = self.volume
+        # Store session sound settings globally for next session
+        try:
+            import __main__
+            if hasattr(__main__, 'view'):
+                __main__.view.mute = self.mute
+                __main__.view.volume = self.volume
+        except:
+            pass
         mixer.quit()
         self.closed.emit()
         event.accept()
@@ -1694,19 +1972,19 @@ class SessionDisplay(QWidget, Ui_session_display):
     # endregion
 
 
-# Subclass to enable multifolder selection.
-class FileDialog(QFileDialog):
-    def __init__(self):
-        super(FileDialog, self).__init__()
-        self.setOption(QFileDialog.DontUseNativeDialog, True)
-        self.setFileMode(QFileDialog.Directory)
-        self.setOption(QFileDialog.ShowDirsOnly, True)
-        self.findChildren(QListView)[0].setSelectionMode(
-            QAbstractItemView.ExtendedSelection
-        )
-        self.findChildren(QTreeView)[0].setSelectionMode(
-            QAbstractItemView.ExtendedSelection
-        )
+# # Subclass to enable multifolder selection.
+# class FileDialog(QFileDialog):
+#     def __init__(self):
+#         super(FileDialog, self).__init__()
+#         self.setOption(QFileDialog.DontUseNativeDialog, True)
+#         self.setFileMode(QFileDialog.Directory)
+#         self.setOption(QFileDialog.ShowDirsOnly, True)
+#         self.findChildren(QListView)[0].setSelectionMode(
+#             QAbstractItemView.ExtendedSelection
+#         )
+#         self.findChildren(QTreeView)[0].setSelectionMode(
+#             QAbstractItemView.ExtendedSelection
+#         )
 
 
 if __name__ == "__main__":
