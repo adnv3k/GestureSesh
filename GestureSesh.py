@@ -59,10 +59,25 @@ class StatusMessage:
     _fade_steps: int = 0
     _is_fading_out: bool = False
 
+# Subclass to enable multifolder selection.
+class FileDialog(QFileDialog):
+    def __init__(self):
+        super(FileDialog, self).__init__()
+        self.setOption(QFileDialog.DontUseNativeDialog, True)
+        self.setFileMode(QFileDialog.Directory)
+        self.setOption(QFileDialog.ShowDirsOnly, True)
+        self.findChildren(QListView)[0].setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )
+        self.findChildren(QTreeView)[0].setSelectionMode(
+            QAbstractItemView.ExtendedSelection
+        )
 
 __version__ = "0.4.3"
 
 # Adding a folder will now include subdirectories.
+# Reworked status messages to use a queue system with animations.
+# Added dynamic font sizing based on window height.
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
@@ -1970,21 +1985,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             event.accept()
 
     # endregion
-
-
-# # Subclass to enable multifolder selection.
-# class FileDialog(QFileDialog):
-#     def __init__(self):
-#         super(FileDialog, self).__init__()
-#         self.setOption(QFileDialog.DontUseNativeDialog, True)
-#         self.setFileMode(QFileDialog.Directory)
-#         self.setOption(QFileDialog.ShowDirsOnly, True)
-#         self.findChildren(QListView)[0].setSelectionMode(
-#             QAbstractItemView.ExtendedSelection
-#         )
-#         self.findChildren(QTreeView)[0].setSelectionMode(
-#             QAbstractItemView.ExtendedSelection
-#         )
 
 
 if __name__ == "__main__":
