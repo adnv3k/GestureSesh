@@ -7,8 +7,6 @@ from unittest.mock import patch, MagicMock  # for explicit mock call reference
 import types
 from pathlib import Path
 from collections import Counter
-import pytest
-
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication
 
