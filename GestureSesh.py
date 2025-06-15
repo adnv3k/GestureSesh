@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMainWindow,
     QGraphicsOpacityEffect,
+    QProgressBar,
 )
 from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QSequentialAnimationGroup, pyqtProperty
 from check_update import UpdateChecker, save_config, load_config, get_config_dir
@@ -37,6 +38,116 @@ import resources_config  # This is a generated file from resources.qrc DO NOT RE
 def sound_file(name: str):
     """Return a context manager yielding the path to an embedded sound file."""
     return resources.as_file(resources.files("sounds") / name)
+
+
+
+# ---------------------------------------------------------------------------
+# DotIndicator: compact 10‑slot dot/arrow progress widget
+# ---------------------------------------------------------------------------
+class DotIndicator(QtWidgets.QWidget):
+    """
+    Horizontal row of up to 10 circular dots that fill as progress increases.
+
+    • If the total value (maximum) is ≤ 10, each dot represents one unit.  
+    • If the total exceeds 10, the first nine dots represent 10 %‑chunks of
+      completion and the final slot is drawn as a “more” indicator (a small
+      right‑arrow ▸).  No text is ever shown.
+    The public API purposefully mirrors the two methods used in QProgressBar
+    inside the existing codebase – ``setMaximum()`` and ``setValue()`` – so
+    the rest of the application can remain unchanged.
+    """
+
+    def __init__(self, color: str = "#3daee9", parent: QtWidgets.QWidget | None = None):
+        super().__init__(parent)
+        self._max_value: int = 1
+        self._value: int = 0
+        self._slots: int = 10
+        self._dot_diameter: int = 12
+        self._spacing: int = 6
+        self._fill_color = QtGui.QColor(color)
+        self._empty_color = QtGui.QColor(70, 70, 70)  # dark grey for empty dots
+        self.setMinimumHeight(self._dot_diameter)
+
+    # ------------------------------------------------------------------ API
+    def setMaximum(self, maximum: int):
+        self._max_value = max(1, maximum)
+        self.updateGeometry()   # resize horizontally when # of dots changes
+        self.update()
+
+    def setValue(self, value: int):
+        self._value = max(0, min(value, self._max_value))
+        self.update()
+
+    # ------------------------------------------------------------------ API legacy‑compat
+    def setFormat(self, _fmt: str):
+        """
+        Stub kept for drop‑in compatibility with QProgressBar‑based code.
+        DotIndicator never shows text, so this is intentionally a no‑op.
+        """
+        # Store it in case future debugging needs it.
+        self._format_string = _fmt
+
+    # -------------------------------------------------------------- QWidget
+    # ---------------------------------------------------------------- internal
+    def _full_width(self) -> int:
+        """Pixel width of a full 10‑slot indicator (used by the container)."""
+        return self._slots * self._dot_diameter + (self._slots - 1) * self._spacing
+
+    def sizeHint(self) -> QtCore.QSize:
+        """Return width just wide enough for the required number of slots."""
+        slots = self._max_value if self._max_value <= self._slots else self._slots
+        width = slots * self._dot_diameter + (slots - 1) * self._spacing if slots else 0
+        return QtCore.QSize(width, self._dot_diameter)
+
+    def paintEvent(self, event: QtGui.QPaintEvent):  # noqa: D401
+        """
+        Draw dots centred *within the widget*:
+
+        • If total ≤ 10 → draw that many dots, one per unit.  
+        • If total  > 10 → draw nine dots plus a ▸ arrow; first nine dots still
+          represent the first nine *individual* units, arrow lights up once the
+          counter reaches ≥ 10.
+        """
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        y_offset = (self.height() - self._dot_diameter) / 2
+        draw_slots = self._max_value if self._max_value <= self._slots else self._slots
+
+        # Compute centred starting X
+        total_width = (
+            draw_slots * self._dot_diameter + (draw_slots - 1) * self._spacing
+            if draw_slots > 0
+            else 0
+        )
+        x = (self.width() - total_width) / 2
+
+        for i in range(draw_slots):
+            # Arrow slot when “more than ten”
+            if self._max_value > self._slots and i == self._slots - 1:
+                path = QtGui.QPainterPath()
+                path.moveTo(x, y_offset)
+                path.lineTo(x + self._dot_diameter, y_offset + self._dot_diameter / 2)
+                path.lineTo(x, y_offset + self._dot_diameter)
+                path.closeSubpath()
+                filled = self._value >= self._slots  # arrow lights once 10+ units viewed
+                painter.fillPath(path, self._fill_color if filled else self._empty_color)
+                break
+
+            filled = i < self._value
+            painter.setBrush(self._fill_color if filled else self._empty_color)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.drawEllipse(
+                QtCore.QPointF(
+                    x + self._dot_diameter / 2, y_offset + self._dot_diameter / 2
+                ),
+                self._dot_diameter / 2,
+                self._dot_diameter / 2,
+            )
+            x += self._dot_diameter + self._spacing
+
+        painter.end()
+# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -90,29 +201,29 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.config = load_config(self)
         self.session_schedule = []
         self.has_break = False
-        self.valid_file_types = [".bmp", ".jpg", ".jpeg", ".png"]
+        self.valid_file_types = {".bmp", ".jpg", ".jpeg", ".png"}
         # Initialize selection before loading recent session
         self.selection = {"files": [], "folders": []}
-        
+
         # Initialize enhanced status message system
         self.status_timer = QtCore.QTimer()
         self.status_timer.setSingleShot(True)
         self.status_timer.timeout.connect(self.display_status)
-        
+
         # Status message queue and animation system
         self.status_messages = []  # Queue of active status messages
         self.current_animation_group = None
         self.showing_default_status = True
-        
+
         # Debounce timer for status updates to prevent UI freezing
         self.status_update_timer = QtCore.QTimer()
         self.status_update_timer.setSingleShot(True)
         self.status_update_timer.timeout.connect(self._update_status_display_text)
-        
+
         # Setup opacity effect for selected_items
         self.status_opacity_effect = QGraphicsOpacityEffect()
         self.selected_items.setGraphicsEffect(self.status_opacity_effect)
-        
+
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
@@ -213,13 +324,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def open_files(self):
         selected_files = QFileDialog().getOpenFileNames()
         checked_files = self.check_files(selected_files[0])
+        self.selection["files"].extend(checked_files["valid_files"])
+
         self.selection["files"].extend(checked_files["valid_files"])   
         
         # Use new status system for file adding messages
         self.show_temporary_status(
             f'{len(checked_files["valid_files"])} file(s) added!', 4000
         )
-        
+
         if len(checked_files["invalid_files"]) > 0:
             self.show_temporary_status(
                 f'{len(checked_files["invalid_files"])} file(s) not added. '
@@ -241,12 +354,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
             # Get all selected folders (supporting multi-selection)
             directories = selected_dir.selectedFiles()
             total_valid_files, total_invalid_files = self.scan_directories(directories)
-            
+
             # Use new status system for folder adding messages
             self.show_temporary_status(
                 f"{total_valid_files} file(s) added from {len(directories)} folder(s)!", 4000
             )
-            
+
             if total_invalid_files > 0:
                 self.show_temporary_status(
                     f"{total_invalid_files} file(s) not added. "
@@ -255,7 +368,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     is_error=True
                 )
             return
-        
+
         # No folders selected
         self.show_temporary_status("0 folder(s) added!", 2000)
 
@@ -268,12 +381,19 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Normalize allowed directories for safety check
         allowed_dirs = [os.path.abspath(d) for d in directories]
 
+        # def is_within_allowed_dirs(path, allowed_dirs):
+        #     abs_path = os.path.abspath(path)
+        #     for folder in allowed_dirs:
+        #         if abs_path.startswith(folder + os.sep):
+        #             return True
+        #     return False
         def is_within_allowed_dirs(path, allowed_dirs):
             abs_path = os.path.abspath(path)
-            for folder in allowed_dirs:
-                if abs_path.startswith(folder + os.sep):
-                    return True
-            return False
+            # Case-sensitive path comparison
+            return any(
+                abs_path.startswith(folder + os.sep) or abs_path == folder
+                for folder in allowed_dirs
+            )
 
         for directory in directories:
             if not os.path.exists(directory):
@@ -281,16 +401,15 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     self.selection['folders'].remove(directory)
                 continue
             # Save folder that was explicitly selected
-            if directory not in self.selection['folders']:
+            if directory not in self.selection['folders']: 
                 self.selection['folders'].append(directory)
             for root, dirs, files in os.walk(directory, followlinks=True):
                 # Prevent infinite recursion via symlinks
                 try:
                     stat = os.stat(root)
                     key = (stat.st_dev, stat.st_ino)
-                    if key in visited:
-                        continue
-                    visited.add(key)
+                    if key not in visited:
+                        visited.add(key)
                 except OSError:
                     continue  # Skip directories we can't stat
 
@@ -298,23 +417,45 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 potential_files = self.check_files([os.path.join(root, f) for f in files])
                 total_invalid_files += len(potential_files['invalid_files']) # Add initial invalid files
 
-                # Now, filter the potentially valid files
                 for file in potential_files['valid_files']:
-                    norm_path = os.path.abspath(file).lower()
-
-                    # Perform all rejection checks first
-                    if norm_path in seen_paths:
-                        continue # Skip duplicate
-
-                    if not is_within_allowed_dirs(file, allowed_dirs):
-                        total_invalid_files += 1 # This file is ultimately invalid
-                        continue # Skip files outside allowed dirs
-
-                    # If all checks pass, it's a confirmed valid file
-                    seen_paths.add(norm_path)
-                    self.selection['files'].append(file)
-                    total_valid_files += 1 # Increment valid count here
+                    try:
+                        # Use inode + case-sensitive path for duplicate detection
+                        stat = os.stat(file)
+                        file_key = (stat.st_dev, stat.st_ino, file)  # Added file path
+                        
+                        if file_key in seen_paths:
+                            continue
+                            
+                        if not is_within_allowed_dirs(file, allowed_dirs):
+                            total_invalid_files += 1
+                            continue
+                            
+                        seen_paths.add(file_key)
+                        self.selection['files'].append(file)
+                        total_valid_files += 1
+                        
+                    except (OSError, PermissionError):
+                        total_invalid_files += 1
+                        continue
+                        
         return total_valid_files, total_invalid_files
+        #         # Now, filter the potentially valid files
+        #         for file in potential_files['valid_files']:
+        #             norm_path = os.path.abspath(file)
+
+        #             # Perform all rejection checks first
+        #             if norm_path in seen_paths:
+        #                 continue # Skip duplicate
+
+        #             if not is_within_allowed_dirs(file, allowed_dirs):
+        #                 total_invalid_files += 1 # This file is ultimately invalid
+        #                 continue # Skip files outside allowed dirs
+
+        #             # If all checks pass, it's a confirmed valid file
+        #             seen_paths.add(norm_path)
+        #             self.selection['files'].append(file)
+        #             total_valid_files += 1 # Increment valid count here
+        # return total_valid_files, total_invalid_files
 
     def check_files(self, files):
         """Checks if files are supported file types and are accessible."""
@@ -338,22 +479,37 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.show_temporary_status("All files and folders cleared!", 2000)
 
     def remove_dupes(self):
-        """
-        Iterates through user selection of files while keeping seen files
-        in memory.
-        If a file has already been seen, it is deleted from the selection.
+        """Remove duplicate files from selection (case-sensitive)"""
+        if not self.selection["files"]:
+            self.show_temporary_status("No files to check for duplicates")
+            return
 
-        """
-        self.duplicates = []
-        files = []
-        i = len(self.selection["files"])
-        while i > 0:
-            i -= 1
-            if os.path.basename(self.selection["files"][i]) in files:
-                self.duplicates.append(self.selection["files"].pop(i))
-            else:
-                files.append(os.path.basename(self.selection["files"][i]))
-        self.show_temporary_status(f"Removed {len(self.duplicates)} duplicates!", 2000)
+        original_count = len(self.selection["files"])
+        seen_files = set()
+        unique_files = []
+
+        for file_path in self.selection["files"]:
+            try:
+                # Use inode + case-sensitive path for duplicate detection
+                stat = os.stat(file_path)
+                file_key = (stat.st_dev, stat.st_ino, file_path)
+
+                if file_key not in seen_files:
+                    seen_files.add(file_key)
+                    unique_files.append(file_path)
+            except (OSError, PermissionError):
+                # If we can't stat the file, keep it in the list
+                unique_files.append(file_path)
+
+        self.selection["files"] = unique_files
+        removed_count = original_count - len(unique_files)
+
+        if removed_count > 0:
+            self.show_temporary_status(f"Removed {removed_count} duplicate file(s)")
+        else:
+            self.show_temporary_status("No duplicates found")
+
+        self.display_status()
 
     def display_status(self):
         """Displays amount of files, and folders selected"""
@@ -361,30 +517,30 @@ class MainApp(QMainWindow, Ui_MainWindow):
             f'{len(self.selection["files"])} total files added from '
             f'{len(self.selection["folders"])} folder(s).'
         )
-        
+
         # If there are no active status messages, show default message directly
         if not self.status_messages:
             if self.showing_default_status and self.selected_items.toPlainText() == default_message:
                 return  # Already showing this default message
-            
+
             # Restore full opacity for default message
             self.status_opacity_effect.setOpacity(0.8)
-            
+
             # Style default message to prevent white flash
             self.selected_items.setHtml(
                 f'<div>{default_message}</div>'
             )
             # Mark as showing default status
             self.showing_default_status = True
-    
+
     def show_temporary_status(self, message, duration_ms=2000, is_error=False):
         """Shows a temporary status message with sophisticated animations"""
         self._add_status_message(message, duration_ms, is_error)
-    
+
     def show_error_status(self, message, duration_ms=3000):
         """Shows an error/warning status message with faster, more attention-grabbing animations"""
         self._add_status_message(message, duration_ms, is_error=True)
-    
+
     def _remove_status_message(self, status_msg):
         """Start fade‑out animation and remove a status message after its timer expires."""
         # If a fade‑out is already running for this message, do nothing.
@@ -399,7 +555,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
         # Begin a smooth fade‑out; the message will be dropped at the end.
         self._fade_out_and_remove(status_msg)
-
 
     def _fade_out_and_remove(self, status_msg):
         """Fade a status message out smoothly, then remove it from the queue."""
@@ -432,7 +587,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         fade_timer.timeout.connect(_step)
         fade_timer.start(step_duration)
         status_msg._fade_timer = fade_timer  # keep a reference
-    
+
     def _add_status_message(self, message, duration_ms, is_error=False):
         """Add a new status message to the queue and display it"""
         # Create timer for this message
@@ -450,12 +605,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
         for existing_msg in self.status_messages:
             try:
                 existing_msg.is_blinking = False
-            except Exception:
+            except Exception as e:
+                print(f"Exception while setting is_blinking: {e}")
                 pass  # Handle case where is_blinking attribute doesn't exist
             try:
                 existing_msg._blink_timer.stop()
             except Exception as e:
-                print(f"excepetion while stopping blink timer: {e}")
+                print(f"Exception while stopping blink timer: {e}")
                 pass
 
         # Add to queue (newest messages at the end, so they appear at top when reversed)
@@ -485,32 +641,32 @@ class MainApp(QMainWindow, Ui_MainWindow):
         """Start blinking animation for a specific message"""
         # Mark this message as blinking
         status_msg.is_blinking = True
-        
+
         # Animation parameters
         max_blink_cycles = 3 if is_error else 2
         fade_duration = 300 if is_error else 400
         fade_steps = 20
         fade_step_duration = fade_duration // fade_steps
-        
+
         # Store animation state in the message object
         status_msg._blink_cycle_count = 0
         status_msg._current_fade_step = 0
         status_msg._fade_direction = 'out'
         status_msg._max_blink_cycles = max_blink_cycles
         status_msg._fade_steps = fade_steps
-        
+
         # Create timer for this specific message's animation
         blink_timer = QtCore.QTimer()
         blink_timer.setSingleShot(False)
-        
+
         status_msg._blink_timer = blink_timer
-        
+
         def animate_message_fade():
             if not status_msg.is_blinking or status_msg not in self.status_messages:
                 blink_timer.stop()
                 blink_timer.deleteLater()
                 return
-            
+
             # Calculate current opacity
             if status_msg._fade_direction == 'out':
                 progress = status_msg._current_fade_step / status_msg._fade_steps
@@ -518,12 +674,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
             else:  # fade_direction == 'in'
                 progress = status_msg._current_fade_step / status_msg._fade_steps
                 current_opacity = 0.2 + (0.8 * progress)  # 0.2 -> 1.0
-            
+
             # Update display with selective opacity for this message
             self._update_display_with_selective_opacity(status_msg, current_opacity)
-            
+
             status_msg._current_fade_step += 1
-            
+
             # Check if this fade direction is complete
             if status_msg._current_fade_step >= status_msg._fade_steps:
                 if status_msg._fade_direction == 'out':
@@ -532,17 +688,17 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 else:
                     # Fade in complete, cycle is done
                     status_msg._blink_cycle_count += 1
-                    
+
                     if status_msg._blink_cycle_count < status_msg._max_blink_cycles:
                         # Brief pause between cycles, then start next cycle
                         blink_timer.stop()
-                        
+
                         def restart_cycle():
                             if status_msg.is_blinking and status_msg in self.status_messages:
                                 status_msg._current_fade_step = 0
                                 status_msg._fade_direction = 'out'
                                 blink_timer.start(fade_step_duration)
-                        
+
                         QtCore.QTimer.singleShot(200, restart_cycle)
                         return
                     else:
@@ -551,7 +707,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                         blink_timer.stop()
                         blink_timer.deleteLater()
                         return
-        
+
         blink_timer.timeout.connect(animate_message_fade)
         blink_timer.start(fade_step_duration)
 
@@ -560,10 +716,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
         status_msg.is_blinking = False
         if hasattr(status_msg, '_blink_timer'):
             delattr(status_msg, '_blink_timer')
-        
+
         # Restore the main widget's opacity to full
         self.status_opacity_effect.setOpacity(1.0)
-        
+
         # Update the display to show the final, non-transparent state
         self._update_status_display_text()
 
@@ -606,7 +762,6 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
     def _update_status_display_text(self):
         self._render_status()
-
 
     def display_random_status(self):
         """Displays the randomization setting"""
@@ -812,25 +967,50 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self.total_table.setItem(0, 2, total_time)
 
     def format_seconds(self, sec):
-        # Hours
-        hrs = int(sec / 3600)
-        self.hrs_list = list(str(hrs))
-        if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
-            self.hrs_list.insert(0, "0")
-        # Minutes
-        minutes = int((sec / 3600 - hrs) * 60)
-        self.minutes_list = list(str(minutes))
-        if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
-            self.minutes_list.insert(0, "0")
-        # Seconds
-        self.sec = list(str(int((((sec / 3600 - hrs) * 60) - minutes) * 60)))
-        if len(self.sec) == 1 or self.sec[0] == "0":
-            self.sec.insert(0, "0")
-        return (
-            f"{self.hrs_list[0]}{self.hrs_list[1]}:"
-            f"{self.minutes_list[0]}{self.minutes_list[1]}:"
-            f"{self.sec[0]}{self.sec[1]}"
-        )
+        """
+        Convert *sec* seconds (float or int, ≥ 0) to a zero-padded
+        ``HH:MM:SS`` string. If *sec* has a fraction, show milliseconds:
+        ``HH:MM:SS.mmm``.
+
+        Examples
+        --------
+        >>> self.format_seconds(3661)
+        '01:01:01'
+        >>> self.format_seconds(5.3)
+        '00:00:05.300'
+        >>> self.format_seconds(0.007)
+        '00:00:00.007'
+        """
+        if sec < 0:
+            raise ValueError("seconds cannot be negative")
+
+        # Split into hours, minutes, seconds-with-fraction
+        hours, remainder      = divmod(sec, 3600)
+        minutes, sec_fraction = divmod(remainder, 60)
+
+        hours   = int(hours)
+        minutes = int(minutes)
+
+        int_secs   = int(sec_fraction)
+        millis_raw = int(round((sec_fraction - int_secs) * 1000))
+
+        # Handle rounding overflow (59.9995 s → 60.000 s etc.)
+        if millis_raw == 1000:
+            millis_raw = 0
+            int_secs += 1
+            if int_secs == 60:
+                int_secs = 0
+                minutes += 1
+                if minutes == 60:
+                    minutes = 0
+                    hours += 1
+
+        if millis_raw == 0:
+            secs_str = f"{int_secs:02d}"
+        else:
+            secs_str = f"{int_secs:02d}.{millis_raw:03d}"
+
+        return f"{hours:02d}:{minutes:02d}:{secs_str}"
 
     # endregion
 
@@ -1097,6 +1277,41 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.init_sizing()
         self.init_scaling_size()
         self.init_button_sizes()
+        # --- rich UI replacement: twin dot indicators ---------------------------
+        # Hide the old numeric status label
+        self.session_info.hide()
+
+        # Top row → images in current entry | Bottom row → entries in session
+        self.image_progress = DotIndicator("#3daee9", self)   # cyan
+        self.entry_progress = DotIndicator("#8ae234", self)   # green
+
+        # Pack the two rows into a left‑hand container so the central control
+        # buttons remain perfectly centred.
+        self.indicators_container = QWidget()
+        vbox = QtWidgets.QVBoxLayout(self.indicators_container)
+        vbox.setContentsMargins(6, 0, 6, 0)   # no unwanted vertical gap
+        vbox.setSpacing(4)
+        vbox.addWidget(self.image_progress)
+        vbox.addWidget(self.entry_progress)
+
+        # Insert the container at the far‑left edge of the control row
+        controls_layout_item = self.verticalLayout.itemAt(1)
+        if (
+            controls_layout_item
+            and isinstance(controls_layout_item.layout(), QtWidgets.QHBoxLayout)
+        ):
+            controls_layout = controls_layout_item.layout()
+            controls_layout.insertWidget(0, self.indicators_container, stretch=0)
+
+            # Prevent the container from hogging horizontal space.
+            self.indicators_container.setSizePolicy(
+                QtWidgets.QSizePolicy.Preferred,
+                QtWidgets.QSizePolicy.Fixed,
+            )
+
+            # Keep the controls cluster centred when the window is resized.
+            self._adjust_progressbar_width()
+        # ------------------------------------------------------------------------
         self.drag_timer_was_active = False
         self.drag_start_position = QtCore.QPoint()
         self.drag_threshold = 6
@@ -1292,6 +1507,34 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.toggle_grayscale_mode_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+G"), self)
         self.toggle_grayscale_mode_shortcut.activated.connect(self.toggle_grayscale_mode)
 
+    # --- dynamic centring helpers ------------------------------------------
+    # --- SessionDisplay ---------------------------------------------------
+
+    def _adjust_progressbar_width(self):
+        """
+        Give the indicators_container just enough width for *all* currently
+        rendered dots, then set the left/right spacers to equal stretch so
+        the control buttons float back to dead-centre.
+        """
+        try:
+            needed = max(
+                self.image_progress.sizeHint().width(),
+                self.entry_progress.sizeHint().width(),
+            )
+            self.indicators_container.setFixedWidth(needed + 12)  # +8 px margin
+
+            # Re-centre: both spacer items get stretch=1, everything else = 0
+            controls_layout = self.verticalLayout.itemAt(1).layout()
+            for i in range(controls_layout.count()):
+                item = controls_layout.itemAt(i)
+                controls_layout.setStretch(i, 1 if item.spacerItem() else 0)
+        except Exception:
+            pass
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._adjust_progressbar_width()
+
     def closeEvent(self, event):
         """
         Stops timer and sound on close event.
@@ -1465,6 +1708,12 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         self.playlist_position = max(0, int(self.total_scheduled_images))
         self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
+        # Grey-out / complete the bars
+        self.image_progress.setValue(self.image_progress.maximum())
+        self.image_progress.setFormat("Images done")
+
+        self.entry_progress.setValue(self.entry_progress.maximum())
+        self.entry_progress.setFormat("Entries done")
         self.update_close_title()
         self.close_timer.start(1000)
 
@@ -1554,6 +1803,26 @@ class SessionDisplay(QWidget, Ui_session_display):
                     f'{current_entry.images - self.entry["amount of items"]}'
                     f"/{current_entry.images}"
                 )
+                current_img_index = current_entry.images - self.entry["amount of items"]
+                # self.image_progress.setMaximum(self.entry["amount of items"])
+                # self.image_progress.setValue(current_img_index)
+                # Tell the DotIndicator how many images there are and where we are
+                # self.image_progress.setMaximum(current_entry.images)   # total dots
+                # self.image_progress.setValue(current_img_index)        # filled dots
+                # (No text – the dot row itself is the indicator)
+                # self.entry_progress.setMaximum(self.entry["total"])
+                # self.entry_progress.setValue(self.entry["current"] + 1)
+                self.image_progress.setMaximum(current_entry.images)
+                self.image_progress.setValue(current_img_index)
+                self._adjust_progressbar_width()   # <- make room for new dot count
+                self.entry_progress.setFormat(
+                    f"Entry {self.entry['current'] + 1}/{self.entry['total']}"
+)
+                # self.session_info.setText(
+                #     f' {self.entry["current"] + 1}/{self.entry["total"]} | '
+                #     f'{current_entry.images - self.entry["amount of items"]}'
+                #     f"/{current_entry.images}"
+                # )
             self.prepare_image_mods()
 
     def prepare_image_mods(self):
@@ -1857,6 +2126,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self._set_timer_visuals(was_timer_active)
             return
         # At the beginning of a new entry
+
         if (
             self.entry["amount of items"] + 1
             == self.schedule[self.entry["current"]].images
