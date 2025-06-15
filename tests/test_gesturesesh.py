@@ -144,7 +144,6 @@ class TestMainAppLogic(unittest.TestCase):
         # Setup per‑test temp directory and defaults expected by certain tests
         self.test_dir = tempfile.mkdtemp()
         self.test_valid_file_types = [".jpg", ".png", ".bmp", ".jpeg"]
-        self.test_selection = {"files": [], "folders": set()}
         self.app = MainApp()
         # Permanently bind stubbed logic methods to this MainApp instance
         self.app.save = types.MethodType(_stub_save, self.app)
