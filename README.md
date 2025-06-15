@@ -101,12 +101,21 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Add 1 Minute                  | Ctrl + ↑ (Up Arrow)                   |
 | Open Image Folder             | Double-click or Ctrl + O              |
 | Reset Timer                   | Ctrl + Shift + ↑ (Up Arrow)           |
+| Increase Brightness           | Ctrl + PgUp                           |
+| Decrease Brightness           | Ctrl + PgDown                         |
+| Decrease Brightness           | PgDown                                |
+| Increase Contrast             | +                                     |
+| Decrease Contrast             | -                                     |
+| Toggle Threshold Mode         | T                                     |
+| Toggle Edge Detection         | E                                     |
+| Reset Image Modifications     | Ctrl + 0                              |
+| Toggle Grayscale Mode         | Ctrl + G                              |
 
 > [!NOTE]  
 > Pressing **Stop** closes the window and ends the session.  
 > In **Review Mode**, use ←/→ arrows to browse. Double-click (or Ctrl + O) to open the current image’s folder. The window auto-closes after 15 s of inactivity.
 
----
+
 
 ## Installation from Source
 
