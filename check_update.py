@@ -1,151 +1,144 @@
 import os
+import json
+import platform
+from pathlib import Path
+from typing import Optional, Dict, Any, TypedDict
+from datetime import datetime, timedelta
+from collections import OrderedDict
+
+from PyQt5.QtWidgets import QMainWindow
 import requests
-import shelve
-from datetime import datetime
+from packaging import version
+
+# --- App-Specific Constants ---
+APP_NAME = "GestureSesh"
+GITHUB_REPO = "adnv3k/GestureSesh"
+GITHUB_RELEASES_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 
-class Version:
-    def __init__(self, current_version):
-        super().__init__()
-        self.current_version = current_version
-        self.last_checked = self.get_last_checked()
-        self.allowed = self.check_allowed()
-        self.patch_available = False
-        self.newest_version = self.get_newest_version()
+# --- Define a structured dictionary for update information ---
+class UpdateInfo(TypedDict):
+    """A dictionary containing details of an available update."""
 
-    def get_newest_version(self):
-        if self.last_checked is False:
-            newest_version = self.current_version
-        elif self.allowed:
-            print('Check allowed')
-            # Grab json from github
-            print('Checking releases...')
-            try:
-                r = requests.get(
-                    'https://api.github.com/repos/adnv3k/GestureSesh/releases'
-                )
-                self.r_json = r.json()
-            except (Exception, ConnectionError):
-                print('Cannot connect to api.github')
-                return
-            # Get newest version from json
-            newest_version = self.r_json[0]['tag_name'][1:]
-            print(f'newest_version: {newest_version}')
-        else:
-            newest_version = self.last_checked[1]
-            print('Not allowed (get_newest_version)')
-        return newest_version
+    version: str
+    notes: str
+    url: str
+    pub_date: str
 
-    def check_allowed(self):
-        if self.last_checked is False:
-            return False
-        # Change format from datetime object to str elements [year, month, day]
-        last_checked = str(self.last_checked[0]).split('-')
-        now = str(datetime.now().date()).split('-')
-        print(
-            f'last_checked_date: {last_checked}\n'
-            f'Now: {now}'
-        )
-        # If more than 1 month or 1 days
-        print(
-            f'Month: {int(now[1])}\n'
-            f'last_checked month: {int(last_checked[1])}\n'
-            f'Day: {int(now[2])}\n'
-            f'last_checked day + 1: {int(last_checked[2]) + 1}'
-        )
-        if int(now[1]) > int(last_checked[1]) or int(now[2]) > int(last_checked[2]) + 1:
-            return True
-        print(
-            f'Check not allowed',
-            f'{int(last_checked[2]) + 1 - int(now[2])} days until allowed'
-        )
-        os.chdir(r'.\recent')
-        f = shelve.open('recent')
-        f['last_checked'] = [datetime.now().date(), self.current_version]
-        f.close()
-        os.chdir(r'..\\')
-        return False
 
-    def is_newest(self):
-        """
-        Checks if the current version is up to date.
-        """
-        self.save_to_recent()
-        print(self.last_checked)
-        print(f'current version: {self.current_version}')
+# --- Platform-Specific Configuration Path ---
+def get_config_dir() -> Path:
+    """Returns the cross-platform application data directory."""
+    system = platform.system()
+    if system == "Darwin":  # macOS
+        return Path.home() / "Library/Application Support" / APP_NAME
+    elif system == "Windows":
+        # The 'APPDATA' environment variable points to C:\Users\<user>\AppData\Roaming
+        return Path(os.getenv("APPDATA", "")) / APP_NAME
+    else:  # Linux and other Unix-likes
+        return Path.home() / ".config" / APP_NAME
 
-        if self.current_version == self.newest_version:
-            if self.allowed:
-                if 'patch' in self.r_json[0]['name'].lower():
-                    print('Patch available')
-                    self.patch_available = True
-                    if self.is_valid_update():
-                        # self.save_to_recent()
-                        # print('self.is_valid_update = True. save_to_recent called')
-                        return False # version not newest
-                print('Up to date')
 
+# --- Configuration File Handling (using JSON) ---
+def load_config(app: QMainWindow) -> Dict[str, Any]:
+    """Loads configuration from a JSON file."""
+    path = get_config_dir() / "config.json"
+    # Check if config file exists for first-time launch
+    if not path.exists():
+        config = {}
+        # Save a default config to mark as initialized
+        app.selected_items.clear()
+        save_config(path, config)
+        return {}
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Failed to load or parse config file at {path}: {e}")
+        return {}
+
+
+def save_config(path: Path, config: Dict[str, Any]):
+    """Saves configuration to a JSON file with 'update_check' as the first key."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure 'update_check' is first, then all other keys in their original order
+        ordered = OrderedDict()
+        if "update_check" in config:
+            ordered["update_check"] = config["update_check"]
+        if "recent_session" in config:
+            ordered["recent_session"] = config["recent_session"]
+        for k, v in config.items():
+            if k not in ["update_check", "recent_session"]:
+                ordered[k] = v
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(ordered, f, indent=4)
+    except IOError as e:
+        print(f"Failed to save config file at {path}: {e}")
+
+
+class UpdateChecker:
+    """
+    Handles checking for application updates in a safe and efficient manner.
+    """
+
+    def __init__(self, current_version: str):
+        self.current_v = version.parse(current_version)
+        self.config_path = get_config_dir() / "config.json"
+        self.config = load_config(self.config_path)
+
+    def _is_check_needed(self) -> bool:
+        last_checked_str = self.config.get("update_check", {}).get("last_checked")
+        if not last_checked_str:
             return True
 
-        # There is a newer version
-        if not self.allowed:
-            print('Out of date')
-            return True # version is not newest, but self.allowed = False means don't proceed.
-        if self.is_valid_update():
-            # self.save_to_recent()
-            # print('save_to_recent called')
-            return False
-
-    def is_valid_update(self):
-        if self.r_json[0]['target_commitish'].lower() != 'main':
-            return False
-        if self.r_json[0]['prerelease']:
-            return False
-        if self.r_json[0]['draft']:
-            return False
-        return True
-
-    def get_last_checked(self):
-        if not os.path.exists(r'.\recent'):
-            print(f'Recent folder not found')
-            os.mkdir(r'.\recent')
-        os.chdir(r'.\recent')
-        f = shelve.open('recent')
         try:
-            last_checked = f['last_checked']
-            print(f'Save exists. last_checked: {last_checked}')
-        except (Exception, KeyError): # First time opening app
-            f['last_checked'] = [datetime.now().date(), self.current_version]
-            last_checked = False
-            print('last_checked not found')
-        f.close()
-        os.chdir(r'..\\')
-        return last_checked
+            last_checked_dt = datetime.fromisoformat(last_checked_str)
+            return datetime.now() - last_checked_dt > timedelta(hours=24)
+        except ValueError:
+            return True
+        except ValueError:
+            print("Invalid date format in config for 'last_checked'. Checking again.")
+            return True
 
-    # Saves date checked
-    def save_to_recent(self):
-        os.chdir(r'.\recent')
-        f = shelve.open('recent')
-        f['last_checked'] = [datetime.now().date(), self.newest_version]
-        f.close()
-        os.chdir(r'..\\')
+    def check_for_updates(self) -> Optional[UpdateInfo]:
+        """
+        Checks for the latest release on GitHub if needed.
 
-    def update_type(self):
-        if self.patch_available:
-            return 'Patch'
-        current_version = self.current_version.split('.')
-        newest_version = self.newest_version.split('.')
-        update_type = None
-        for i in range(len(current_version)):
-            if int(current_version[i]) < int(newest_version[i]):
-                update_type = i
-                break
-        if update_type == 0:
-            return 'Major update'
-        elif update_type == 1:
-            return 'Feature update'
-        elif update_type == 2:
-            return 'Minor update'
+        Returns:
+            An UpdateInfo dictionary if a new version is available, otherwise None.
+        """
+        if not self._is_check_needed():
+            return None
 
-    def content(self):
-        return self.r_json[0]['body']
+        try:
+            response = requests.get(GITHUB_RELEASES_URL, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+            latest_tag = data.get("tag_name", "").lstrip("v")
+            if not latest_tag:
+                return None
+
+            latest_v = version.parse(latest_tag)
+
+            # Update the check timestamp regardless
+            self.config.setdefault("update_check", {})[
+                "last_checked"
+            ] = datetime.now().isoformat()
+            self.config["update_check"]["cached_version"] = latest_tag
+            save_config(self.config_path, self.config)
+
+            if latest_v > self.current_v:
+                return UpdateInfo(
+                    version=str(latest_v),
+                    notes=data.get("body", "No release notes provided."),
+                    url=data.get("html_url", ""),
+                    pub_date=data.get("published_at", ""),
+                )
+
+        except requests.exceptions.RequestException:
+            return None
+
+        return None
