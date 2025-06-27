@@ -44,9 +44,7 @@ def sound_file(name: str):
     return resources.as_file(resources.files("sounds") / name)
 
 
-from dot_indicator import (
-    DotIndicator,
-)  # Assuming dot_indicator.py is in the same directory
+from dot_indicator import DotIndicator
 
 
 @dataclass
@@ -88,11 +86,7 @@ class FileDialog(QFileDialog):
         )
 
 
-__version__ = "0.4.3"
-
-# Adding a folder will now include subdirectories.
-# Reworked status messages to use a queue system with animations.
-# Added dynamic font sizing based on window height.
+__version__ = "0.5.0"
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
