@@ -7,16 +7,6 @@ from typing import Iterable
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-# ════════════════════════════════════════════════════════════════════════════
-# THEME SUPPORT (REVISION 2025-06-16 s)
-# ---------------------------------------------------------------------------
-# • Centralise *all* colour definitions in a single @dataclass (DotPalette).
-# • Palette values are expressed purely as HSLA tuples → trivial to retheme.
-# • DotIndicator now accepts an optional palette parameter; supplying a custom
-#   palette instantly reskins the widget with no further code changes.
-# ════════════════════════════════════════════════════════════════════════════
-
-
 @dataclass
 class DotPalette:
     """H S L [A] values for every visual state in one place (ease of theming)."""
@@ -44,39 +34,41 @@ class DotPalette:
 
 class DotIndicator(QtWidgets.QWidget):
     """
-    Progress row (≤ 10 images per set).
-
-    • Dots 1-9 track images (or entries) within the *current* 10-slot block.
-    • Slot #10 morphs into a right-pointing chevron when *any* images remain
-      after this block; while on image #10 it fills and pulses once per
-      remaining block (⌈remaining / 10⌉ pulses).
-
-    Break handling
-    ──────────────
-    *Row break* (`maximum ≤ 0`) or *per-dot break* always draws **one orange
-    dot** in the images row.  **Default state is dim**; the dot brightens only
-    while current and dims again once passed.
-
-    ──────────────────────────────────────────────────────────────────────────
-    REVISION 2025-06-16 s ← THIS UPDATE (Theme-ready palette system)
-    • **DotPalette** dataclass centralises colours in HSLA for effortless
-      theming.  Pass `palette=DotPalette( … )` to recolour instantly.
-    REVISION 2025-06-16 r
-    • **De-clipped overlay glow** – when `top_overlay=True`, the widget now
-      reserves just enough extra space *below* the dots for the halo to spill
-      onto the entries row **without** enlarging the control bar’s perceived
-      height.  (See `extra_pad` block.)
-    REVISION 2025-06-16 q
-    • **Fixed-height policy** – the widget clamps its minimum *and* maximum
-      height to one value and uses `QSizePolicy.Fixed` vertically.
-    REVISION 2025-06-15 p
-    • **Top-flush layout** – dots hug the widget’s top (old gap removed).
-    • **Dynamic centring** – rows with < 9 dots are centred horizontally.
-    • **Last-dot marker** – final dot of a sub-entry is ring-highlighted.
-    REVISION 2025-06-15 o
-    • **Fail-safe row-break reset**, guard in `setValue`, and auto-stopping
-      pulse timer on breaks.
+    DotIndicator is a customizable Qt widget that visually represents progress using a row of dots, with optional chevron and animated glow effects.
+    Features:
+    - Displays a row of dots indicating progress, with support for marking certain dots as "breaks".
+    - Supports a chevron indicator for multi-set progress (e.g., more than 10 items).
+    - Animated pulse/glow effect for current or break dots.
+    - Customizable appearance via tunable parameters (dot size, spacing, chevron size, glow layers, etc.).
+    - Overlay mode for transparent, non-interactive display.
+    - Integrates with a DotPalette for color theming.
+    Parameters:
+        palette (DotPalette | None): Optional color palette for theming.
+        parent (QtWidgets.QWidget | None): Optional parent widget.
+        dot_d (int | None): Diameter of each dot.
+        dot_spc (int | None): Spacing between dots.
+        chev_scale_w (float | None): Chevron width scaling factor.
+        chev_scale_h (float | None): Chevron height scaling factor.
+        chev_core_w (int | None): Chevron line thickness.
+        glow_layers (list[float] | None): Glow effect layer scaling factors.
+        top_overlay (bool): If True, widget is transparent and overlays other content.
+        align_top (bool): If True, aligns dots to the top; otherwise, vertically centers them.
+    Public Methods:
+        setMaximum(maximum: int): Set the maximum value (number of dots/steps).
+        setValue(value: int): Set the current progress value (1-based index).
+        setBreaks(break_indices): Mark specific indices as "break" dots.
+        applyBreakVector(counts: list[int]): Mark indices with non-positive counts as breaks.
+    Signals:
+        (None defined; widget is intended for visual display only.)
+    Usage:
+        indicator = DotIndicator(parent=some_parent)
+        indicator.setMaximum(10)
+        indicator.setValue(3)
+        indicator.setBreaks([4, 7])
+    Note:
+        Requires PyQt5 or PySide2/6 for QtWidgets, QtCore, and QtGui modules.
     """
+
 
     # ─────────────────────── Tunables (class defaults) ────────────────────
     DEFAULT_DOT_D = 8
@@ -152,7 +144,6 @@ class DotIndicator(QtWidgets.QWidget):
 
         self.setMinimumHeight(fixed_h - 2)
         self.setMaximumHeight(fixed_h - 2)
-        # self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
 
     # ---------------------------------------------------------------------
