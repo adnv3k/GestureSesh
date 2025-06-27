@@ -74,7 +74,7 @@ class Ui_session_display(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.session_info.sizePolicy().hasHeightForWidth())
         self.session_info.setSizePolicy(sizePolicy)
-        self.session_info.setMaximumSize(QtCore.QSize(16777215, 32))
+        self.session_info.setMaximumSize(QtCore.QSize(16777215, 32*2))
         font = QtGui.QFont()
         font.setFamily(
             "Apple SD Gothic Neo"

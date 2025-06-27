@@ -1,3 +1,4 @@
+# GestureSesh.py
 import os
 import sys
 import random
@@ -9,8 +10,6 @@ from importlib import resources
 import cv2
 import numpy as np
 from pygame import mixer
-import subprocess
-from dataclasses import dataclass
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
@@ -27,7 +26,12 @@ from PyQt5.QtWidgets import (
     QGraphicsOpacityEffect,
     QProgressBar,
 )
-from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QSequentialAnimationGroup, pyqtProperty
+from PyQt5.QtCore import (
+    QPropertyAnimation,
+    QEasingCurve,
+    QSequentialAnimationGroup,
+    pyqtProperty,
+)
 from check_update import UpdateChecker, save_config, load_config, get_config_dir
 from main_window import Ui_MainWindow
 from session_display import Ui_session_display
@@ -40,114 +44,9 @@ def sound_file(name: str):
     return resources.as_file(resources.files("sounds") / name)
 
 
-
-# ---------------------------------------------------------------------------
-# DotIndicator: compact 10‑slot dot/arrow progress widget
-# ---------------------------------------------------------------------------
-class DotIndicator(QtWidgets.QWidget):
-    """
-    Horizontal row of up to 10 circular dots that fill as progress increases.
-
-    • If the total value (maximum) is ≤ 10, each dot represents one unit.  
-    • If the total exceeds 10, the first nine dots represent 10 %‑chunks of
-      completion and the final slot is drawn as a “more” indicator (a small
-      right‑arrow ▸).  No text is ever shown.
-    The public API purposefully mirrors the two methods used in QProgressBar
-    inside the existing codebase – ``setMaximum()`` and ``setValue()`` – so
-    the rest of the application can remain unchanged.
-    """
-
-    def __init__(self, color: str = "#3daee9", parent: QtWidgets.QWidget | None = None):
-        super().__init__(parent)
-        self._max_value: int = 1
-        self._value: int = 0
-        self._slots: int = 10
-        self._dot_diameter: int = 12
-        self._spacing: int = 6
-        self._fill_color = QtGui.QColor(color)
-        self._empty_color = QtGui.QColor(70, 70, 70)  # dark grey for empty dots
-        self.setMinimumHeight(self._dot_diameter)
-
-    # ------------------------------------------------------------------ API
-    def setMaximum(self, maximum: int):
-        self._max_value = max(1, maximum)
-        self.updateGeometry()   # resize horizontally when # of dots changes
-        self.update()
-
-    def setValue(self, value: int):
-        self._value = max(0, min(value, self._max_value))
-        self.update()
-
-    # ------------------------------------------------------------------ API legacy‑compat
-    def setFormat(self, _fmt: str):
-        """
-        Stub kept for drop‑in compatibility with QProgressBar‑based code.
-        DotIndicator never shows text, so this is intentionally a no‑op.
-        """
-        # Store it in case future debugging needs it.
-        self._format_string = _fmt
-
-    # -------------------------------------------------------------- QWidget
-    # ---------------------------------------------------------------- internal
-    def _full_width(self) -> int:
-        """Pixel width of a full 10‑slot indicator (used by the container)."""
-        return self._slots * self._dot_diameter + (self._slots - 1) * self._spacing
-
-    def sizeHint(self) -> QtCore.QSize:
-        """Return width just wide enough for the required number of slots."""
-        slots = self._max_value if self._max_value <= self._slots else self._slots
-        width = slots * self._dot_diameter + (slots - 1) * self._spacing if slots else 0
-        return QtCore.QSize(width, self._dot_diameter)
-
-    def paintEvent(self, event: QtGui.QPaintEvent):  # noqa: D401
-        """
-        Draw dots centred *within the widget*:
-
-        • If total ≤ 10 → draw that many dots, one per unit.  
-        • If total  > 10 → draw nine dots plus a ▸ arrow; first nine dots still
-          represent the first nine *individual* units, arrow lights up once the
-          counter reaches ≥ 10.
-        """
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-
-        y_offset = (self.height() - self._dot_diameter) / 2
-        draw_slots = self._max_value if self._max_value <= self._slots else self._slots
-
-        # Compute centred starting X
-        total_width = (
-            draw_slots * self._dot_diameter + (draw_slots - 1) * self._spacing
-            if draw_slots > 0
-            else 0
-        )
-        x = (self.width() - total_width) / 2
-
-        for i in range(draw_slots):
-            # Arrow slot when “more than ten”
-            if self._max_value > self._slots and i == self._slots - 1:
-                path = QtGui.QPainterPath()
-                path.moveTo(x, y_offset)
-                path.lineTo(x + self._dot_diameter, y_offset + self._dot_diameter / 2)
-                path.lineTo(x, y_offset + self._dot_diameter)
-                path.closeSubpath()
-                filled = self._value >= self._slots  # arrow lights once 10+ units viewed
-                painter.fillPath(path, self._fill_color if filled else self._empty_color)
-                break
-
-            filled = i < self._value
-            painter.setBrush(self._fill_color if filled else self._empty_color)
-            painter.setPen(QtCore.Qt.NoPen)
-            painter.drawEllipse(
-                QtCore.QPointF(
-                    x + self._dot_diameter / 2, y_offset + self._dot_diameter / 2
-                ),
-                self._dot_diameter / 2,
-                self._dot_diameter / 2,
-            )
-            x += self._dot_diameter + self._spacing
-
-        painter.end()
-# ---------------------------------------------------------------------------
+from dot_indicator import (
+    DotIndicator,
+)  # Assuming dot_indicator.py is in the same directory
 
 
 @dataclass
@@ -155,10 +54,11 @@ class ScheduleEntry:
     images: int
     time: int
 
+
 @dataclass
 class StatusMessage:
     text: str
-    duration: int                # milliseconds
+    duration: int  # milliseconds
     is_error: bool = False
     timer: QtCore.QTimer | None = None
     blink_timer: QtCore.QTimer | None = None
@@ -167,10 +67,11 @@ class StatusMessage:
     fade_step: int = 0
     _blink_cycle_count: int = 0
     _current_fade_step: int = 0
-    _fade_direction: str = 'out'
+    _fade_direction: str = "out"
     _max_blink_cycles: int = 0
     _fade_steps: int = 0
     _is_fading_out: bool = False
+
 
 # Subclass to enable multifolder selection.
 class FileDialog(QFileDialog):
@@ -185,6 +86,7 @@ class FileDialog(QFileDialog):
         self.findChildren(QTreeView)[0].setSelectionMode(
             QAbstractItemView.ExtendedSelection
         )
+
 
 __version__ = "0.4.3"
 
@@ -326,8 +228,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
         checked_files = self.check_files(selected_files[0])
         self.selection["files"].extend(checked_files["valid_files"])
 
-        self.selection["files"].extend(checked_files["valid_files"])   
-        
+        self.selection["files"].extend(checked_files["valid_files"])
+
         # Use new status system for file adding messages
         self.show_temporary_status(
             f'{len(checked_files["valid_files"])} file(s) added!', 4000
@@ -336,9 +238,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         if len(checked_files["invalid_files"]) > 0:
             self.show_temporary_status(
                 f'{len(checked_files["invalid_files"])} file(s) not added. '
-                f'Supported file types: {", ".join(self.valid_file_types)}.', 
+                f'Supported file types: {", ".join(self.valid_file_types)}.',
                 duration_ms=4000,
-                is_error=True
+                is_error=True,
             )
 
     def open_folder(self):
@@ -357,15 +259,16 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
             # Use new status system for folder adding messages
             self.show_temporary_status(
-                f"{total_valid_files} file(s) added from {len(directories)} folder(s)!", 4000
+                f"{total_valid_files} file(s) added from {len(directories)} folder(s)!",
+                4000,
             )
 
             if total_invalid_files > 0:
                 self.show_temporary_status(
                     f"{total_invalid_files} file(s) not added. "
-                    f'Supported file types: {", ".join(self.valid_file_types)}.', 
+                    f'Supported file types: {", ".join(self.valid_file_types)}.',
                     duration_ms=4000,
-                    is_error=True
+                    is_error=True,
                 )
             return
 
@@ -375,8 +278,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def scan_directories(self, directories):
         """Scan a list of directories and collect valid files from all subfolders, robust to symlinks, permissions, and case."""
         total_valid_files, total_invalid_files = 0, 0
-        visited = set()  
-        seen_paths = set()  
+        visited = set()
+        seen_paths = set()
 
         # Normalize allowed directories for safety check
         allowed_dirs = [os.path.abspath(d) for d in directories]
@@ -397,12 +300,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
         for directory in directories:
             if not os.path.exists(directory):
-                if directory in self.selection['folders']:
-                    self.selection['folders'].remove(directory)
+                if directory in self.selection["folders"]:
+                    self.selection["folders"].remove(directory)
                 continue
             # Save folder that was explicitly selected
-            if directory not in self.selection['folders']: 
-                self.selection['folders'].append(directory)
+            if directory not in self.selection["folders"]:
+                self.selection["folders"].append(directory)
             for root, dirs, files in os.walk(directory, followlinks=True):
                 # Prevent infinite recursion via symlinks
                 try:
@@ -414,30 +317,34 @@ class MainApp(QMainWindow, Ui_MainWindow):
                     continue  # Skip directories we can't stat
 
                 # Check files for type and accessibility first
-                potential_files = self.check_files([os.path.join(root, f) for f in files])
-                total_invalid_files += len(potential_files['invalid_files']) # Add initial invalid files
+                potential_files = self.check_files(
+                    [os.path.join(root, f) for f in files]
+                )
+                total_invalid_files += len(
+                    potential_files["invalid_files"]
+                )  # Add initial invalid files
 
-                for file in potential_files['valid_files']:
+                for file in potential_files["valid_files"]:
                     try:
                         # Use inode + case-sensitive path for duplicate detection
                         stat = os.stat(file)
                         file_key = (stat.st_dev, stat.st_ino, file)  # Added file path
-                        
+
                         if file_key in seen_paths:
                             continue
-                            
+
                         if not is_within_allowed_dirs(file, allowed_dirs):
                             total_invalid_files += 1
                             continue
-                            
+
                         seen_paths.add(file_key)
-                        self.selection['files'].append(file)
+                        self.selection["files"].append(file)
                         total_valid_files += 1
-                        
+
                     except (OSError, PermissionError):
                         total_invalid_files += 1
                         continue
-                        
+
         return total_valid_files, total_invalid_files
         #         # Now, filter the potentially valid files
         #         for file in potential_files['valid_files']:
@@ -520,16 +427,17 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
         # If there are no active status messages, show default message directly
         if not self.status_messages:
-            if self.showing_default_status and self.selected_items.toPlainText() == default_message:
+            if (
+                self.showing_default_status
+                and self.selected_items.toPlainText() == default_message
+            ):
                 return  # Already showing this default message
 
             # Restore full opacity for default message
             self.status_opacity_effect.setOpacity(0.8)
 
             # Style default message to prevent white flash
-            self.selected_items.setHtml(
-                f'<div>{default_message}</div>'
-            )
+            self.selected_items.setHtml(f"<div>{default_message}</div>")
             # Mark as showing default status
             self.showing_default_status = True
 
@@ -651,7 +559,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Store animation state in the message object
         status_msg._blink_cycle_count = 0
         status_msg._current_fade_step = 0
-        status_msg._fade_direction = 'out'
+        status_msg._fade_direction = "out"
         status_msg._max_blink_cycles = max_blink_cycles
         status_msg._fade_steps = fade_steps
 
@@ -668,7 +576,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
                 return
 
             # Calculate current opacity
-            if status_msg._fade_direction == 'out':
+            if status_msg._fade_direction == "out":
                 progress = status_msg._current_fade_step / status_msg._fade_steps
                 current_opacity = 1.0 - (0.8 * progress)  # 1.0 -> 0.2
             else:  # fade_direction == 'in'
@@ -682,8 +590,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
 
             # Check if this fade direction is complete
             if status_msg._current_fade_step >= status_msg._fade_steps:
-                if status_msg._fade_direction == 'out':
-                    status_msg._fade_direction = 'in'
+                if status_msg._fade_direction == "out":
+                    status_msg._fade_direction = "in"
                     status_msg._current_fade_step = 0
                 else:
                     # Fade in complete, cycle is done
@@ -694,9 +602,12 @@ class MainApp(QMainWindow, Ui_MainWindow):
                         blink_timer.stop()
 
                         def restart_cycle():
-                            if status_msg.is_blinking and status_msg in self.status_messages:
+                            if (
+                                status_msg.is_blinking
+                                and status_msg in self.status_messages
+                            ):
                                 status_msg._current_fade_step = 0
-                                status_msg._fade_direction = 'out'
+                                status_msg._fade_direction = "out"
                                 blink_timer.start(fade_step_duration)
 
                         QtCore.QTimer.singleShot(200, restart_cycle)
@@ -714,8 +625,8 @@ class MainApp(QMainWindow, Ui_MainWindow):
     def _finish_message_blink_animation(self, status_msg):
         """Restore normal state for a specific message after blinking completes"""
         status_msg.is_blinking = False
-        if hasattr(status_msg, '_blink_timer'):
-            delattr(status_msg, '_blink_timer')
+        if hasattr(status_msg, "_blink_timer"):
+            delattr(status_msg, "_blink_timer")
 
         # Restore the main widget's opacity to full
         self.status_opacity_effect.setOpacity(1.0)
@@ -724,9 +635,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         self._update_status_display_text()
 
     # --- unified renderer --------------------------------------------------
-    def _render_status(self,
-                       highlight: StatusMessage | None = None,
-                       opacity: float | None = None) -> None:
+    def _render_status(
+        self, highlight: StatusMessage | None = None, opacity: float | None = None
+    ) -> None:
         """
         Draw all status messages.  If *highlight* is supplied, that message is
         rendered in the given *opacity* (0‑1).  All others use full colour.
@@ -741,15 +652,18 @@ class MainApp(QMainWindow, Ui_MainWindow):
         html = ['<div style="line-height:1.1;">']
         visible = list(reversed(self.status_messages))  # newest first
         for i, msg in enumerate(visible):
-            margin = 'margin-top:3px;' if i else ''
+            margin = "margin-top:3px;" if i else ""
 
             if msg is highlight:
                 base_rgb = "220, 20, 60" if msg.is_error else "225, 225, 225"
-                css = f'font-weight:bold; color:rgba({base_rgb}, {opacity}); {margin}'
+                css = f"font-weight:bold; color:rgba({base_rgb}, {opacity}); {margin}"
             elif i == 0:
-                css = f'font-weight:bold; {"color:#DC143C;" if msg.is_error else ""} {margin}'
+                css = (
+                    "font-weight:bold;"
+                    f' {"color:#DC143C;" if msg.is_error else ""} {margin}'
+                )
             else:
-                css = f'color:rgb(102,102,102); {margin}'
+                css = f"color:rgb(102,102,102); {margin}"
 
             html.append(f'<div style="{css}">{msg.text}</div>')
         html.append("</div>")
@@ -775,7 +689,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         Loads most recent session settings from unified config.json.
         """
         recent = self.config.get("recent_session", {})
-        if not recent: # First time launch or no recent session 
+        if not recent:  # First time launch or no recent session
             return self.selected_items.clear()
 
         folders = recent.get("folders", [])
@@ -985,13 +899,13 @@ class MainApp(QMainWindow, Ui_MainWindow):
             raise ValueError("seconds cannot be negative")
 
         # Split into hours, minutes, seconds-with-fraction
-        hours, remainder      = divmod(sec, 3600)
+        hours, remainder = divmod(sec, 3600)
         minutes, sec_fraction = divmod(remainder, 60)
 
-        hours   = int(hours)
+        hours = int(hours)
         minutes = int(minutes)
 
-        int_secs   = int(sec_fraction)
+        int_secs = int(sec_fraction)
         millis_raw = int(round((sec_fraction - int_secs) * 1000))
 
         # Handle rounding overflow (59.9995 s → 60.000 s etc.)
@@ -1183,8 +1097,9 @@ class MainApp(QMainWindow, Ui_MainWindow):
         # Check if there are enough selected images for the schedule
         if self.total_scheduled_images > len(self.selection["files"]):
             self.show_error_status(
-                "Not enough images selected. Add more images, or schedule fewer images.",
-                7000
+                "Not enough images selected. Add more images, or schedule fewer"
+                " images.",
+                7000,
             )
             return False
         return True
@@ -1255,9 +1170,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
             self.show_temporary_status(
                 "Update available! Please visit the site to download!", 5000
             )
-            self.show_temporary_status(
-                f"v{update['version']}: {update['notes']}", 6000
-            )
+            self.show_temporary_status(f"v{update['version']}: {update['notes']}", 6000)
         self.config_path = checker.config_path
         # else:
         #     self.selected_items.append("Up to date.")
@@ -1275,30 +1188,39 @@ class SessionDisplay(QWidget, Ui_session_display):
         super().__init__(parent)
         self.setupUi(self)
         self.init_sizing()
+
         self.init_scaling_size()
         self.init_button_sizes()
-        # --- rich UI replacement: twin dot indicators ---------------------------
         # Hide the old numeric status label
         self.session_info.hide()
 
         # Top row → images in current entry | Bottom row → entries in session
-        self.image_progress = DotIndicator("#3daee9", self)   # cyan
-        self.entry_progress = DotIndicator("#8ae234", self)   # green
+        self.image_progress = DotIndicator(
+            parent=self, dot_d=11, top_overlay=True
+        )  # larger cyan
+        self.entry_progress = DotIndicator(
+            parent=self, dot_d=8, top_overlay=True
+        )  # smaller green
+        self.image_progress.setContentsMargins(0, 10, 0, 0)
+        self.entry_progress.setContentsMargins(0, 0, 0, 10)
 
         # Pack the two rows into a left‑hand container so the central control
         # buttons remain perfectly centred.
         self.indicators_container = QWidget()
         vbox = QtWidgets.QVBoxLayout(self.indicators_container)
-        vbox.setContentsMargins(6, 0, 6, 0)   # no unwanted vertical gap
-        vbox.setSpacing(4)
+        vbox.setContentsMargins(0, 0, 1, 0)  # no unwanted vertical gap
+        vbox.setSpacing(0)
+        # make the thickness of the border thinner
+        self.indicators_container.setStyleSheet(
+            "QWidget { rgba(85,85,85,0.25); border-radius: 4px; }"
+        )
         vbox.addWidget(self.image_progress)
         vbox.addWidget(self.entry_progress)
 
         # Insert the container at the far‑left edge of the control row
-        controls_layout_item = self.verticalLayout.itemAt(1)
-        if (
-            controls_layout_item
-            and isinstance(controls_layout_item.layout(), QtWidgets.QHBoxLayout)
+        controls_layout_item: QtWidgets.QLayoutItem = self.verticalLayout.itemAt(1)
+        if controls_layout_item and isinstance(
+            controls_layout_item.layout(), QtWidgets.QHBoxLayout
         ):
             controls_layout = controls_layout_item.layout()
             controls_layout.insertWidget(0, self.indicators_container, stretch=0)
@@ -1311,7 +1233,6 @@ class SessionDisplay(QWidget, Ui_session_display):
 
             # Keep the controls cluster centred when the window is resized.
             self._adjust_progressbar_width()
-        # ------------------------------------------------------------------------
         self.drag_timer_was_active = False
         self.drag_start_position = QtCore.QPoint()
         self.drag_threshold = 6
@@ -1337,6 +1258,12 @@ class SessionDisplay(QWidget, Ui_session_display):
             btn.setStyleSheet(pause_style)
         self.init_image_mods()
         self.init_mixer()
+        break_indices = [
+            i for i, entry in enumerate(self.schedule) if entry.images == 0
+        ]
+        self.entry_progress.setBreaks(break_indices)
+        self.entry_progress.setMaximum(len(self.schedule))
+        self.entry_progress.setValue(1)
         self.load_entry()
         self.init_buttons()
         self.init_shortcuts()
@@ -1421,7 +1348,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             Set mute and volume according to previous session's sound settings.
             """
             import __main__
-            if hasattr(__main__, 'view') and hasattr(__main__.view, 'mute'):
+
+            if hasattr(__main__, "view") and hasattr(__main__.view, "mute"):
                 if __main__.view.mute is True:  # if view.mute exists and is True
                     self.mute = True
                     self.volume = mixer.music.get_volume()
@@ -1484,11 +1412,11 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.restart = QShortcut(QtGui.QKeySequence("Ctrl+Shift+Up"), self)
         self.restart.activated.connect(self.restart_timer)
         # Skip image
-        self.skip_image_key = QShortcut(QtGui.QKeySequence('S'), self)
+        self.skip_image_key = QShortcut(QtGui.QKeySequence("S"), self)
         self.skip_image_key.activated.connect(self.skip_image)
         # Frameless Window
         self.frameless_window = QShortcut(QtGui.QKeySequence("Ctrl+F"), self)
-        self.frameless_window.activated.connect(self.toggle_frameless)        
+        self.frameless_window.activated.connect(self.toggle_frameless)
         # Image adjustments
         self.brightness_up = QShortcut(QtGui.QKeySequence("Ctrl+PgUp"), self)
         self.brightness_up.activated.connect(self.increase_brightness)
@@ -1504,8 +1432,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.edge_toggle.activated.connect(self.toggle_edge)
         self.reset_mods = QShortcut(QtGui.QKeySequence("Ctrl+0"), self)
         self.reset_mods.activated.connect(self.reset_image_mods)
-        self.toggle_grayscale_mode_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+G"), self)
-        self.toggle_grayscale_mode_shortcut.activated.connect(self.toggle_grayscale_mode)
+        self.toggle_grayscale_mode_shortcut = QShortcut(
+            QtGui.QKeySequence("Ctrl+G"), self
+        )
+        self.toggle_grayscale_mode_shortcut.activated.connect(
+            self.toggle_grayscale_mode
+        )
 
     # --- dynamic centring helpers ------------------------------------------
     # --- SessionDisplay ---------------------------------------------------
@@ -1524,7 +1456,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.indicators_container.setFixedWidth(needed + 12)  # +8 px margin
 
             # Re-centre: both spacer items get stretch=1, everything else = 0
-            controls_layout = self.verticalLayout.itemAt(1).layout()
+            controls_layout: QtWidgets.QLayout = self.verticalLayout.itemAt(1).layout()
             for i in range(controls_layout.count()):
                 item = controls_layout.itemAt(i)
                 controls_layout.setStretch(i, 1 if item.spacerItem() else 0)
@@ -1544,7 +1476,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         # Store session sound settings globally for next session
         try:
             import __main__
-            if hasattr(__main__, 'view'):
+
+            if hasattr(__main__, "view"):
                 __main__.view.mute = self.mute
                 __main__.view.volume = self.volume
         except:
@@ -1644,10 +1577,7 @@ class SessionDisplay(QWidget, Ui_session_display):
 
     def skip_image(self):
         if self.playlist[self.playlist_position] == "break.png":
-            print(
-                "No images to skip on break"
-                f" {self.playlist[self.playlist_position]}"
-            )
+            print(f"No images to skip on break {self.playlist[self.playlist_position]}")
             self.setWindowTitle("No images to skip on break")
             return
 
@@ -1656,13 +1586,13 @@ class SessionDisplay(QWidget, Ui_session_display):
         while swap_indicies:
             swap_index = swap_indicies.pop()
             if self.playlist[swap_index] != "break.png":
-                self.playlist[self.playlist_position], self.playlist[swap_index] = self.playlist[swap_index], self.playlist[self.playlist_position]
+                self.playlist[self.playlist_position], self.playlist[swap_index] = (
+                    self.playlist[swap_index],
+                    self.playlist[self.playlist_position],
+                )
                 break
         else:
-            print(
-                "No images to skip to"
-                f" {self.playlist[self.playlist_position]}"
-            )
+            print(f"No images to skip to {self.playlist[self.playlist_position]}")
             self.setWindowTitle("No remaining unused images to skip to")
             return
         self.display_image()
@@ -1690,6 +1620,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:
             self._set_timer_visuals(False)
         self.entry["amount of items"] = self.schedule[self.entry["current"]].images - 1
+        # Update entry_progress dot indicator
+        self.entry_progress.setMaximum(self.entry["total"])
+        self.entry_progress.setValue(self.entry["current"] + 1)
         self.display_image()
 
     def end_session(self):
@@ -1710,10 +1643,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
         # Grey-out / complete the bars
         self.image_progress.setValue(self.image_progress.maximum())
-        self.image_progress.setFormat("Images done")
-
         self.entry_progress.setValue(self.entry_progress.maximum())
-        self.entry_progress.setFormat("Entries done")
         self.update_close_title()
         self.close_timer.start(1000)
 
@@ -1793,6 +1723,9 @@ class SessionDisplay(QWidget, Ui_session_display):
                 self.entry["amount of items"] = 0
                 self.setWindowTitle("Break")
                 self.session_info.setText("Break")
+                # Set image progress to break mode (single orange dot)
+                self.image_progress.setMaximum(0)
+                self.image_progress.setValue(1)
             else:
                 self.image_mods["break"] = False
                 self.image_mods["break_grayscale"] = False
@@ -1804,25 +1737,17 @@ class SessionDisplay(QWidget, Ui_session_display):
                     f"/{current_entry.images}"
                 )
                 current_img_index = current_entry.images - self.entry["amount of items"]
-                # self.image_progress.setMaximum(self.entry["amount of items"])
-                # self.image_progress.setValue(current_img_index)
-                # Tell the DotIndicator how many images there are and where we are
-                # self.image_progress.setMaximum(current_entry.images)   # total dots
-                # self.image_progress.setValue(current_img_index)        # filled dots
-                # (No text – the dot row itself is the indicator)
-                # self.entry_progress.setMaximum(self.entry["total"])
-                # self.entry_progress.setValue(self.entry["current"] + 1)
                 self.image_progress.setMaximum(current_entry.images)
                 self.image_progress.setValue(current_img_index)
-                self._adjust_progressbar_width()   # <- make room for new dot count
-                self.entry_progress.setFormat(
-                    f"Entry {self.entry['current'] + 1}/{self.entry['total']}"
-)
-                # self.session_info.setText(
-                #     f' {self.entry["current"] + 1}/{self.entry["total"]} | '
-                #     f'{current_entry.images - self.entry["amount of items"]}'
-                #     f"/{current_entry.images}"
-                # )
+                self._adjust_progressbar_width()  # <- make room for new dot count
+            #                 self.entry_progress.setFormat(
+            #                     f"Entry {self.entry['current'] + 1}/{self.entry['total']}"
+            # )
+            # self.session_info.setText(
+            #     f' {self.entry["current"] + 1}/{self.entry["total"]} | '
+            #     f'{current_entry.images - self.entry["amount of items"]}'
+            #     f"/{current_entry.images}"
+            # )
             self.prepare_image_mods()
 
     def prepare_image_mods(self):
@@ -1870,7 +1795,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         #     return
 
         # Grayscale/threshold/edge
-        grayscale_active = self.image_mods["grayscale"] or self.image_mods["break_grayscale"]
+        grayscale_active = (
+            self.image_mods["grayscale"] or self.image_mods["break_grayscale"]
+        )
         if grayscale_active or self.image_mods["threshold"] or self.image_mods["edge"]:
             if self.image_mods.get("grayscale_mode", "perceptual") == "simple":
                 gray = self.to_simple_grayscale(cvimage)
@@ -1893,14 +1820,18 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         # Convert to QImage
         height, width = cvimage.shape[:2]
-        if cvimage.ndim == 2: # Grayscale image
+        if cvimage.ndim == 2:  # Grayscale image
             bytes_per_line = width
             self.image = QtGui.QImage(
-                cvimage.data, width, height, bytes_per_line, QtGui.QImage.Format_Grayscale8
+                cvimage.data,
+                width,
+                height,
+                bytes_per_line,
+                QtGui.QImage.Format_Grayscale8,
             )
         else:
             channels = cvimage.shape[2]
-            if channels == 4: # If image has an alpha channel
+            if channels == 4:  # If image has an alpha channel
                 cvimage = cv2.cvtColor(cvimage, cv2.COLOR_BGRA2RGBA)
                 fmt = QtGui.QImage.Format_RGBA8888
             elif channels == 3:
@@ -1910,9 +1841,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                 self.setWindowTitle("Error processing image")
                 return
             bytes_per_line = width * channels
-            self.image = QtGui.QImage(
-                cvimage.data, width, height, bytes_per_line, fmt
-            )
+            self.image = QtGui.QImage(cvimage.data, width, height, bytes_per_line, fmt)
 
         # Convert to QPixmap
         self.image = QtGui.QPixmap.fromImage(self.image)
