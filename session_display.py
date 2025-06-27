@@ -65,6 +65,7 @@ class Ui_session_display(object):
         self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_4.setSpacing(0)
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
+        self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.session_info = QtWidgets.QLabel(session_display)
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
@@ -73,7 +74,7 @@ class Ui_session_display(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.session_info.sizePolicy().hasHeightForWidth())
         self.session_info.setSizePolicy(sizePolicy)
-        self.session_info.setMaximumSize(QtCore.QSize(16777215, 32))
+        self.session_info.setMaximumSize(QtCore.QSize(16777215, 32*2))
         font = QtGui.QFont()
         font.setFamily(
             "Apple SD Gothic Neo"
@@ -125,7 +126,7 @@ class Ui_session_display(object):
         self.grayscale_button.setIconSize(QtCore.QSize(24, 24))
         self.grayscale_button.setCheckable(True)
         self.grayscale_button.setObjectName("grayscale_button")
-        self.horizontalLayout_2.addWidget(self.grayscale_button)
+        self.horizontalLayout_2.addWidget(self.grayscale_button, 0, QtCore.Qt.AlignBottom)
         # Flip horizontal button
         self.flip_horizontal_button = QtWidgets.QPushButton(session_display)
         mod_button_size_policy.setHeightForWidth(
@@ -147,7 +148,7 @@ class Ui_session_display(object):
         self.flip_horizontal_button.setIconSize(QtCore.QSize(24, 24))
         self.flip_horizontal_button.setCheckable(True)
         self.flip_horizontal_button.setObjectName("flip_horizontal_button")
-        self.horizontalLayout_2.addWidget(self.flip_horizontal_button)
+        self.horizontalLayout_2.addWidget(self.flip_horizontal_button, 0, QtCore.Qt.AlignBottom)
         # Flip vertical button
         self.flip_vertical_button = QtWidgets.QPushButton(session_display)
         mod_button_size_policy.setHeightForWidth(
@@ -169,7 +170,8 @@ class Ui_session_display(object):
         self.flip_vertical_button.setIconSize(QtCore.QSize(24, 24))
         self.flip_vertical_button.setCheckable(True)
         self.flip_vertical_button.setObjectName("flip_vertical_button")
-        self.horizontalLayout_2.addWidget(self.flip_vertical_button)
+        self.horizontalLayout_2.addWidget(self.flip_vertical_button, 0, QtCore.Qt.AlignBottom)
+        self.horizontalLayout_2.setAlignment(QtCore.Qt.AlignBottom)
         self.horizontalLayout_4.addLayout(self.horizontalLayout_2)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setSpacing(1)
