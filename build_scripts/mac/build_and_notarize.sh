@@ -76,7 +76,7 @@ function clean_build_artifacts {
 
 function build_app {
     echo "🏗️ Building .app from spec..."
-    sudo pyinstaller GestureSesh_macOS.spec --noconfirm || { echo "❌ PyInstaller build failed."; exit 1; }
+    pyinstaller GestureSesh_macOS.spec --noconfirm || { echo "❌ PyInstaller build failed."; exit 1; }
     if [[ ! -f "$APP_PATH/Contents/MacOS/$APP_NAME" ]]; then
         echo "❌ Main executable not found after build: $APP_PATH/Contents/MacOS/$APP_NAME"
         exit 1
@@ -85,17 +85,17 @@ function build_app {
 
 function fix_permissions {
     echo "🔐 Fixing permissions..."
-    sudo chmod +x "$APP_PATH/Contents/MacOS/$APP_NAME" || { echo "❌ Failed to set executable permissions."; exit 1; }
+    chmod +x "$APP_PATH/Contents/MacOS/$APP_NAME" || { echo "❌ Failed to set executable permissions."; exit 1; }
 }
 
 function clear_extended_attributes {
     echo "🧼 Clearing extended attributes..."
-    sudo xattr -cr "$APP_PATH" || { echo "⚠️ Failed to clear extended attributes."; }
+    xattr -cr "$APP_PATH" || { echo "⚠️ Failed to clear extended attributes."; }
 }
 
 function sign_app {
     echo "🔏 Signing app with hardened runtime..."
-    sudo codesign --deep --force --verbose \
+    codesign --deep --force --verbose \
       --options runtime \
       --sign "$IDENTITY" \
       "$APP_PATH" || { echo "❌ Code signing failed."; exit 1; }
@@ -103,22 +103,22 @@ function sign_app {
 
 function verify_signature {
     echo "✅ Verifying signature..."
-    sudo codesign --verify --deep --strict --verbose=2 "$APP_PATH" || { echo "❌ Signature verification failed."; exit 1; }
+    codesign --verify --deep --strict --verbose=2 "$APP_PATH" || { echo "❌ Signature verification failed."; exit 1; }
 }
 
 function gatekeeper_assess {
     echo "🛡️ Checking Gatekeeper assessment..."
-    sudo spctl --assess --type exec --verbose "$APP_PATH" || echo "⚠️ Gatekeeper assessment failed (may be expected before notarization)."
+    spctl --assess --type exec --verbose "$APP_PATH" || echo "⚠️ Gatekeeper assessment failed (may be expected before notarization)."
 }
 
 function create_zip_for_notarization {
     echo "📦 Creating ZIP for notarization..."
-    sudo ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH" || { echo "❌ Failed to create ZIP archive."; exit 1; }
+    ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH" || { echo "❌ Failed to create ZIP archive."; exit 1; }
 }
 
 function submit_for_notarization {
     echo "📤 Submitting to Apple notarization..."
-    NOTARY_RESPONSE=$(sudo xcrun notarytool submit "$ZIP_PATH" \
+    NOTARY_RESPONSE=$(xcrun notarytool submit "$ZIP_PATH" \
       --apple-id "$APPLE_ID" \
       --password "$NOTARY_PASSWORD" \
       --team-id "$TEAM_ID" \
@@ -132,20 +132,20 @@ function submit_for_notarization {
 
 function staple_ticket {
     echo "📎 Stapling notarization ticket..."
-    sudo xcrun stapler staple "$APP_PATH" || { echo "❌ Stapling failed."; exit 1; }
+    xcrun stapler staple "$APP_PATH" || { echo "❌ Stapling failed."; exit 1; }
 }
 
 function finalize_app {
     echo "🔧 Fixing permissions..."
-    sudo chmod +x "$APP_PATH/Contents/MacOS/$APP_NAME" || { echo "❌ Failed to set executable permissions after stapling."; exit 1; }
+    chmod +x "$APP_PATH/Contents/MacOS/$APP_NAME" || { echo "❌ Failed to set executable permissions after stapling."; exit 1; }
     echo "🔐 Re-signing main executable..."
-    sudo codesign --force --deep --options runtime --sign "$IDENTITY" "$APP_PATH/Contents/MacOS/$APP_NAME" || { echo "❌ Re-signing main executable failed."; exit 1; }
+    codesign --force --deep --options runtime --sign "$IDENTITY" "$APP_PATH/Contents/MacOS/$APP_NAME" || { echo "❌ Re-signing main executable failed."; exit 1; }
     echo "🔐 Re-signing app bundle..."
-    sudo codesign --force --deep --options runtime --sign "$IDENTITY" "$APP_PATH" || { echo "❌ Re-signing app bundle failed."; exit 1; }
+    codesign --force --deep --options runtime --sign "$IDENTITY" "$APP_PATH" || { echo "❌ Re-signing app bundle failed."; exit 1; }
     echo "🧪 Verifying signature..."
-    sudo codesign --verify --deep --strict --verbose=2 "$APP_PATH" || { echo "❌ Final signature verification failed."; exit 1; }
+    codesign --verify --deep --strict --verbose=2 "$APP_PATH" || { echo "❌ Final signature verification failed."; exit 1; }
     echo "🧩 Gatekeeper assessment..."
-    sudo spctl --assess --type exec --verbose "$APP_PATH" || echo "⚠️ Final Gatekeeper assessment failed."
+    spctl --assess --type exec --verbose "$APP_PATH" || echo "⚠️ Final Gatekeeper assessment failed."
 }
 
 function all {

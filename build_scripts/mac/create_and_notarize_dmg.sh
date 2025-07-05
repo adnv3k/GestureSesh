@@ -30,8 +30,7 @@ set -euo pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Assume the project root is two levels up from this script's directory
-# (e.g., project_root/build_scripts/mac). Adjust if your structure is different.
-PROJECT_ROOT="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # --- User-configurable variables ---
 APP_NAME="GestureSesh"
@@ -82,11 +81,11 @@ sudo rm -f "$DMG_NAME"
 create-dmg \
   --volname "$VOLUME_NAME" \
   --window-pos 0 900 \
-  --window-size 660 350 \
+  --window-size 660 300 \
   --icon-size 128 \
-  --icon "$APP_NAME.app" 84 120 \
+  --icon "$APP_NAME.app" 84 100 \
   --hide-extension "$APP_NAME.app" \
-  --app-drop-link 510 120 \
+  --app-drop-link 510 100 \
   --background "$BACKGROUND_IMG" \
   "$DMG_NAME" \
   "$APP_PATH"
@@ -95,7 +94,7 @@ create-dmg \
 # --- 2. Sign DMG ---
 # The DMG itself must be signed for modern versions of macOS.
 echo "🔏 Signing DMG..."
-sudo codesign --force --sign "$IDENTITY" "$DMG_NAME"
+codesign --force --sign "$IDENTITY" "$DMG_NAME"
 
 
 # --- 3. Notarize DMG ---
@@ -103,7 +102,7 @@ sudo codesign --force --sign "$IDENTITY" "$DMG_NAME"
 # `xcrun notarytool` is the modern tool for this.
 echo "📤 Submitting DMG for notarization with Apple. This may take a few minutes..."
 # Note: Do not run notarytool with sudo. It needs access to your user's keychain.
-NOTARY_RESPONSE=$(sudo xcrun notarytool submit "$DMG_NAME" \
+NOTARY_RESPONSE=$(xcrun notarytool submit "$DMG_NAME" \
   --apple-id "$APPLE_ID" \
   --password "$NOTARY_PASSWORD" \
   --team-id "$TEAM_ID" \
@@ -121,7 +120,7 @@ echo "✅ Notarization accepted by Apple."
 # --- 4. Staple DMG ---
 # Attach the notarization ticket to the DMG, so Gatekeeper can verify it offline.
 echo "📎 Stapling notarization ticket to DMG..."
-sudo xcrun stapler staple "$DMG_NAME"
+xcrun stapler staple "$DMG_NAME"
 
 
 # --- 5. Verify ---
@@ -129,7 +128,7 @@ sudo xcrun stapler staple "$DMG_NAME"
 echo "🔍 Verifying DMG signature and notarization..."
 
 # Verify the code signature.
-sudo codesign --verify --verbose=2 "$DMG_NAME"
+codesign --verify --verbose=2 "$DMG_NAME"
 
 # Verify that Gatekeeper will accept it.
 VERIFICATION_OUTPUT=$(spctl -a -v --type install "$DMG_NAME" 2>&1)
