@@ -1,0 +1,510 @@
+name: Build and Release GestureSesh
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., v0.5.0)'
+        required: true
+        default: 'v0.5.0'
+
+permissions:
+  contents: write
+  actions: read
+  checks: write
+  deployments: write
+  issues: write
+  packages: write
+  pull-requests: write
+  repository-projects: write
+  security-events: write
+  statuses: write
+
+env:
+  PYTHON_VERSION: '3.11'
+  APP_NAME: GestureSesh
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, x86]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        architecture: ${{ matrix.arch }}
+
+    - name: Get version
+      id: version
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Clean build artifacts
+      run: |
+        if ("${{ matrix.arch }}" -eq "x86") {
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue .\build, .\dist\win32
+        } else {
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue .\build, .\dist\win64
+        }
+        Get-ChildItem -Path . -Filter "__pycache__" -Recurse -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+        Get-ChildItem -Path . -Include *.log -Recurse -File -ErrorAction SilentlyContinue | Remove-Item -Force
+
+    - name: Build executable
+      run: |
+        if ("${{ matrix.arch }}" -eq "x86") {
+          pyinstaller GestureSesh_Win.spec --noconfirm --distpath dist/win32
+        } else {
+          pyinstaller GestureSesh_Win.spec --noconfirm --distpath dist/win64
+        }
+
+    - name: List build output
+      shell: bash
+      run: |
+        echo "Listing dist directory contents:"
+        find dist -type f -name "*.exe" || echo "No exe files found"
+        echo "Directory structure:"
+        ls -la dist/ || echo "dist directory not found"
+        if [ "${{ matrix.arch }}" == "x86" ]; then
+          ls -la dist/win32/ || echo "win32 directory not found"
+          if [ -d "dist/win32/GestureSesh" ]; then
+            ls -la dist/win32/GestureSesh/
+          else
+            echo "GestureSesh subdirectory not found, checking for direct exe:"
+            ls -la dist/win32/*.exe || echo "No exe in win32 root"
+          fi
+        else
+          ls -la dist/win64/ || echo "win64 directory not found"
+          if [ -d "dist/win64/GestureSesh" ]; then
+            ls -la dist/win64/GestureSesh/
+          else
+            echo "GestureSesh subdirectory not found, checking for direct exe:"
+            ls -la dist/win64/*.exe || echo "No exe in win64 root"
+          fi
+        fi
+
+    - name: Rename executable
+      shell: bash
+      run: |
+        if [ "${{ matrix.arch }}" == "x86" ]; then
+          if [ -f "dist/win32/GestureSesh/GestureSesh.exe" ]; then
+            mv dist/win32/GestureSesh/GestureSesh.exe "GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe"
+          elif [ -f "dist/win32/GestureSesh.exe" ]; then
+            mv dist/win32/GestureSesh.exe "GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe"
+          else
+            echo "ERROR: Could not find GestureSesh.exe in expected locations"
+            exit 1
+          fi
+        else
+          if [ -f "dist/win64/GestureSesh/GestureSesh.exe" ]; then
+            mv dist/win64/GestureSesh/GestureSesh.exe "GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe"
+          elif [ -f "dist/win64/GestureSesh.exe" ]; then
+            mv dist/win64/GestureSesh.exe "GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe"
+          else
+            echo "ERROR: Could not find GestureSesh.exe in expected locations"
+            exit 1
+          fi
+        fi
+
+    - name: Generate checksum
+      shell: pwsh
+      run: |
+        if ("${{ matrix.arch }}" -eq "x86") {
+          $hash = Get-FileHash -Algorithm SHA256 "GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe"
+          "$($hash.Hash.ToLower())  GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe" | Out-File "GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe.sha256" -Encoding UTF8
+        } else {
+          $hash = Get-FileHash -Algorithm SHA256 "GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe"
+          "$($hash.Hash.ToLower())  GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe" | Out-File "GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe.sha256" -Encoding UTF8
+        }
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-${{ matrix.arch }}
+        path: |
+          GestureSesh-${{ steps.version.outputs.version }}-Windows-${{ matrix.arch }}.exe
+          GestureSesh-${{ steps.version.outputs.version }}-Windows-${{ matrix.arch }}.exe.sha256
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Clean build artifacts
+      run: |
+        sudo rm -rf dist build __pycache__ || echo "No artifacts to clean"
+
+    - name: Build app bundle
+      run: |
+        pyinstaller GestureSesh_macOS.spec --noconfirm
+
+    - name: Clear extended attributes
+      run: |
+        xattr -cr dist/GestureSesh.app || echo "No extended attributes to clear"
+
+    - name: List build output
+      run: |
+        echo "Listing dist directory contents:"
+        ls -la dist/
+        echo "App bundle contents:"
+        ls -la dist/GestureSesh.app/ || echo "App bundle not found"
+
+    - name: Code sign app (if certificates available)
+      id: codesign_app
+      timeout-minutes: 6
+      env:
+        CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+        APPLE_ID:        ${{ secrets.APPLE_ID }}
+        APPLE_PASSWORD:  ${{ secrets.APPLE_PASSWORD }}
+        APPLE_TEAM_ID:   ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${{ secrets.DEVELOPER_CERTIFICATE_P12 }}" ]; then
+          echo "⚠️  No cert provided - skipping codesign/notarize."
+          exit 0
+        fi
+
+        echo "🔐 Importing certificate into temp.keychain..."
+        echo "${{ secrets.DEVELOPER_CERTIFICATE_P12 }}" | base64 --decode > certificate.p12
+        security create-keychain -p temp_password temp.keychain
+        security set-keychain-settings -lut 21600 temp.keychain
+        security unlock-keychain -p temp_password temp.keychain
+        security import certificate.p12 -P "${{ secrets.CERTIFICATE_PASSWORD }}" -A -t cert -f pkcs12 -k temp.keychain
+        security list-keychain -d user -s temp.keychain
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp_password temp.keychain
+        
+        chmod +x dist/GestureSesh.app/Contents/MacOS/GestureSesh
+
+        APP="dist/GestureSesh.app"
+        WRAPPER_BIN="$APP/Contents/MacOS/GestureSesh"
+        chmod +x "$WRAPPER_BIN"
+
+        echo "🔍 Re-signing all nested dylibs/so…"
+        find "$APP" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 | \
+        while IFS= read -r -d '' BIN; do
+          chmod +x "$BIN"
+          codesign --remove-signature "$BIN" 2>/dev/null || true
+          codesign --force --options runtime \
+             --keychain temp.keychain --timestamp --sign "$CODESIGN_IDENTITY" --verbose "$BIN"
+        done
+
+        echo "🔏 Recursively signing EVERY Mach-O except wrapper…"
+        find "$APP" -type f \( -perm -u+x -o -name "*.dylib" -o -name "*.so" \) \
+             ! -path "$WRAPPER_BIN" -print0 | \
+        while IFS= read -r -d '' BIN; do
+          codesign --force --options runtime \
+             --keychain temp.keychain --timestamp --sign "$CODESIGN_IDENTITY" --verbose "$BIN"
+        done
+
+        echo "🔏 Signing wrapper binary LAST…"
+        codesign --force --options runtime \
+           --keychain temp.keychain --timestamp --sign "$CODESIGN_IDENTITY" --verbose "$WRAPPER_BIN"
+
+        echo "🔏 Signing wrapper .app bundle…"
+        codesign --deep --force --verbose \
+           --options runtime \
+           --keychain temp.keychain --timestamp --sign "$CODESIGN_IDENTITY" "$APP"
+
+        echo "✅ Verifying codesign…"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+        spctl   --assess --type exec --verbose   "$APP" || true
+
+    - name: Prune dist folder to just the .app
+      run: |
+        mv dist/GestureSesh.app ./GestureSesh.app
+        rm -rf dist
+
+    - name: Create DMG
+      run: |
+        if ! command -v create-dmg &> /dev/null; then
+          brew install create-dmg
+        fi
+
+        create-dmg \
+          --volname "GestureSesh ${{ steps.version.outputs.version }}" \
+          --volicon "ui/resources/icons/brush.icns" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "GestureSesh.app" 200 190 \
+          --hide-extension "GestureSesh.app" \
+          --app-drop-link 600 185 \
+          --background "ui/resources/dmg_background.png" \
+          "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg" \
+          "./GestureSesh.app"
+
+    - name: Notarize DMG (if credentials available)
+      if: steps.codesign_app.outcome == 'success'
+      timeout-minutes: 20
+      env:
+        APPLE_ID:       ${{ secrets.APPLE_ID }}
+        APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        APPLE_TEAM_ID:  ${{ secrets.TEAM_ID }}
+      run: |
+        echo "📤 Submitting DMG for notarization..."
+        echo "🔍 DMG file: GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg"
+        echo "📊 DMG size: $(du -h "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg" | cut -f1)"
+        
+        echo "⏳ Starting notarization submission..."
+        NOTARY_RESPONSE=$(xcrun notarytool submit "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg" \
+          --apple-id "$APPLE_ID" \
+          --password "$APPLE_PASSWORD" \
+          --team-id   "$APPLE_TEAM_ID" \
+          --verbose \
+          --wait \
+          --output-format json 2>&1)
+
+        echo "📋 Full notarization response:"
+        echo "$NOTARY_RESPONSE"
+
+        SUBMISSION_ID=$(echo "$NOTARY_RESPONSE" | grep -Eo '[0-9a-fA-F-]{36}' | head -n 1)
+        echo "🆔 Submission ID: $SUBMISSION_ID"
+
+        # Check for status in the response
+        if echo "$NOTARY_RESPONSE" | grep -q "status.*Accepted"; then
+          echo "✅ Notarization ACCEPTED!"
+          echo "🔨 Starting stapling process..."
+          xcrun stapler staple "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg"
+          echo "✅ Notarization & stapling completed successfully!"
+          
+          # Verify stapling worked
+          echo "🔍 Verifying stapling..."
+          xcrun stapler validate "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg" && echo "✅ Stapling verified!" || echo "⚠️ Stapling verification failed"
+          
+        elif echo "$NOTARY_RESPONSE" | grep -q "status.*In Progress"; then
+          echo "⏳ Notarization still in progress (this shouldn't happen with --wait)"
+          exit 1
+          
+        elif echo "$NOTARY_RESPONSE" | grep -q "status.*Invalid"; then
+          echo "❌ Notarization REJECTED - dumping detailed log:"
+          if [ -n "$SUBMISSION_ID" ]; then
+            echo "📄 Getting detailed log for submission $SUBMISSION_ID..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID"
+          fi
+          exit 1
+          
+        else
+          echo "❓ Unknown notarization status - dumping full response:"
+          echo "$NOTARY_RESPONSE"
+          
+          if [ -n "$SUBMISSION_ID" ]; then
+            echo "📄 Getting detailed log for submission $SUBMISSION_ID..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
+          fi
+          exit 1
+        fi
+
+    - name: Generate checksum
+      run: |
+        shasum -a 256 "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg" > "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg.sha256"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos
+        path: |
+          GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg
+          GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg.sha256
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: List downloaded artifacts
+      run: |
+        echo "Downloaded artifacts:"
+        find . -type f -name "*.exe" -o -name "*.dmg" -o -name "*.sha256" | sort
+
+    - name: Create checksums file
+      run: |
+        echo "# SHA256 Checksums for GestureSesh ${{ steps.version.outputs.version }}" > checksums.txt
+        echo "" >> checksums.txt
+        find . -name "*.sha256" -exec cat {} \; >> checksums.txt
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Extract release notes from CHANGELOG.md for current version
+        if [ -f "CHANGELOG.md" ]; then
+          echo "📋 Extracting release notes from CHANGELOG.md for ${{ steps.version.outputs.version }}"
+          
+          # Create header
+          cat > release_notes.md << EOF
+        ## 🎨 What's New in ${{ steps.version.outputs.version }}
+
+        EOF
+          
+          # Extract the specific version section from CHANGELOG.md
+          # Look for the version section and extract until the next version or end
+          sed -n "/## \[${{ steps.version.outputs.version }}\]/,/## \[/p" CHANGELOG.md | \
+          sed '$d' | \
+          tail -n +2 >> release_notes.md || {
+            echo "⚠️ Could not find ${{ steps.version.outputs.version }} in CHANGELOG.md, using fallback"
+            cat > release_notes.md << EOF
+        ## 🎨 Release ${{ steps.version.outputs.version }}
+
+        This release includes various improvements and bug fixes.
+        
+        For detailed changes, please see the [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
+
+        EOF
+          }
+          
+          # Append download and verification info
+          cat >> release_notes.md << 'EOF'
+
+        ## 📥 Downloads
+
+        ### Windows
+        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe** - recommended (64-bit)
+        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe** - for 32-bit systems
+
+        ### macOS
+        - **GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg** - universal (Intel & Apple Silicon)
+
+        ## 🔒 Security & Verification
+        - All binaries built from source via GitHub Actions
+        - macOS build is notarized & stapled by Apple
+        - SHA256 checksums provided below
+
+        ## 📋 System Requirements
+        - **Windows:** 7 SP1+ (64-bit recommended)
+        - **macOS:** 10.14 Mojave+
+        - **RAM:** 4 GB minimum
+        - **Storage:** 100 MB free
+
+        ## 🔍 Verification Example
+        ```bash
+        # Windows (PowerShell)
+        Get-FileHash -Algorithm SHA256 GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe
+
+        # macOS/Linux
+        shasum -a 256 GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg
+        ```
+        EOF
+        else
+          echo "⚠️ CHANGELOG.md not found, creating basic release notes"
+          cat > release_notes.md << EOF
+        ## 🎨 Release ${{ steps.version.outputs.version }}
+
+        Auto-generated release from tag ${{ steps.version.outputs.version }}.
+
+        ## 📥 Downloads
+
+        ### Windows
+        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe** - recommended (64-bit)
+        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe** - for 32-bit systems
+
+        ### macOS
+        - **GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg** - universal (Intel & Apple Silicon)
+        EOF
+        fi
+        
+        echo "📝 Generated release notes preview:"
+        echo "----------------------------------------"
+        head -20 release_notes.md
+        echo "----------------------------------------"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: GestureSesh ${{ steps.version.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        make_latest: true
+        files: |
+          windows-x64/GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe
+          windows-x86/GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe
+          macos/GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg
+          checksums.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-scan:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Install VirusTotal CLI
+      run: |
+        wget https://github.com/VirusTotal/vt-cli/releases/download/0.13.0/Linux64.zip
+        unzip Linux64.zip
+        chmod +x vt
+
+    - name: Scan files with VirusTotal
+      if: env.VT_API_KEY != ''
+      env:
+        VT_API_KEY: ${{ secrets.VT_API_KEY }}
+      run: |
+        echo "Uploading files to VirusTotal for scanning..."
+        for file in $(find . -name "*.exe" -o -name "*.dmg"); do
+          echo "Scanning $file..."
+          ./vt scan file "$file" --apikey "$VT_API_KEY" || echo "Failed to scan $file"
+        done
+        echo "VirusTotal scan completed. View results on virustotal.com"
