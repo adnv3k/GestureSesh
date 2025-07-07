@@ -1,4 +1,4 @@
-# GestureSesh.py
+# main.py - GestureSesh main application module
 import os
 import sys
 import random
@@ -6,6 +6,7 @@ import platform
 from pathlib import Path
 from dataclasses import dataclass
 from importlib import resources
+import contextlib
 
 import cv2
 import numpy as np
@@ -32,19 +33,43 @@ from PyQt5.QtCore import (
     QSequentialAnimationGroup,
     pyqtProperty,
 )
-from check_update import UpdateChecker, save_config, load_config, get_config_dir
-from main_window import Ui_MainWindow
-from session_display import Ui_session_display
 
-import resources_config  # This is a generated file from resources.qrc DO NOT REMOVE
+# Add the src directory to the Python path
+current_dir = Path(__file__).parent
+src_dir = current_dir.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
+from gesturesesh.update_checker import (
+    UpdateChecker,
+    save_config,
+    load_config,
+    get_config_dir,
+)
+from gesturesesh.ui.main_window import Ui_MainWindow
+from gesturesesh.ui.session_display import Ui_session_display
+from gesturesesh.ui.dot_indicator import DotIndicator
+from gesturesesh.utils import (
+    resources_config,
+)  # This is a generated file from resources.qrc DO NOT REMOVE
 
 def sound_file(name: str):
     """Return a context manager yielding the path to an embedded sound file."""
-    return resources.as_file(resources.files("sounds") / name)
+    try:
+        return resources.as_file(resources.files("sounds") / name)
+    except ModuleNotFoundError:
+        print('ModuleNotFoundError in sound_file')
+        # Fallback for direct execution - use file path
+        # Navigate from current file to project root and find sounds directory
+        current_dir = Path(__file__).parent
+        project_root = current_dir.parent.parent
+        sound_path = project_root / "sounds" / name
 
+        @contextlib.contextmanager
+        def sound_file_context():
+            yield str(sound_path)
 
-from dot_indicator import DotIndicator
+        return sound_file_context()
 
 
 @dataclass
@@ -2254,7 +2279,8 @@ class SessionDisplay(QWidget, Ui_session_display):
     # endregion
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the GestureSesh application."""
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
 
@@ -2268,3 +2294,7 @@ if __name__ == "__main__":
     view.show_and_activate()
 
     sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    main()

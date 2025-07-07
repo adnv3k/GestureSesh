@@ -201,6 +201,10 @@ class DotIndicator(QtWidgets.QWidget):
 
         self.update()
 
+    def maximum(self) -> int:
+        """Return the maximum value (number of dots/steps), matching QProgressBar interface."""
+        return self._max_value
+
     def setBreaks(self, break_indices):
         """Mark 0-based indices that are always drawn as break dots."""
         self._break_indices = set(break_indices)
