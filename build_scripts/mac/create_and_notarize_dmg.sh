@@ -80,12 +80,12 @@ echo "📦 Creating DMG..."
 sudo rm -f "$DMG_NAME"
 create-dmg \
   --volname "$VOLUME_NAME" \
-  --window-pos 200 900 \
-  --window-size 660 400 \
+  --window-pos 0 500 \
+  --window-size 660 300 \
   --icon-size 128 \
   --icon "$APP_NAME.app" 84 100 \
   --hide-extension "$APP_NAME.app" \
-  --app-drop-link 450 200 \
+  --app-drop-link 450 100 \
   --background "$BACKGROUND_IMG" \
   "$DMG_NAME" \
   "$APP_PATH"
