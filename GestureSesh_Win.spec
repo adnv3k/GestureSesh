@@ -10,8 +10,8 @@ project_root = Path(".").resolve()
 
 
 a = Analysis(
-    ['GestureSesh.py'],
-    pathex=[str(project_root)],
+    ['src/gesturesesh/main.py'],
+    pathex=[str(project_root), str(project_root / "src")],
     binaries=[],
     datas=[('sounds/*.mp3', 'sounds')],
     hiddenimports=[],

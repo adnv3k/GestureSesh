@@ -9,8 +9,8 @@ block_cipher = None
 hiddenimports = collect_submodules('pygame')
 
 a = Analysis(
-    ['GestureSesh.py'],
-    pathex=[],
+    ['src/gesturesesh/main.py'],
+    pathex=['src'],
     binaries=[],
     datas=[('sounds/*.mp3', 'sounds')],
     hiddenimports=hiddenimports,
