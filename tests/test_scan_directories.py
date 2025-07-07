@@ -17,10 +17,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-# Add the current directory to sys.path to import GestureSesh
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the src directory to sys.path to import gesturesesh
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
-from GestureSesh import MainApp
+from gesturesesh.main import MainApp
 
 class TestableMainApp:
     """Lightweight testable version of MainApp for testing scan_directories"""
