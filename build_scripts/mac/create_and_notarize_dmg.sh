@@ -80,22 +80,20 @@ echo "📦 Creating DMG..."
 sudo rm -f "$DMG_NAME"
 create-dmg \
   --volname "$VOLUME_NAME" \
-  --window-pos 0 900 \
+  --window-pos 0 500 \
   --window-size 660 300 \
   --icon-size 128 \
   --icon "$APP_NAME.app" 84 100 \
   --hide-extension "$APP_NAME.app" \
-  --app-drop-link 510 100 \
+  --app-drop-link 450 100 \
   --background "$BACKGROUND_IMG" \
   "$DMG_NAME" \
   "$APP_PATH"
-
 
 # --- 2. Sign DMG ---
 # The DMG itself must be signed for modern versions of macOS.
 echo "🔏 Signing DMG..."
 codesign --force --sign "$IDENTITY" "$DMG_NAME"
-
 
 # --- 3. Notarize DMG ---
 # Submit the DMG to Apple's notary service. This can take a few minutes.

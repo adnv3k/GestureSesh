@@ -14,9 +14,12 @@ app = QApplication.instance()
 if app is None:
     app = QApplication(sys.argv)
 
-from GestureSesh import MainApp, SessionDisplay, ScheduleEntry
-from main_window import Ui_MainWindow
-from session_display import Ui_session_display
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
+
+from gesturesesh.main import MainApp, SessionDisplay, ScheduleEntry
+from gesturesesh.ui.main_window import Ui_MainWindow
+from gesturesesh.ui.session_display import Ui_session_display
 
 
 def mock_main_app_setup_ui(self, main_window):
@@ -131,12 +134,12 @@ class TestMainAppLogic(unittest.TestCase):
         # ——— Begin automatic Qt/UI stubbing ———
         self._patchers = [
             patch.object(Ui_MainWindow, "setupUi", mock_main_app_setup_ui),
-            patch("GestureSesh.MainApp.check_version", lambda s: None),
-            patch("GestureSesh.MainApp.load_recent", lambda s: None),
-            patch("GestureSesh.MainApp.init_preset", lambda s: None),
-            patch("GestureSesh.MainApp.init_shortcuts", lambda s: None),
-            patch("GestureSesh.MainApp.init_buttons", lambda s: None),
-            patch("GestureSesh.MainApp.update_dynamic_fonts", lambda s: None),
+            patch("gesturesesh.main.MainApp.check_version", lambda s: None),
+            patch("gesturesesh.main.MainApp.load_recent", lambda s: None),
+            patch("gesturesesh.main.MainApp.init_preset", lambda s: None),
+            patch("gesturesesh.main.MainApp.init_shortcuts", lambda s: None),
+            patch("gesturesesh.main.MainApp.init_buttons", lambda s: None),
+            patch("gesturesesh.main.MainApp.update_dynamic_fonts", lambda s: None),
         ]
         for _p in self._patchers:
             _p.start()
@@ -193,7 +196,7 @@ class TestMainAppLogic(unittest.TestCase):
         self.assertEqual(self.app.total_images, 11)
         self.assertEqual(self.app.total_time, 600)
 
-    @patch("GestureSesh.Path.is_file", return_value=True)
+    @patch("pathlib.Path.is_file", return_value=True)
     def test_is_valid_session_not_enough_images(self, mock_is_file):
         self.app.session_schedule = [ScheduleEntry(images=5, time=30)]
         self.app.selection["files"] = ["a.jpg", "b.jpg"]
@@ -414,7 +417,7 @@ class TestMainAppLogic(unittest.TestCase):
              patch.object(self.app, "insert_breaks") as insert_breaks, \
              patch.object(self.app, "save_to_recent") as save_recent, \
              patch.object(self.app, "save") as save_preset, \
-             patch("GestureSesh.SessionDisplay", autospec=True) as Display:
+             patch("gesturesesh.main.SessionDisplay", autospec=True) as Display:
 
             # Configure the mocked SessionDisplay instance so .closed.connect exists
             display_instance = Display.return_value

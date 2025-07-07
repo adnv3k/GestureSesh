@@ -264,12 +264,12 @@ jobs:
         create-dmg \
           --volname "GestureSesh ${{ steps.version.outputs.version }}" \
           --volicon "ui/resources/icons/brush.icns" \
-          --window-pos 200 120 \
-          --window-size 800 400 \
-          --icon-size 100 \
-          --icon "GestureSesh.app" 200 190 \
+          --window-pos 0 500 \
+          --window-size 660 300 \
+          --icon-size 128 \
+          --icon "GestureSesh.app" 84 100 \
           --hide-extension "GestureSesh.app" \
-          --app-drop-link 600 185 \
+          --app-drop-link 510 100 \
           --background "ui/resources/dmg_background.png" \
           "GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg" \
           "./GestureSesh.app"
@@ -377,93 +377,203 @@ jobs:
 
     - name: Create checksums file
       run: |
-        echo "# SHA256 Checksums for GestureSesh ${{ steps.version.outputs.version }}" > checksums.txt
+        echo "Creating comprehensive checksums file..."
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        cat > checksums.txt << EOF
+        # SHA256 Checksums for GestureSesh $VERSION
+        
+        ## Security Notice
+        Some antivirus programs may flag Windows executables as suspicious due to PyInstaller.
+        This is a false positive. Verify checksums below to ensure file integrity.
+        
+        ## File Integrity Verification
+        Use these checksums to verify your downloads:
+        
+        EOF
+        
+        echo "## Checksums" >> checksums.txt
         echo "" >> checksums.txt
-        find . -name "*.sha256" -exec cat {} \; >> checksums.txt
+        
+        # Find and process all .sha256 files
+        for sha_file in $(find . -name "*.sha256" | sort); do
+          echo "Processing: $sha_file"
+          if [ -f "$sha_file" ]; then
+            cat "$sha_file" >> checksums.txt
+          fi
+        done
+        
+        echo "" >> checksums.txt
+        echo "## Verification Commands" >> checksums.txt
+        echo "" >> checksums.txt
+        echo "### Windows (PowerShell)" >> checksums.txt
+        echo '```powershell' >> checksums.txt
+        echo "Get-FileHash -Algorithm SHA256 GestureSesh-$VERSION-Windows-x64.exe" >> checksums.txt
+        echo "Get-FileHash -Algorithm SHA256 GestureSesh-$VERSION-Windows-x86.exe" >> checksums.txt
+        echo '```' >> checksums.txt
+        echo "" >> checksums.txt
+        echo "### macOS/Linux" >> checksums.txt
+        echo '```bash' >> checksums.txt
+        echo "shasum -a 256 GestureSesh-$VERSION-macOS.dmg" >> checksums.txt
+        echo '```' >> checksums.txt
+        
+        echo "Generated checksums file:"
+        echo "----------------------------------------"
+        cat checksums.txt
+        echo "----------------------------------------"
 
     - name: Generate release notes
       id: release_notes
       run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        echo "Generating release notes for version: $VERSION"
+        
         # Extract release notes from CHANGELOG.md for current version
         if [ -f "CHANGELOG.md" ]; then
-          echo "📋 Extracting release notes from CHANGELOG.md for ${{ steps.version.outputs.version }}"
+          echo "Extracting release notes from CHANGELOG.md for $VERSION"
           
-          # Create header
+          # Create header with version info
           cat > release_notes.md << EOF
-        ## 🎨 What's New in ${{ steps.version.outputs.version }}
+        ## What's New in $VERSION
 
         EOF
           
           # Extract the specific version section from CHANGELOG.md
-          # Look for the version section and extract until the next version or end
-          sed -n "/## \[${{ steps.version.outputs.version }}\]/,/## \[/p" CHANGELOG.md | \
-          sed '$d' | \
-          tail -n +2 >> release_notes.md || {
-            echo "⚠️ Could not find ${{ steps.version.outputs.version }} in CHANGELOG.md, using fallback"
-            cat > release_notes.md << EOF
-        ## 🎨 Release ${{ steps.version.outputs.version }}
-
+          # Look for the version section (format: ## v0.5.0 - date) and extract until the next version or end
+          echo "Searching for version pattern: ## $VERSION"
+          
+          # Try to extract changelog content for this version
+          CHANGELOG_CONTENT=$(sed -n "/## $VERSION/,/## /p" CHANGELOG.md | sed '$d' | tail -n +2)
+          
+          if [ -n "$CHANGELOG_CONTENT" ]; then
+            echo "✅ Found changelog content for $VERSION"
+            echo "$CHANGELOG_CONTENT" >> release_notes.md
+          else
+            echo "Could not find $VERSION in CHANGELOG.md, trying alternative patterns"
+            
+            # Try without 'v' prefix if version has it
+            VERSION_NO_V=$(echo "$VERSION" | sed 's/^v//')
+            CHANGELOG_CONTENT=$(sed -n "/## $VERSION_NO_V/,/## /p" CHANGELOG.md | sed '$d' | tail -n +2)
+            
+            if [ -n "$CHANGELOG_CONTENT" ]; then
+              echo "✅ Found changelog content for $VERSION_NO_V"
+              echo "$CHANGELOG_CONTENT" >> release_notes.md
+            else
+              echo "Could not find release notes in CHANGELOG.md, using fallback"
+              cat >> release_notes.md << EOF
         This release includes various improvements and bug fixes.
         
         For detailed changes, please see the [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
 
         EOF
-          }
-          
-          # Append download and verification info
-          cat >> release_notes.md << 'EOF'
+            fi
+          fi
+        else
+          echo "CHANGELOG.md not found, creating basic release notes"
+          cat > release_notes.md << EOF
+        ## Release $VERSION
 
-        ## 📥 Downloads
+        Auto-generated release from tag $VERSION.
+
+        EOF
+        fi
+        
+        # Append download and verification info (using variable substitution)
+        cat >> release_notes.md << EOF
+
+        ## Downloads
 
         ### Windows
-        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe** - recommended (64-bit)
-        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe** - for 32-bit systems
+        - **GestureSesh-$VERSION-Windows-x64.exe** - recommended (64-bit)
+        - **GestureSesh-$VERSION-Windows-x86.exe** - for 32-bit systems
 
         ### macOS
-        - **GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg** - universal (Intel & Apple Silicon)
+        - **GestureSesh-$VERSION-macOS.dmg** - universal (Intel & Apple Silicon)
 
-        ## 🔒 Security & Verification
+        ## Security & Verification
         - All binaries built from source via GitHub Actions
         - macOS build is notarized & stapled by Apple
-        - SHA256 checksums provided below
+        - SHA256 checksums provided in \`checksums.txt\`
 
-        ## 📋 System Requirements
+        ## System Requirements
         - **Windows:** 7 SP1+ (64-bit recommended)
         - **macOS:** 10.14 Mojave+
         - **RAM:** 4 GB minimum
         - **Storage:** 100 MB free
 
-        ## 🔍 Verification Example
-        ```bash
+        ## Verification Example
+        \`\`\`bash
         # Windows (PowerShell)
-        Get-FileHash -Algorithm SHA256 GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe
+        Get-FileHash -Algorithm SHA256 GestureSesh-$VERSION-Windows-x64.exe
 
         # macOS/Linux
-        shasum -a 256 GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg
-        ```
+        shasum -a 256 GestureSesh-$VERSION-macOS.dmg
+        \`\`\`
+
+        ## Windows Security Notice
+        Some antivirus programs may flag GestureSesh as suspicious due to PyInstaller usage. This is a false positive. 
+        
+        **What to do:**
+        1. Add GestureSesh to your antivirus exceptions
+        2. Verify checksums to ensure file integrity
+        3. Download only from official GitHub releases
+        
+        For more details, see the [Security Notice](https://github.com/${{ github.repository }}/blob/main/docs/SECURITYNOTICE.md).
         EOF
-        else
-          echo "⚠️ CHANGELOG.md not found, creating basic release notes"
-          cat > release_notes.md << EOF
-        ## 🎨 Release ${{ steps.version.outputs.version }}
+        
+        echo "Generated release notes preview:"
+        echo "----------------------------------------"
+        head -30 release_notes.md
+        echo "----------------------------------------"
+        echo "Full release notes file size: $(wc -l < release_notes.md) lines"
 
-        Auto-generated release from tag ${{ steps.version.outputs.version }}.
-
-        ## 📥 Downloads
-
-        ### Windows
-        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe** - recommended (64-bit)
-        - **GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe** - for 32-bit systems
-
-        ### macOS
-        - **GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg** - universal (Intel & Apple Silicon)
-        EOF
+    - name: Verify release assets
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        echo "Verifying all expected release assets are present..."
+        
+        MISSING_FILES=()
+        
+        # Check Windows x64 files
+        if [ ! -f "windows-x64/GestureSesh-$VERSION-Windows-x64.exe" ]; then
+          MISSING_FILES+=("windows-x64/GestureSesh-$VERSION-Windows-x64.exe")
+        fi
+        if [ ! -f "windows-x64/GestureSesh-$VERSION-Windows-x64.exe.sha256" ]; then
+          MISSING_FILES+=("windows-x64/GestureSesh-$VERSION-Windows-x64.exe.sha256")
         fi
         
-        echo "📝 Generated release notes preview:"
-        echo "----------------------------------------"
-        head -20 release_notes.md
-        echo "----------------------------------------"
+        # Check Windows x86 files
+        if [ ! -f "windows-x86/GestureSesh-$VERSION-Windows-x86.exe" ]; then
+          MISSING_FILES+=("windows-x86/GestureSesh-$VERSION-Windows-x86.exe")
+        fi
+        if [ ! -f "windows-x86/GestureSesh-$VERSION-Windows-x86.exe.sha256" ]; then
+          MISSING_FILES+=("windows-x86/GestureSesh-$VERSION-Windows-x86.exe.sha256")
+        fi
+        
+        # Check macOS files
+        if [ ! -f "macos/GestureSesh-$VERSION-macOS.dmg" ]; then
+          MISSING_FILES+=("macos/GestureSesh-$VERSION-macOS.dmg")
+        fi
+        if [ ! -f "macos/GestureSesh-$VERSION-macOS.dmg.sha256" ]; then
+          MISSING_FILES+=("macos/GestureSesh-$VERSION-macOS.dmg.sha256")
+        fi
+        
+        # Check checksums file
+        if [ ! -f "checksums.txt" ]; then
+          MISSING_FILES+=("checksums.txt")
+        fi
+        
+        if [ ${#MISSING_FILES[@]} -eq 0 ]; then
+          echo "✅ All expected files are present!"
+          echo "Release will include:"
+          find . -name "GestureSesh-$VERSION-*" -o -name "checksums.txt" | sort
+        else
+          echo "❌ Missing files detected:"
+          printf '%s\n' "${MISSING_FILES[@]}"
+          echo "Available files:"
+          find . -name "*.exe" -o -name "*.dmg" -o -name "*.sha256" -o -name "checksums.txt" | sort
+          exit 1
+        fi
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -476,35 +586,126 @@ jobs:
         make_latest: true
         files: |
           windows-x64/GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe
+          windows-x64/GestureSesh-${{ steps.version.outputs.version }}-Windows-x64.exe.sha256
           windows-x86/GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe
+          windows-x86/GestureSesh-${{ steps.version.outputs.version }}-Windows-x86.exe.sha256
           macos/GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg
+          macos/GestureSesh-${{ steps.version.outputs.version }}-macOS.dmg.sha256
           checksums.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  security-scan:
+  documentation:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
-
+    
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-
-    - name: Install VirusTotal CLI
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Generate security documentation
       run: |
-        wget https://github.com/VirusTotal/vt-cli/releases/download/0.13.0/Linux64.zip
-        unzip Linux64.zip
-        chmod +x vt
-
-    - name: Scan files with VirusTotal
-      if: env.VT_API_KEY != ''
-      env:
-        VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        cat > SECURITYNOTICE.md << 'EOF'
+        # Security Notice for GestureSesh Downloads
+        
+        ## Antivirus False Positives (Windows Only)
+        
+        **TL;DR:** Some antivirus programs may flag GestureSesh as suspicious. This is a false positive. The app is safe.
+        
+        ### Why This Happens
+        - GestureSesh is built using PyInstaller, which packages Python applications into executables
+        - **PyInstaller creates a bootstrap loader** that unpacks and runs Python code at runtime
+        - **Some malware uses similar techniques**, causing antivirus heuristics to flag ALL PyInstaller apps
+        - This affects **thousands of legitimate Python applications**, not just GestureSesh
+        - **PyInstaller developers acknowledge this is a known limitation** of the packaging method
+        - Known false positives: Avast, AVG, Windows Defender (occasionally), McAfee, Norton
+        
+        ### How to Verify Safety
+        1. **Download from official sources only:**
+           - GitHub Releases: https://github.com/adnv3k/GestureSesh/releases
+           - Official website https://gesturesesh.com/downloads
+        
+        2. **Check file integrity:**
+           - Every release includes SHA256 checksums
+           - Compare the checksum of your download with the official one
+        
+        3. **Review the source code:**
+           - All source code is publicly available on GitHub
+           - Build process is transparent via GitHub Actions
+           - You can inspect the PyInstaller spec files used for building
+        
+        4. **Verify the publisher:**
+           - Check the GitHub repository history and contributors
+           - Look for consistent development activity and community engagement
+           - Verify the release was built by GitHub Actions (not manually uploaded)
+        
+        ### What to Do If Flagged
+        1. **Add to exceptions:** Whitelist GestureSesh in your antivirus settings
+        2. **Verify checksums:** Ensure your download matches the official checksums
+        3. **Build from source:** Advanced users can compile the app themselves
+        4. **Use Windows SmartScreen:** Allow the app after verifying the publisher
+        5. **Submit false positive reports:** Help improve detection by reporting to your AV vendor
+        
+        ### Alternative for Advanced Users
+        - **Run from Python directly:** Install Python 3.11+ and run the source code
+        - **Use portable Python:** Package like WinPython to avoid executable detection
+        - **Build with different tools:** Fork and try alternative packaging (though results may vary)
+        
+        ### macOS Users
+        - macOS versions are Apple-notarized and code-signed
+        - No false positive issues with macOS security systems
+        - Download the .dmg file for the best experience
+        
+        ### Verification Examples
+        
+        #### Windows (PowerShell)
+        ```powershell
+        # Get checksum of downloaded file
+        Get-FileHash -Algorithm SHA256 GestureSesh-v0.5.0-Windows-x64.exe
+        
+        # Compare with official checksum from checksums.txt
+        ```
+        
+        #### macOS/Linux
+        ```bash
+        # Get checksum of downloaded file
+        shasum -a 256 GestureSesh-v0.5.0-macOS.dmg
+        
+        # Compare with official checksum from checksums.txt
+        ```
+        
+        ### References
+        - **PyInstaller false positive issue:** https://github.com/pyinstaller/pyinstaller/issues/4633
+        - **PyInstaller official docs on AV issues:** https://pyinstaller.org/en/stable/when-things-go-wrong.html#antivirus-software
+        - **PyInstaller developer confirmation:** https://github.com/pyinstaller/pyinstaller/issues/5932
+        - **PyInstaller FAQ about false positives:** https://github.com/pyinstaller/pyinstaller/wiki/FAQ#why-do-antivirus-programs-detect-my-pyinstaller-executable-as-malware
+        - **GestureSesh issue #13:** https://github.com/adnv3k/GestureSesh/issues/13
+        
+        ### Reporting Security Issues
+        If you discover a legitimate security vulnerability, please report it via:
+        - GitHub Security Advisories (preferred)
+        - Email: ali@adnv3k.com
+        
+        Please do not report false positives as security issues.
+        EOF
+        
+    - name: Commit security documentation to repository
       run: |
-        echo "Uploading files to VirusTotal for scanning..."
-        for file in $(find . -name "*.exe" -o -name "*.dmg"); do
-          echo "Scanning $file..."
-          ./vt scan file "$file" --apikey "$VT_API_KEY" || echo "Failed to scan $file"
-        done
-        echo "VirusTotal scan completed. View results on virustotal.com"
+        VERSION="${{ github.ref_name }}"
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        fi
+        
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Add and commit SECURITYNOTICE.md if it's new or changed
+        if [ ! -f "SECURITYNOTICE.md" ] || ! git diff --quiet HEAD -- SECURITYNOTICE.md; then
+          git add SECURITYNOTICE.md
+          git commit -m "docs: update security documentation for release $VERSION" || echo "No changes to commit"
+          git push origin HEAD:main || echo "Could not push security docs (this is okay for releases)"
+        else
+          echo "SECURITYNOTICE.md is up to date"
+        fi

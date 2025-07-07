@@ -33,12 +33,12 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 
 <h2 align="center">Your Libraries</h2> 
 <div align="center">
-  <img src="Screenshots/Configuring.png" alt="Main window showing schedule setup" width="60%" />
+  <img src="docs/Screenshots/Configuring.png" alt="Main window showing schedule setup" width="60%" />
 </div>
 
 <h2 align="center"> Your Sessions</h2>
 <div align="center">
-  <img src="Screenshots/Example.png" alt="Session display mode" width="80%" />
+  <img src="docs/Screenshots/Example.png" alt="Session display mode" width="80%" />
 </div>
 
 ## Features
@@ -49,13 +49,13 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - **Auto-reload** of your last session (images, schedule, randomization).
 - **Window options** (grayscale, flip, always-on-top, frameless) via hotkeys.  
   <div align="center">
-    <img src="Screenshots/Grayscale%20Comparison.png" alt="Grayscale example" width="80%" />
+    <img src="docs/Screenshots/Grayscale%20Comparison.png" alt="Grayscale example" width="80%" />
   </div>
 - **Intuitive timer**: click to pause, drag to move (auto-pause), resume where you left off.
 - **Review mode**: 15 s auto-close with arrow navigation; double-click or Ctrl + O to open image folder.
 - **Break indicator**: set an entry with 0 images for a timed break (💡 light appears).  
   <div align="center">
-    <img src="Screenshots/Break.png" alt="Break example" width="80%" />
+    <img src="docs/Screenshots/Break.png" alt="Break example" width="80%" />
   </div>
 - **Sound cues** for new entry and last image.
 - **Portable single executable**—no install needed; offline JPG/JPEG/PNG/GIF/BMP support.
@@ -97,6 +97,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Stop                          | Esc                                   |
 | Pause                         | Spacebar                              |
 | Next Image                    | → (Right Arrow)                       |
+| Skip Image                    | S                                     |
 | Add 30 s                      | ↑ (Up Arrow)                          |
 | Add 1 Minute                  | Ctrl + ↑ (Up Arrow)                   |
 | Open Image Folder             | Double-click or Ctrl + O              |
@@ -200,7 +201,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 5. **Run GestureSesh**
 
    ```bash
-   python GestureSesh.py
+   python run.py
    ```
 
    The GUI should now appear. When you reopen a terminal later, remember to:
@@ -214,7 +215,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
     ```
    3. 
    ```bash
-   python GestureSesh.py
+   python run.py
    ```
 
 ---
@@ -230,7 +231,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 ---
 
 If you have any suggestions or issues, any input is appreciated!
-Email: [adnv3k@gmail.com](mailto:adnv3k@gmail.com)
+Email: [ali@gesturesesh.com](mailto:ali@gesturesesh.com)
 
 <p align="center">
   <a href="https://ko-fi.com/adnv3k">
