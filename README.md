@@ -7,9 +7,13 @@
     <img src="https://img.shields.io/github/stars/adnv3k/GestureSesh?color=orange" alt="GitHub stars" />
   </a>
   &nbsp;
-  <img src="https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white" alt="Windows" />
+  <a href="https://github.com/adnv3k/GestureSesh/releases/latest">
+    <img src="https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white" alt="Windows" />
+  </a>
   &nbsp;
-  <img src="https://img.shields.io/badge/macOS-000000?style=flat&logo=apple&logoColor=white" alt="macOS" />
+  <a href="https://github.com/adnv3k/GestureSesh/releases/latest">
+    <img src="https://img.shields.io/badge/macOS-000000?style=flat&logo=apple&logoColor=white" alt="macOS" />
+  </a>
   &nbsp;
   <a href="https://github.com/adnv3k/GestureSesh/releases">
     <img src="https://img.shields.io/github/v/release/adnv3k/GestureSesh?color=33DAE4" alt="GitHub Release" />
