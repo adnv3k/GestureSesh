@@ -53,6 +53,7 @@ from gesturesesh.utils import (
     resources_config,
 )  # This is a generated file from resources.qrc DO NOT REMOVE
 
+
 def sound_file(name: str):
     """Return a context manager yielding the path to an embedded sound file."""
     try:
@@ -111,7 +112,7 @@ class FileDialog(QFileDialog):
         )
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
@@ -2269,9 +2270,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         resolved_path = str(Path(path).resolve())
         system = platform.system()
         if system == "Windows":
-            QtCore.QProcess.startDetached(
-                "explorer.exe", [f"/select,", resolved_path]
-            )
+            QtCore.QProcess.startDetached("explorer.exe", [f"/select,", resolved_path])
         elif system == "Darwin":  # macOS
             QtCore.QProcess.startDetached("open", ["-R", resolved_path])
         else:  # Linux and other systems
