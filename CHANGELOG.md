@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bug fixes in development
 
 
+## v0.5.1 - 2025-07-31
+
+### Fixed
+
+* Fixed directory opening functionality - Ctrl+O hotkey and double-click now properly open file explorer/finder to the correct image location with file highlighted
+* Improved path resolution using Path.resolve() for consistent cross-platform behavior
+
+
 ## v0.5.0 - 2025-07-05
 
 ### Added
