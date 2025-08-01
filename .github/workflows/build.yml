@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (e.g., v0.5.0)'
+        description: 'Version number (e.g., v0.5.1)'
         required: true
-        default: 'v0.5.0'
+        default: 'v0.5.1'
 
 permissions:
   contents: write
@@ -439,7 +439,7 @@ jobs:
         EOF
           
           # Extract the specific version section from CHANGELOG.md
-          # Look for the version section (format: ## v0.5.0 - date) and extract until the next version or end
+          # Look for the version section (format: ## v0.5.1 - date) and extract until the next version or end
           echo "Searching for version pattern: ## $VERSION"
           
           # Try to extract changelog content for this version
@@ -662,7 +662,7 @@ jobs:
         #### Windows (PowerShell)
         ```powershell
         # Get checksum of downloaded file
-        Get-FileHash -Algorithm SHA256 GestureSesh-v0.5.0-Windows-x64.exe
+        Get-FileHash -Algorithm SHA256 GestureSesh-v0.5.1-Windows-x64.exe
         
         # Compare with official checksum from checksums.txt
         ```
@@ -670,7 +670,7 @@ jobs:
         #### macOS/Linux
         ```bash
         # Get checksum of downloaded file
-        shasum -a 256 GestureSesh-v0.5.0-macOS.dmg
+        shasum -a 256 GestureSesh-v0.5.1-macOS.dmg
         
         # Compare with official checksum from checksums.txt
         ```

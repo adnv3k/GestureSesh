@@ -53,12 +53,13 @@ from gesturesesh.utils import (
     resources_config,
 )  # This is a generated file from resources.qrc DO NOT REMOVE
 
+
 def sound_file(name: str):
     """Return a context manager yielding the path to an embedded sound file."""
     try:
         return resources.as_file(resources.files("sounds") / name)
     except ModuleNotFoundError:
-        print('ModuleNotFoundError in sound_file')
+        print("ModuleNotFoundError in sound_file")
         # Fallback for direct execution - use file path
         # Navigate from current file to project root and find sounds directory
         current_dir = Path(__file__).parent
@@ -111,7 +112,7 @@ class FileDialog(QFileDialog):
         )
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
@@ -1457,6 +1458,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.toggle_grayscale_mode_shortcut.activated.connect(
             self.toggle_grayscale_mode
         )
+        # Open image directory
+        self.open_directory_key = QShortcut(QtGui.QKeySequence("Ctrl+O"), self)
+        self.open_directory_key.activated.connect(self.open_image_directory)
 
     # --- dynamic centring helpers ------------------------------------------
     # --- SessionDisplay ---------------------------------------------------
@@ -2263,16 +2267,16 @@ class SessionDisplay(QWidget, Ui_session_display):
         path = self.playlist[self.playlist_position]
         if path.startswith(":/"):
             return
+        resolved_path = str(Path(path).resolve())
         system = platform.system()
         if system == "Windows":
-            QtCore.QProcess.startDetached(
-                "explorer.exe", [f"/select,{Path(path).resolve()}"]
-            )
+            QtCore.QProcess.startDetached("explorer.exe", [f"/select,", resolved_path])
         elif system == "Darwin":  # macOS
-            QtCore.QProcess.startDetached("open", ["-R", path])
+            QtCore.QProcess.startDetached("open", ["-R", resolved_path])
         else:  # Linux and other systems
             # Use xdg-open for Linux
-            QtCore.QProcess.startDetached("xdg-open", ["-R", path])
+            parent_dir = Path(resolved_path).parent
+            QtCore.QProcess.startDetached("xdg-open", [str(parent_dir)])
         if event:
             event.accept()
 
