@@ -2276,7 +2276,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         else:  # Linux and other systems
             # Use xdg-open for Linux
             parent_dir = Path(resolved_path).parent
-            QtCore.QProcess.startDetached("xdg-open", [parent_dir])
+            QtCore.QProcess.startDetached("xdg-open", [str(parent_dir)])
         if event:
             event.accept()
 
