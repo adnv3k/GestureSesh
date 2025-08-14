@@ -2,31 +2,36 @@
   <img src="ui/resources/icons/Banner.png" alt="GestureSesh Banner" width="80%" />
 </p>
 
+<!-- Row 1 -->
 <p align="center">
-  <a href="https://github.com/adnv3k/GestureSesh/stargazers">
+  <a href="https://github.com/adnv3k/GestureSesh/stargazers" style="margin:0 4px;">
     <img src="https://img.shields.io/github/stars/adnv3k/GestureSesh?color=orange" alt="GitHub stars" />
   </a>
-  &nbsp;
-  <a href="https://github.com/adnv3k/GestureSesh/releases/latest">
-    <img src="https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white" alt="Windows" />
+  <a href="https://apps.microsoft.com/detail/9MZ8L6GS2ZK7" style="margin:0 4px;">
+    <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Microsoft Store" height="20" />
   </a>
-  &nbsp;
-  <a href="https://github.com/adnv3k/GestureSesh/releases/latest">
+  <a href="https://github.com/adnv3k/GestureSesh/releases/latest" style="margin:0 4px;">
     <img src="https://img.shields.io/badge/macOS-000000?style=flat&logo=apple&logoColor=white" alt="macOS" />
   </a>
-  &nbsp;
-  <a href="https://github.com/adnv3k/GestureSesh/releases">
+  <a href="https://github.com/adnv3k/GestureSesh/releases" style="margin:0 4px;">
     <img src="https://img.shields.io/github/v/release/adnv3k/GestureSesh?color=33DAE4" alt="GitHub Release" />
   </a>
-  &nbsp;<br>
-  <a href="https://www.python.org/downloads/">
+</p>
+
+<!-- Row 2 -->
+<p align="center">
+  <a href="https://www.python.org/downloads/" style="margin:0 4px;">
     <img src="https://img.shields.io/badge/python-3.11%2B-yellow.svg" alt="Python 3.11+" />
   </a>
-  &nbsp;
-  <img src="https://img.shields.io/badge/license-GPLv3-brightgreen" alt="License" />
-  &nbsp;
-  <img src="https://img.shields.io/badge/built%20with-PyQt5-8A2BE2" alt="Built with PyQt5" />
+  <a href="https://www.gnu.org/licenses/gpl-3.0" style="margin:0 4px;">
+    <img src="https://img.shields.io/badge/license-GPLv3-brightgreen" alt="License: GPL v3" />
+  </a>
+  <a href="https://riverbankcomputing.com/software/pyqt/" style="margin:0 4px;">
+    <img src="https://img.shields.io/badge/built%20with-PyQt5-8A2BE2" alt="Built with PyQt5" />
+  </a>
 </p>
+
+
 
 --- 
 
