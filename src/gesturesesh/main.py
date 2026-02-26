@@ -113,6 +113,7 @@ class FileDialog(QFileDialog):
 
 
 __version__ = "0.5.1"
+BREAK_IMAGE_PATH = ":/break/break.png"
 
 
 class MainApp(QMainWindow, Ui_MainWindow):
@@ -1130,9 +1131,10 @@ class MainApp(QMainWindow, Ui_MainWindow):
             current_index = 0
             for entry in self.session_schedule:
                 if entry.images == 0:
-                    self.selection["files"].insert(current_index, ":/break/break.png")
-                    continue
-                current_index += entry.images
+                    self.selection["files"].insert(current_index, BREAK_IMAGE_PATH)
+                    current_index += 1
+                else:
+                    current_index += entry.images
 
     def remove_breaks(self):
         """
@@ -1148,7 +1150,7 @@ class MainApp(QMainWindow, Ui_MainWindow):
         i = len(self.selection["files"])
         while i > 0:
             i -= 1
-            if self.selection["files"][i] == ":/break/break.png":
+            if self.selection["files"][i] == BREAK_IMAGE_PATH:
                 self.selection["files"].pop(i)
 
     def grab_schedule(self):
@@ -1599,7 +1601,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         return super(SessionDisplay, self).eventFilter(source, event)
 
     def skip_image(self):
-        if self.playlist[self.playlist_position] == "break.png":
+        if self.playlist[self.playlist_position] == BREAK_IMAGE_PATH:
             print(f"No images to skip on break {self.playlist[self.playlist_position]}")
             self.setWindowTitle("No images to skip on break")
             return
@@ -1608,7 +1610,7 @@ class SessionDisplay(QWidget, Ui_session_display):
         random.shuffle(swap_indicies)
         while swap_indicies:
             swap_index = swap_indicies.pop()
-            if self.playlist[swap_index] != "break.png":
+            if self.playlist[swap_index] != BREAK_IMAGE_PATH:
                 self.playlist[self.playlist_position], self.playlist[swap_index] = (
                     self.playlist[swap_index],
                     self.playlist[self.playlist_position],
@@ -1642,7 +1644,9 @@ class SessionDisplay(QWidget, Ui_session_display):
             self._set_timer_visuals(True)
         else:
             self._set_timer_visuals(False)
-        self.entry["amount of items"] = self.schedule[self.entry["current"]].images - 1
+        self.entry["amount of items"] = max(
+            0, self.schedule[self.entry["current"]].images - 1
+        )
         # Update entry_progress dot indicator
         self.entry_progress.setMaximum(self.entry["total"])
         self.entry_progress.setValue(self.entry["current"] + 1)
@@ -1658,11 +1662,9 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.session_info.setText(
             "Use arrows to browse. Double-click or Ctrl+O to open folder"
         )
-        # Reset indices so reviewing previous images works correctly
-        self.entry["current"] = max(0, self.entry["total"] - 1)
-        self.entry["amount of items"] = 0
-
-        self.playlist_position = max(0, int(self.total_scheduled_images))
+        # Keep review mode anchored to the last scheduled slot (breaks included).
+        self.playlist_position = self._last_scheduled_playlist_index()
+        self._sync_entry_to_playlist_position()
         self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
         # Grey-out / complete the bars
         self.image_progress.setValue(self.image_progress.maximum())
@@ -1670,20 +1672,74 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.update_close_title()
         self.close_timer.start(1000)
 
+    def _last_scheduled_playlist_index(self):
+        if not self.schedule or not self.playlist:
+            return 0
+
+        scheduled_slots = 0
+        for schedule_entry in self.schedule:
+            scheduled_slots += schedule_entry.images if schedule_entry.images > 0 else 1
+
+        return max(0, min(len(self.playlist), scheduled_slots) - 1)
+
+    def _sync_entry_to_playlist_position(self):
+        if not self.schedule:
+            return
+
+        last_index = self._last_scheduled_playlist_index()
+        pos = max(0, min(self.playlist_position, last_index))
+        self.playlist_position = pos
+
+        schedule_pos = 0
+        for index, schedule_entry in enumerate(self.schedule):
+            if schedule_entry.images <= 0:
+                if schedule_pos == pos:
+                    self.entry["current"] = index
+                    self.entry["amount of items"] = 0
+                    self.entry["time"] = schedule_entry.time
+                    self.entry_progress.setMaximum(self.entry["total"])
+                    self.entry_progress.setValue(index + 1)
+                    return
+                schedule_pos += 1
+                continue
+
+            start = schedule_pos
+            end = start + schedule_entry.images
+            if start <= pos < end:
+                image_offset = pos - start
+                self.entry["current"] = index
+                self.entry["amount of items"] = schedule_entry.images - image_offset - 1
+                self.entry["time"] = schedule_entry.time
+                self.entry_progress.setMaximum(self.entry["total"])
+                self.entry_progress.setValue(index + 1)
+                return
+            schedule_pos = end
+
+        # Fallback to last entry if position falls outside expected bounds.
+        last_index = len(self.schedule) - 1
+        self.entry["current"] = last_index
+        self.entry["time"] = self.schedule[last_index].time
+        self.entry["amount of items"] = 0
+        self.entry_progress.setMaximum(self.entry["total"])
+        self.entry_progress.setValue(last_index + 1)
+
     def load_next_image(self):
         was_timer_active = self.timer.isActive()
         self.timer.stop()
         if self.session_finished:
             self.cancel_close_countdown()
             self.timer.blockSignals(True)
-            if self.playlist_position == self.total_scheduled_images:
+            last_index = self._last_scheduled_playlist_index()
+            self.playlist_position = max(0, min(self.playlist_position, last_index))
+            if self.playlist_position >= last_index:
                 return
             self.playlist_position += 1
             self.display_image()
             return
         if self.entry["current"] >= self.entry["total"]:  # End of schedule
             return
-        if self.entry["amount of items"] == 0:  # End of entry
+        if self.entry["amount of items"] <= 0:  # End of entry or desynced counter
+            self.entry["amount of items"] = 0
             self.entry["current"] += 1
             self.playlist_position += 1
             self.new_entry = True
@@ -1707,6 +1763,8 @@ class SessionDisplay(QWidget, Ui_session_display):
             self._set_timer_visuals(False)
 
     def display_image(self, play_sound=True):
+        if self.session_finished:
+            self._sync_entry_to_playlist_position()
         print(self.entry)
         # Sounds
         if play_sound:
@@ -1734,7 +1792,7 @@ class SessionDisplay(QWidget, Ui_session_display):
             #             self.playlist[self.playlist_position]
             #         ) == 'break.png'):  # Break scheduled
             if (
-                self.playlist[self.playlist_position] == ":/break/break.png"
+                self.playlist[self.playlist_position] == BREAK_IMAGE_PATH
             ):  # Break scheduled
                 """
                 Since the end of an entry has been reached, or a break is scheduled,
@@ -2030,6 +2088,8 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.timer.stop()
         if self.session_finished:
             self.cancel_close_countdown()
+            last_index = self._last_scheduled_playlist_index()
+            self.playlist_position = max(0, min(self.playlist_position, last_index))
             if self.playlist_position == 0:
                 self.display_image()
                 self._set_timer_visuals(False)
@@ -2038,14 +2098,9 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.display_image()
             self._set_timer_visuals(False)
             return
-        # Skip_counter
-        # if self.skip_count > 0:
-        #     self.skip_count -= 1
-        # First image
-        if self.playlist_position == 0 or (
-            self.entry["current"] == 0
-            and self.entry["amount of items"] == self.schedule[0].images - 1
-        ):
+
+        # First scheduled image
+        if self.playlist_position == 0:
             """
             If it's the first image in the playlist or if the current entry
             is the first one and the position is at the beginning. The second
@@ -2063,44 +2118,13 @@ class SessionDisplay(QWidget, Ui_session_display):
             self._set_timer_visuals(was_timer_active)
             return
 
-        self.playlist_position -= 1  # Navigate to the previous position
-        # End of entries
-        if self.entry["current"] >= self.entry["total"]:
-            self.entry["current"] = len(self.schedule) - 1
-            self.timer.stop()
-            self.entry["time"] = self.schedule[self.entry["current"]].time
-            self.time_seconds = self.entry["time"]
-            if was_timer_active:
-                self.timer.start(500)
-            self.entry["amount of items"] = 0
-            self.end_of_entry = True
-            self.display_image()
-            self._set_timer_visuals(was_timer_active)
-            return
-        # At the beginning of a new entry
-
-        if (
-            self.entry["amount of items"] + 1
-            == self.schedule[self.entry["current"]].images
-            or self.session_info.text() == "Break"
-        ):
-            if self.entry["current"] != 0:
-                self.entry["current"] -= 1
-            self.timer.stop()
-            self.entry["time"] = self.schedule[self.entry["current"]].time
-            self.time_seconds = self.entry["time"]
-            self.update_timer_display()
-            if was_timer_active:
-                self.timer.start(500)
-            self.entry["amount of items"] = 0
-            self.new_entry = True
-            self.display_image()
-            self._set_timer_visuals(was_timer_active)
-            return
-        self.entry["amount of items"] += 1
+        previous_entry_index = self.entry["current"]
+        self.playlist_position -= 1
+        self._sync_entry_to_playlist_position()
+        self.new_entry = previous_entry_index != self.entry["current"]
+        self.end_of_entry = self.entry["amount of items"] == 0
         self.time_seconds = self.entry["time"]
         self.update_timer_display()
-        self.new_entry = False
         self.display_image()
         if was_timer_active:
             self.timer.start(500)
@@ -2142,7 +2166,7 @@ class SessionDisplay(QWidget, Ui_session_display):
                     self.new_entry = False
                 if self.end_of_entry is True:
                     self.end_of_entry = False
-            if self.playlist[self.playlist_position] == ":/break/break.png":
+            if self.playlist[self.playlist_position] == BREAK_IMAGE_PATH:
                 self.image_mods["break_grayscale"] = False
                 self.prepare_image_mods()
         if self.time_seconds == 0:

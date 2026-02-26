@@ -17,7 +17,7 @@ if app is None:
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
-from gesturesesh.main import MainApp, SessionDisplay, ScheduleEntry
+from gesturesesh.main import MainApp, SessionDisplay, ScheduleEntry, BREAK_IMAGE_PATH
 from gesturesesh.ui.main_window import Ui_MainWindow
 from gesturesesh.ui.session_display import Ui_session_display
 
@@ -394,10 +394,212 @@ class TestMainAppLogic(unittest.TestCase):
         self.app.selection["files"] = ["a.jpg", "b.jpg", "c.jpg"]
 
         self.app.insert_breaks()
-        assert ":/break/break.png" in self.app.selection["files"]
+        assert BREAK_IMAGE_PATH in self.app.selection["files"]
 
         self.app.remove_breaks()
-        assert ":/break/break.png" not in self.app.selection["files"]
+        assert BREAK_IMAGE_PATH not in self.app.selection["files"]
+
+
+    def test_skip_image_noop_on_break_placeholder(self):
+        """skip_image should no-op and show status when current item is break."""
+        fake = types.SimpleNamespace(
+            playlist=[BREAK_IMAGE_PATH, "a.jpg", "b.jpg"],
+            playlist_position=0,
+            display_image=MagicMock(),
+            restart_timer=MagicMock(),
+            setWindowTitle=MagicMock(),
+        )
+
+        SessionDisplay.skip_image(fake)
+
+        fake.display_image.assert_not_called()
+        fake.restart_timer.assert_not_called()
+        fake.setWindowTitle.assert_called_once_with("No images to skip on break")
+
+
+    def test_load_entry_clamps_break_item_counter_to_zero(self):
+        """load_entry should not create negative item counters for break entries."""
+        fake = types.SimpleNamespace(
+            entry={"current": 0, "total": 1, "time": 0, "amount of items": 99},
+            schedule=[ScheduleEntry(images=0, time=60)],
+            timer=MagicMock(),
+            time_seconds=0,
+            entry_progress=MagicMock(),
+            display_image=MagicMock(),
+            _set_timer_visuals=MagicMock(),
+            end_session=MagicMock(),
+        )
+        fake.timer.stop = MagicMock()
+        fake.timer.start = MagicMock()
+
+        SessionDisplay.load_entry(fake)
+
+        assert fake.entry["amount of items"] == 0
+
+
+    def test_load_next_image_recovers_from_negative_item_counter(self):
+        """load_next_image should treat negative counters as end-of-entry and recover."""
+        fake = types.SimpleNamespace(
+            timer=MagicMock(),
+            session_finished=False,
+            entry={"current": 0, "total": 2, "amount of items": -4, "time": 3},
+            playlist_position=0,
+            new_entry=False,
+            time_seconds=0,
+            load_entry=MagicMock(),
+            display_image=MagicMock(),
+            _set_timer_visuals=MagicMock(),
+        )
+        fake.timer.isActive = MagicMock(return_value=False)
+        fake.timer.stop = MagicMock()
+        fake.timer.start = MagicMock()
+
+        SessionDisplay.load_next_image(fake)
+
+        assert fake.entry["current"] == 1
+        assert fake.playlist_position == 1
+        assert fake.entry["amount of items"] == 0
+        fake.load_entry.assert_called_once_with(False)
+
+    def test_sync_entry_to_playlist_position_tracks_breaks_and_images(self):
+        """Sync helper should map playlist position back to correct schedule entry state."""
+        fake = types.SimpleNamespace(
+            schedule=[
+                ScheduleEntry(images=3, time=3),
+                ScheduleEntry(images=0, time=60),
+                ScheduleEntry(images=2, time=8),
+            ],
+            playlist=["a.jpg", "b.jpg", "c.jpg", BREAK_IMAGE_PATH, "d.jpg", "e.jpg"],
+            playlist_position=4,
+            entry={"current": 0, "total": 3, "amount of items": 0, "time": 0},
+            entry_progress=MagicMock(),
+        )
+        fake._last_scheduled_playlist_index = lambda: SessionDisplay._last_scheduled_playlist_index(fake)
+
+        SessionDisplay._sync_entry_to_playlist_position(fake)
+        assert fake.entry["current"] == 2
+        assert fake.entry["amount of items"] == 1
+        assert fake.entry["time"] == 8
+
+        fake.playlist_position = 3
+        SessionDisplay._sync_entry_to_playlist_position(fake)
+        assert fake.entry["current"] == 1
+        assert fake.entry["amount of items"] == 0
+        assert fake.entry["time"] == 60
+
+    def test_end_session_anchors_review_to_last_playlist_item(self):
+        """end_session should anchor review mode to the final scheduled slot."""
+        fake = types.SimpleNamespace(
+            session_finished=False,
+            timer=MagicMock(),
+            close_timer=MagicMock(),
+            close_seconds=15,
+            setWindowTitle=MagicMock(),
+            session_info=MagicMock(),
+            entry={"current": 0, "total": 3, "amount of items": 2, "time": 3},
+            playlist=["a.jpg", BREAK_IMAGE_PATH, "b.jpg", "unused1.jpg", "unused2.jpg"],
+            playlist_position=4,
+            timer_display=MagicMock(),
+            image_progress=MagicMock(),
+            entry_progress=MagicMock(),
+            update_close_title=MagicMock(),
+            _last_scheduled_playlist_index=MagicMock(return_value=2),
+            _sync_entry_to_playlist_position=MagicMock(),
+        )
+        fake.timer.stop = MagicMock()
+        fake.timer.blockSignals = MagicMock()
+        fake.close_timer.start = MagicMock()
+        fake.image_progress.maximum = MagicMock(return_value=3)
+        fake.entry_progress.maximum = MagicMock(return_value=3)
+
+        SessionDisplay.end_session(fake)
+
+        assert fake.playlist_position == 2
+        fake._last_scheduled_playlist_index.assert_called_once()
+        fake._sync_entry_to_playlist_position.assert_called_once()
+
+    def test_load_next_image_review_mode_uses_scheduled_span(self):
+        """Review-mode forward nav should stop at the scheduled range even with extra files."""
+        fake = types.SimpleNamespace(
+            timer=MagicMock(),
+            session_finished=True,
+            cancel_close_countdown=MagicMock(),
+            playlist=["a.jpg", BREAK_IMAGE_PATH, "b.jpg", "unused.jpg"],
+            playlist_position=1,
+            _last_scheduled_playlist_index=MagicMock(return_value=2),
+            display_image=MagicMock(),
+        )
+        fake.timer.isActive = MagicMock(return_value=False)
+        fake.timer.stop = MagicMock()
+        fake.timer.blockSignals = MagicMock()
+
+        SessionDisplay.load_next_image(fake)
+        SessionDisplay.load_next_image(fake)
+        SessionDisplay.load_next_image(fake)
+
+        assert fake.playlist_position == 2
+        assert fake.display_image.call_count == 1
+
+    def test_last_scheduled_playlist_index_ignores_unscheduled_tail(self):
+        """Boundary helper should include breaks but exclude trailing unused files."""
+        fake = types.SimpleNamespace(
+            schedule=[
+                ScheduleEntry(images=3, time=3),
+                ScheduleEntry(images=0, time=60),
+                ScheduleEntry(images=2, time=8),
+            ],
+            playlist=[
+                "a.jpg",
+                "b.jpg",
+                "c.jpg",
+                BREAK_IMAGE_PATH,
+                "d.jpg",
+                "e.jpg",
+                "unused1.jpg",
+                "unused2.jpg",
+            ],
+        )
+
+        assert SessionDisplay._last_scheduled_playlist_index(fake) == 5
+
+    def test_previous_playlist_position_resyncs_from_playlist_index(self):
+        """previous should derive entry state from playlist position instead of manual counters."""
+        fake = types.SimpleNamespace(
+            timer=MagicMock(),
+            session_finished=False,
+            playlist_position=4,
+            schedule=[
+                ScheduleEntry(images=3, time=3),
+                ScheduleEntry(images=0, time=60),
+                ScheduleEntry(images=2, time=8),
+            ],
+            playlist=["a.jpg", "b.jpg", "c.jpg", BREAK_IMAGE_PATH, "d.jpg", "e.jpg"],
+            entry={"current": 2, "total": 3, "amount of items": 1, "time": 8},
+            entry_progress=MagicMock(),
+            timer_display=MagicMock(),
+            update_timer_display=MagicMock(),
+            load_entry=MagicMock(),
+            _set_timer_visuals=MagicMock(),
+            display_image=MagicMock(),
+            time_seconds=0,
+        )
+        fake.timer.isActive = MagicMock(return_value=False)
+        fake.timer.stop = MagicMock()
+        fake.timer.start = MagicMock()
+        fake._last_scheduled_playlist_index = (
+            lambda: SessionDisplay._last_scheduled_playlist_index(fake)
+        )
+        fake._sync_entry_to_playlist_position = (
+            lambda: SessionDisplay._sync_entry_to_playlist_position(fake)
+        )
+
+        SessionDisplay.previous_playlist_position(fake)
+
+        assert fake.playlist_position == 3
+        assert fake.entry["current"] == 1
+        assert fake.entry["amount of items"] == 0
+        assert fake.entry["time"] == 60
+        fake.display_image.assert_called_once()
 
 
     def test_status_message_queue_order(self):
