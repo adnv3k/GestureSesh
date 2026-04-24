@@ -9,15 +9,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- New features in development
+- Broader image-format support in selection and session playback: `.avif`, `.gif`, `.jxl`, and `.webp` were added to supported types.
+- New **Manage Loaded Images** dialog for curation workflows:
+  - filter by name/path
+  - remove selected/missing entries
+  - move selected items up/down
+  - duplicate highlighting toggle
+  - open containing folder
+- New in-session Manage warning banner: when opened during an active session, Manage now explains that edits apply to the next session.
+- New **Shortcut Map** dialog (`F1` / `Ctrl+/`) for in-session key and input discovery.
+- New zoom and inspection controls in the session window:
+  - zoom enable toggle (`Z`)
+  - reset zoom (`0`)
+  - quick inspect toggle (`I`)
+  - auto-reset zoom toggle (`Ctrl+Shift+Z`)
+- New touch/pen zoom-panning paths:
+  - cursor-aware mouse-wheel zoom
+  - trackpad pinch/native gesture zoom
+  - stylus drag panning and `Ctrl+stylus` zoom adjustment
+- Added image decode fallbacks and animation decode support:
+  - `cv2`/Pillow/`djxl` still decode fallback chain
+  - Pillow-first animated decode with optional `ffmpeg` fallback
+  - decode caching for still and animated sources
 
 ### Changed
 
-- Improvements in progress
+- Refactored the app structure for maintainability:
+  - extracted session runtime out of `main.py` into `session_window.py`
+  - split main-window logic into app-layer modules (`selection`, `status`, `presets`, `session`, plus shared models)
+- Reworked status messaging into a queued system with dedupe behavior and richer fade/blink rendering.
+- Presets now store both schedule data and linked selection snapshots (files/folders), while preserving legacy preset compatibility.
+- Recent-session restore now merges folder scans with direct-file entries and de-duplicates resulting selections.
+- Session controls were simplified for a cleaner display:
+  - removed queue-preview feature and its toggle/shortcut
+  - removed session top-bar total-count wording/label
+- Updated main-window selection placeholder/help text to reflect the expanded supported image types.
 
 ### Fixed
 
-- Bug fixes in development
+- Fixed duplicate detection and duplicate reporting for file additions with more robust file identity handling.
+- Improved review-mode and break synchronization behavior across playlist navigation:
+  - better alignment between scheduled entries and current playlist position
+  - safer end-of-session anchoring to scheduled span
+- Improved decode robustness for high bit-depth and mixed-source images via normalization before render.
+- Preserved import and patch compatibility during refactor (`MainApp`, `SessionDisplay`, `BREAK_IMAGE_PATH`, `ScheduleEntry`, and `save_config` patch points).
+
+### Technical
+
+- Added and expanded automated coverage for:
+  - decode fallbacks and dtype normalization
+  - animation decode decisions and cache behavior
+  - zoom pacing/snap behavior
+  - break/review-mode schedule synchronization
+  - preset-linked selection persistence and backward compatibility
+  - duplicate detection/reporting paths
+
+
+## v0.5.2 - 2026-04-23
+
+### Fixed
+
+- Prevent infinite loop when break images are encountered during session playback — introduced `BREAK_IMAGE_PATH` constant, fixed break insertion/removal indexing, clamped negative item counters, and added `_last_scheduled_playlist_index` / `_sync_entry_to_playlist_position` helpers. Closes #28.
+
+### Changed
+
+- Decomposed the ~1,200-line `src/gesturesesh/main.py` monolith into focused modules composed via mixins:
+  - `app/models.py` — `ScheduleEntry`, `StatusMessage` dataclasses
+  - `app/file_dialog.py` — file dialog helpers
+  - `app/presets.py` — `MainAppPresetsMixin`
+  - `app/selection.py` — `MainAppSelectionMixin`
+  - `app/session.py` — `MainAppSessionMixin`
+  - `app/status.py` — `MainAppStatusMixin`
+  - `session_window.py` — `SessionDisplay`, `BREAK_IMAGE_PATH`, `SUPPORTED_IMAGE_TYPES`
+  - `ui/dialogs.py` — standalone dialog widgets
+- `main.py` is now a thin composition root; all behaviour is preserved with no functional changes.
+- Updated image-selection placeholder text to reflect the full set of supported formats.
 
 
 ## v0.5.1 - 2025-07-31
@@ -308,5 +374,3 @@ Fixed button icons.
 Initial Release.
 
 ---
-
-

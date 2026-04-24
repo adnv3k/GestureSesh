@@ -53,6 +53,6 @@ app = BUNDLE(
     name='GestureSesh.app',
     icon='ui/resources/icons/brush.icns',
     bundle_identifier='com.gesturesesh.gesturesesh',
-    version='0.5.1',
+    version='0.5.2',
     codesign_identity=os.environ.get('CODESIGN_IDENTITY'),
 )
