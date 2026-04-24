@@ -54,21 +54,36 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 
 - **Cross-platform** PyQt5 interface with a unified dark theme.
 - **Recursive folder scanning** with duplicate cleanup.
+- **Manage Loaded Images** dialog for quick filtering, reordering, duplicate review, and cleanup.
 - **Custom schedule builder**: timed entries, breaks (0-image rows), randomization, and preset saving.
 - **Auto-reload** of your last session (images, schedule, randomization).
+- **In-session safety notice**: opening Manage during an active session shows a warning that changes apply to the next session, not the current one.
 - **Window options** (grayscale, flip, always-on-top, frameless) via hotkeys.  
   <div align="center">
     <img src="docs/Screenshots/Grayscale%20Comparison.png" alt="Grayscale example" width="80%" />
   </div>
 - **Intuitive timer**: click to pause, drag to move (auto-pause), resume where you left off.
 - **Review mode**: 15 s auto-close with arrow navigation; double-click or Ctrl + O to open image folder.
+- **Simplified session controls**: queue preview and the session total-count label were removed for a cleaner display.
 - **Break indicator**: set an entry with 0 images for a timed break (💡 light appears).  
   <div align="center">
     <img src="docs/Screenshots/Break.png" alt="Break example" width="80%" />
   </div>
 - **Sound cues** for new entry and last image.
-- **Portable single executable**—no install needed; offline JPG/JPEG/PNG/GIF/BMP support.
+- **Portable single executable**—no install needed; offline AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP support.
 - **Update checks** every 2 days when online.
+
+## What's New Since v0.5.1
+
+- Expanded image support to include **AVIF, GIF, JXL, and WEBP** across selection and session playback.
+- Added **Manage Loaded Images** workflow tools (filtering, duplicate inspection, reorder, remove missing, quick folder open).
+- Added **in-session Manage warning** so edits are clearly marked as applying to future sessions.
+- Added **Shortcut Map dialog** (`F1` / `Ctrl + /`) for in-session key and input reference.
+- Added richer **zoom/pan controls** (wheel/pinch/stylus paths, quick inspect, zoom reset, and auto-reset toggle).
+- Improved decode/render robustness with fallback decode paths and still/animation caching.
+- Improved playlist/schedule synchronization around breaks and review navigation.
+- Refactored the codebase for maintainability (main-window modules + dedicated session runtime module).
+- Simplified session display by removing queue preview and session total-count text.
 
 ## Hotkeys
 
@@ -111,11 +126,15 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Add 1 Minute                  | Ctrl + ↑ (Up Arrow)                   |
 | Open Image Folder             | Double-click or Ctrl + O              |
 | Reset Timer                   | Ctrl + Shift + ↑ (Up Arrow)           |
+| Toggle Zoom / Pan             | Z                                     |
+| Reset Zoom                    | 0                                     |
+| Quick Inspect                 | I                                     |
+| Toggle Auto Zoom Reset        | Ctrl + Shift + Z                      |
+| Open Shortcut Map             | F1 or Ctrl + /                        |
 | Increase Brightness           | Ctrl + PgUp                           |
 | Decrease Brightness           | Ctrl + PgDown                         |
-| Decrease Brightness           | PgDown                                |
-| Increase Contrast             | +                                     |
-| Decrease Contrast             | -                                     |
+| Increase Contrast             | PgUp                                  |
+| Decrease Contrast             | PgDown                                |
 | Toggle Threshold Mode         | T                                     |
 | Toggle Edge Detection         | E                                     |
 | Reset Image Modifications     | Ctrl + 0                              |
@@ -231,8 +250,8 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 
 ## Note
 
-* Supported file types: **.bmp**, **.jpg**, **.jpeg**, **.png**.
-* Settings live in `presets/` & `recent/` (with `.bak`, `.dat`, `.dir` files) using `shelve`.
+* Supported file types: **.avif**, **.bmp**, **.gif**, **.jxl**, **.jpg**, **.jpeg**, **.png**, **.webp**.
+* Settings are stored in a cross-platform `config.json` under your app data directory (includes recent session, presets, and update-check metadata).
 * Last session’s images, randomization, and schedule are auto-loaded on startup.
 * Updates are checked every 2 days when online. You’ll see a notice if there’s a new version.
 * **GestureSesh** is built with **PyQt5** using the “Fusion” style for a consistent dark theme across Windows & macOS.
@@ -251,5 +270,3 @@ Email: [ali@gesturesesh.com](mailto:ali@gesturesesh.com)
     <img src="https://img.shields.io/badge/PayPal-003087?style=flat-square&logo=paypal&logoColor=white" alt="Donate via PayPal" />
   </a>
 </p>
-
-
