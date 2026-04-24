@@ -65,6 +65,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - duplicate detection/reporting paths
 
 
+## v0.5.2 - 2026-04-23
+
+### Fixed
+
+- Prevent infinite loop when break images are encountered during session playback — introduced `BREAK_IMAGE_PATH` constant, fixed break insertion/removal indexing, clamped negative item counters, and added `_last_scheduled_playlist_index` / `_sync_entry_to_playlist_position` helpers. Closes #28.
+
+### Changed
+
+- Decomposed the ~1,200-line `src/gesturesesh/main.py` monolith into focused modules composed via mixins:
+  - `app/models.py` — `ScheduleEntry`, `StatusMessage` dataclasses
+  - `app/file_dialog.py` — file dialog helpers
+  - `app/presets.py` — `MainAppPresetsMixin`
+  - `app/selection.py` — `MainAppSelectionMixin`
+  - `app/session.py` — `MainAppSessionMixin`
+  - `app/status.py` — `MainAppStatusMixin`
+  - `session_window.py` — `SessionDisplay`, `BREAK_IMAGE_PATH`, `SUPPORTED_IMAGE_TYPES`
+  - `ui/dialogs.py` — standalone dialog widgets
+- `main.py` is now a thin composition root; all behaviour is preserved with no functional changes.
+- Updated image-selection placeholder text to reflect the full set of supported formats.
+
+
 ## v0.5.1 - 2025-07-31
 
 ### Fixed
