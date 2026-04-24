@@ -1240,8 +1240,8 @@ class Ui_MainWindow(object):
         self.selected_items.setPlaceholderText(
             _translate(
                 "MainWindow",
-                "Add files and/or folders. Supported file types: jpg, jpeg, png,"
-                " bmp.\nAdding a folder adds all the files inside it and its"
+                "Add files and/or folders. Supported file types: avif, bmp, gif,"
+                " jxl, jpg, jpeg, png, webp.\nAdding a folder adds all the files inside it and its"
                 " subfolders.\nSelection is not randomized by default. ",
             )
         )
