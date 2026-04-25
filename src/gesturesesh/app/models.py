@@ -12,7 +12,6 @@ class ScheduleEntry:
     images: int
     time: int
 
-
 @dataclass
 class StatusMessage:
     text: str

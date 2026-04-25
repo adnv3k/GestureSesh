@@ -1,6 +1,8 @@
 # main.py - GestureSesh main application module
 
 import sys
+import os
+import random
 from pathlib import Path
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -10,7 +12,10 @@ from PyQt5.QtWidgets import (
     QGraphicsOpacityEffect,
     QMainWindow,
     QShortcut,
+    QTableWidgetItem,
 )
+from PyQt5.QtTest import QTest
+from gesturesesh.app.file_dialog import FileDialog
 
 # Add the src directory to the Python path
 current_dir = Path(__file__).parent
@@ -219,6 +224,8 @@ class MainApp(
 
     def scan_directories(self, directories):
         """Scan a list of directories and collect valid files from all subfolders, robust to symlinks, permissions, and case."""
+        import os
+
         total_valid_files, total_invalid_files = 0, 0
         visited = set()
         seen_paths = set()
@@ -308,6 +315,8 @@ class MainApp(
 
     def check_files(self, files):
         """Checks if files are supported file types and are accessible."""
+        import os
+
         res = {"valid_files": [], "invalid_files": []}
         for file in files:
             ext = os.path.splitext(file)[1].lower()
@@ -459,7 +468,12 @@ class MainApp(
                 print(f"Exception while setting is_blinking: {e}")
                 pass  # Handle case where is_blinking attribute doesn't exist
             try:
-                existing_msg._blink_timer.stop()
+                blink_timer = getattr(existing_msg, "blink_timer", None)
+                if blink_timer is not None:
+                    try:
+                        blink_timer.stop()
+                    except Exception as e:
+                        print(f"Exception while stopping blink timer: {e}")
             except Exception as e:
                 print(f"Exception while stopping blink timer: {e}")
                 pass
@@ -509,7 +523,7 @@ class MainApp(
         blink_timer = QtCore.QTimer()
         blink_timer.setSingleShot(False)
 
-        status_msg._blink_timer = blink_timer
+        status_msg.blink_timer = blink_timer
 
         def animate_message_fade():
             if not status_msg.is_blinking or status_msg not in self.status_messages:
@@ -567,8 +581,21 @@ class MainApp(
     def _finish_message_blink_animation(self, status_msg):
         """Restore normal state for a specific message after blinking completes"""
         status_msg.is_blinking = False
-        if hasattr(status_msg, "_blink_timer"):
-            delattr(status_msg, "_blink_timer")
+        # Ensure any running blink timer is stopped and cleared
+        try:
+            bt = getattr(status_msg, "blink_timer", None)
+            if bt is not None:
+                try:
+                    bt.stop()
+                except Exception as e:
+                    print(f"Exception while finishing blink timer: {e}")
+                try:
+                    bt.deleteLater()
+                except Exception:
+                    pass
+                status_msg.blink_timer = None
+        except Exception:
+            pass
 
         # Restore the main widget's opacity to full
         self.status_opacity_effect.setOpacity(1.0)
@@ -755,6 +782,8 @@ class MainApp(
             self.entry_table.removeRow(0)
 
     def randomize_items(self):
+        import random
+
         copy = self.selection["files"].copy()
         randomized_items = []
         while len(copy) > 0:
@@ -931,16 +960,21 @@ class MainApp(
         preset = self.presets.get(preset_name)
         if preset:
             self.remove_rows()
-            # preset is a dict: {row_index: [col1, col2, ...], ...}
-            # Sort by row index to preserve order
+            # Handle both legacy preset format (schedule dict) and
+            # newer wrapped format {"schedule": {...}, "selection": {...}}
+            if isinstance(preset, dict) and "schedule" in preset:
+                schedule = preset.get("schedule", {})
+            else:
+                schedule = preset
+
             try:
                 for row_idx, row_data in sorted(
-                    preset.items(), key=lambda x: int(x[0])
+                    schedule.items(), key=lambda x: int(x[0])
                 ):
                     row = self.entry_table.rowCount()
                     self.entry_table.insertRow(row)
                     for column, value in enumerate(row_data):
-                        item = QTableWidgetItem(value)
+                        item = QTableWidgetItem(str(value))
                         item.setTextAlignment(4)
                         if column == 0:
                             item.setFlags(QtCore.Qt.ItemIsEnabled)
