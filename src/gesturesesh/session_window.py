@@ -39,7 +39,7 @@ from gesturesesh.session.shortcuts import SessionShortcutsMixin
 from gesturesesh.session.timer import SessionTimerMixin
 from gesturesesh.session.zoom_pan import SessionZoomPanMixin
 from gesturesesh.utils import resources_config  # noqa: F401
-from gesturesesh.ui.dialogs import run_shortcut_map_dialog
+from gesturesesh.ui.dialogs import run_shortcut_map_dialog, ShortcutMapDialog
 from gesturesesh.ui.dot_indicator import DotIndicator
 from gesturesesh.ui.session_display import Ui_session_display
 
@@ -357,6 +357,237 @@ class SessionDisplay(
         self.grayscale_button.clicked.connect(self.grayscale)
         self.pause_timer.clicked.connect(self.pause)
 
+    def init_shortcuts(self):
+        self.shortcut_map_rows = []
+
+        def register_shortcut(sequence, callback, action, details, group):
+            shortcut = QShortcut(QtGui.QKeySequence(sequence), self)
+            shortcut.activated.connect(callback)
+            self.shortcut_map_rows.append((group, sequence, action, details))
+            return shortcut
+
+        # Resize
+        self.toggle_resize_key = register_shortcut(
+            "R",
+            self.toggle_resize,
+            "Toggle resize mode",
+            "Switch between fit-inside and fill-window display behavior.",
+            "Window & View",
+        )
+        # Always on top
+        self.always_on_top_key = register_shortcut(
+            "A",
+            self.toggle_always_on_top,
+            "Toggle always-on-top",
+            "Keep the slideshow window above other windows.",
+            "Window & View",
+        )
+        # Mute
+        self.mute_key = register_shortcut(
+            "M",
+            self.toggle_mute,
+            "Toggle mute",
+            "Mute/unmute session sound cues.",
+            "Audio & Timing",
+        )
+        # Timer
+        self.add_30 = register_shortcut(
+            "Up",
+            self.add_30_seconds,
+            "Add 30 seconds",
+            "Increase current timer by 30 seconds.",
+            "Audio & Timing",
+        )
+        self.add_60 = register_shortcut(
+            "Ctrl+Up",
+            self.add_60_seconds,
+            "Add 60 seconds",
+            "Increase current timer by 60 seconds.",
+            "Audio & Timing",
+        )
+        self.restart = register_shortcut(
+            "Ctrl+Shift+Up",
+            self.restart_timer,
+            "Restart timer",
+            "Reset the current image timer to its scheduled duration.",
+            "Audio & Timing",
+        )
+        # Skip image
+        self.skip_image_key = register_shortcut(
+            "S",
+            self.skip_image,
+            "Skip image",
+            "Swap current image forward with a later image in the session.",
+            "Navigation",
+        )
+        # Frameless Window
+        self.frameless_window = register_shortcut(
+            "Ctrl+F",
+            self.toggle_frameless,
+            "Toggle frameless window",
+            "Hide/show window frame.",
+            "Window & View",
+        )
+        # Image adjustments
+        self.brightness_up = register_shortcut(
+            "Ctrl+PgUp",
+            self.increase_brightness,
+            "Increase brightness",
+            "Raise brightness modifier.",
+            "Image Filters",
+        )
+        self.brightness_down = register_shortcut(
+            "Ctrl+PgDown",
+            self.decrease_brightness,
+            "Decrease brightness",
+            "Lower brightness modifier.",
+            "Image Filters",
+        )
+        self.contrast_up = register_shortcut(
+            "PgUp",
+            self.increase_contrast,
+            "Increase contrast",
+            "Raise contrast modifier.",
+            "Image Filters",
+        )
+        self.contrast_down = register_shortcut(
+            "PgDown",
+            self.decrease_contrast,
+            "Decrease contrast",
+            "Lower contrast modifier.",
+            "Image Filters",
+        )
+        self.threshold_toggle = register_shortcut(
+            "T",
+            self.toggle_threshold,
+            "Toggle threshold",
+            "Enable/disable threshold filter.",
+            "Image Filters",
+        )
+        self.edge_toggle = register_shortcut(
+            "E",
+            self.toggle_edge,
+            "Toggle edge filter",
+            "Enable/disable edge detection filter.",
+            "Image Filters",
+        )
+        self.reset_mods = register_shortcut(
+            "Ctrl+0",
+            self.reset_image_mods,
+            "Reset image modifiers",
+            "Reset brightness/contrast/filters/flip for current image.",
+            "Image Filters",
+        )
+        self.toggle_grayscale_mode_shortcut = register_shortcut(
+            "Ctrl+G",
+            self.toggle_grayscale_mode,
+            "Toggle grayscale algorithm",
+            "Switch between perceptual and simple grayscale conversion.",
+            "Image Filters",
+        )
+        # Open image directory
+        self.open_directory_key = register_shortcut(
+            "Ctrl+O",
+            self.open_image_directory,
+            "Open image folder",
+            "Open the folder containing the current image.",
+            "Navigation",
+        )
+        # Zoom controls
+        self.zoom_toggle_key = register_shortcut(
+            "Z",
+            self.toggle_zoom_enabled,
+            "Toggle zoom/pan",
+            "Enable or disable zoom and pan interaction.",
+            "Zoom & Pan",
+        )
+        self.zoom_reset_key = register_shortcut(
+            "0",
+            self.reset_zoom_to_default,
+            "Reset zoom",
+            "Reset zoom back to default 1.0x and center.",
+            "Zoom & Pan",
+        )
+        self.quick_inspect_key = register_shortcut(
+            "I",
+            self.quick_inspect,
+            "Quick inspect toggle",
+            "Toggle between default zoom and inspection zoom.",
+            "Zoom & Pan",
+        )
+        self.zoom_autoreset_key = register_shortcut(
+            "Ctrl+Shift+Z",
+            self.toggle_zoom_reset_mode,
+            "Toggle auto zoom reset",
+            "Enable/disable resetting zoom when moving to another image.",
+            "Zoom & Pan",
+        )
+        self.shortcut_map_key = register_shortcut(
+            "F1",
+            self.open_shortcut_map,
+            "Open shortcut map",
+            "Show all available shortcuts and what they do.",
+            "Help",
+        )
+        self.shortcut_map_key2 = register_shortcut(
+            "Ctrl+/",
+            self.open_shortcut_map,
+            "Open shortcut map",
+            "Show all available shortcuts and what they do.",
+            "Help",
+        )
+        self.shortcut_map_rows.extend(
+            [
+                (
+                    "Navigation",
+                    "Left / Right",
+                    "Previous / next image",
+                    "Move backward or forward in the slideshow.",
+                ),
+                (
+                    "Audio & Timing",
+                    "Space",
+                    "Pause / resume",
+                    "Pause or resume the timer while in session.",
+                ),
+                (
+                    "Navigation",
+                    "Esc",
+                    "Stop session",
+                    "Close the session window.",
+                ),
+                (
+                    "Zoom & Pan",
+                    "Mouse wheel",
+                    "Zoom (when zoom enabled)",
+                    "Fast wheel movement gives larger jumps; slow wheel gives finer control.",
+                ),
+                (
+                    "Zoom & Pan",
+                    "Two-finger scroll",
+                    "Pan (touchpad)",
+                    "Pan the zoomed image directly with touchpad scroll.",
+                ),
+                (
+                    "Zoom & Pan",
+                    "Stylus drag",
+                    "Pan (tablet/pen)",
+                    "Drag with a pen when zoomed to pan the canvas.",
+                ),
+                (
+                    "Zoom & Pan",
+                    "Ctrl + stylus drag",
+                    "Zoom (tablet/pen)",
+                    "Adjust zoom by dragging vertically while holding Ctrl.",
+                ),
+                (
+                    "Zoom & Pan",
+                    "Pinch gesture",
+                    "Zoom (touchpad)",
+                    "Pinch-to-zoom is cursor-centered when zoom is enabled.",
+                ),
+            ]
+        )
 
     def _update_control_density(self):
         if not hasattr(self, "zoom_toggle_button"):
@@ -410,7 +641,27 @@ class SessionDisplay(
         self.entry_progress.trigger_soft_pulse()
 
     def open_shortcut_map(self):
-        run_shortcut_map_dialog(parent=self, shortcut_rows=self.shortcut_map_rows)
+        # Toggle a non-modal shortcut-map dialog. If visible, close it.
+        try:
+            dlg = getattr(self, "_shortcut_map_dialog", None)
+            if dlg is not None and dlg.isVisible():
+                try:
+                    dlg.close()
+                except Exception:
+                    pass
+                self._shortcut_map_dialog = None
+                return
+            dlg = ShortcutMapDialog(parent=self, shortcut_rows=self.shortcut_map_rows)
+            dlg.setModal(False)
+            dlg.show()
+            dlg.raise_()
+            self._shortcut_map_dialog = dlg
+        except Exception:
+            # fallback to the blocking dialog
+            try:
+                run_shortcut_map_dialog(parent=self, shortcut_rows=self.shortcut_map_rows)
+            except Exception:
+                pass
 
     # --- dynamic centring helpers ------------------------------------------
     # --- SessionDisplay ---------------------------------------------------
@@ -1294,75 +1545,6 @@ class SessionDisplay(
             self.frameless_status = False
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint, self.frameless_status)
             self.show()
-
-    def apply_session_settings(self, settings: dict):
-        """Apply persisted session settings (best-effort, non-raising).
-
-        Expected keys: zoom_enabled, reset_zoom_between_images, default_zoom,
-        grayscale, grayscale_mode, toggle_resize_status, frameless_status,
-        always_on_top
-        """
-        if not isinstance(settings, dict):
-            return
-        try:
-            if "zoom_enabled" in settings:
-                self.zoom_enabled = bool(settings.get("zoom_enabled"))
-                self.zoom_toggle_button.setChecked(self.zoom_enabled)
-            if "reset_zoom_between_images" in settings:
-                self.reset_zoom_between_images = bool(
-                    settings.get("reset_zoom_between_images")
-                )
-            if "default_zoom" in settings:
-                try:
-                    self.default_zoom_factor = float(settings.get("default_zoom"))
-                except Exception:
-                    pass
-            if "grayscale" in settings:
-                self.image_mods["grayscale"] = bool(settings.get("grayscale"))
-            if "grayscale_mode" in settings:
-                self.image_mods["grayscale_mode"] = settings.get(
-                    "grayscale_mode", self.image_mods.get("grayscale_mode")
-                )
-            if "hflip" in settings:
-                self.image_mods["hflip"] = bool(settings.get("hflip"))
-            if "vflip" in settings:
-                self.image_mods["vflip"] = bool(settings.get("vflip"))
-            if "brightness" in settings:
-                try:
-                    self.image_mods["brightness"] = int(settings.get("brightness", 0))
-                except Exception:
-                    pass
-            if "contrast" in settings:
-                try:
-                    self.image_mods["contrast"] = float(settings.get("contrast", 1.0))
-                except Exception:
-                    pass
-            if "threshold" in settings:
-                self.image_mods["threshold"] = bool(settings.get("threshold"))
-            if "edge" in settings:
-                self.image_mods["edge"] = bool(settings.get("edge"))
-            if "toggle_resize_status" in settings:
-                self.toggle_resize_status = bool(settings.get("toggle_resize_status"))
-                # Keep sizePolicy consistent with toggle semantics: when
-                # toggle_resize_status is True (dynamic/fill) we set
-                # HeightForWidth False (so height is not forced by width).
-                self.sizePolicy().setHeightForWidth(False if self.toggle_resize_status else True)
-            if "frameless_status" in settings and settings.get("frameless_status"):
-                self.frameless_status = True
-                self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
-            if "always_on_top" in settings and settings.get("always_on_top"):
-                self.toggle_always_on_top_status = True
-                self.setWindowFlag(QtCore.Qt.X11BypassWindowManagerHint, True)
-                self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
-                self.show()
-            # brief summary for the user
-            try:
-                self._show_temporary_indicator("Session settings applied", ms=1000)
-            except Exception:
-                pass
-        except Exception:
-            # never fail during construction
-            return
 
     def previous_playlist_position(self):
         was_timer_active = self.timer.isActive()
