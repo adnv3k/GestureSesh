@@ -5,6 +5,25 @@ All notable changes to GestureSesh will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.4 - 2026-04-24
+
+### Added
+
+- New **Shortcut Map** dialog (`F1` / `Ctrl+/`) available in the session window for quick access to in-session hotkeys.
+- Preset snapshots can now include linked selection data (files and folders); loading such a preset restores the associated image set where possible.
+
+### Changed
+
+- Presets now store both schedule data and an optional `selection` snapshot (files/folders). Loading remains backward-compatible with legacy preset formats.
+
+### Fixed
+
+- Various UX fixes and safer runtime behavior when applying preset-linked selections on load.
+
+### Technical
+
+- Version bump to `0.5.4` reflecting the above additions and compatibility improvements.
+
 ## Unreleased
 
 ### Added
@@ -17,12 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - duplicate highlighting toggle
   - open containing folder
 - New in-session Manage warning banner: when opened during an active session, Manage now explains that edits apply to the next session.
-- New **Shortcut Map** dialog (`F1` / `Ctrl+/`) for in-session key and input discovery.
 - New zoom and inspection controls in the session window:
   - zoom enable toggle (`Z`)
   - reset zoom (`0`)
   - quick inspect toggle (`I`)
-  - auto-reset zoom toggle (`Ctrl+Shift+Z`)
+  - auto-reset zoom (`Ctrl+Shift+Z`)
 - New touch/pen zoom-panning paths:
   - cursor-aware mouse-wheel zoom
   - trackpad pinch/native gesture zoom
@@ -38,12 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - extracted session runtime out of `main.py` into `session_window.py`
   - split main-window logic into app-layer modules (`selection`, `status`, `presets`, `session`, plus shared models)
 - Reworked status messaging into a queued system with dedupe behavior and richer fade/blink rendering.
-- Presets now store both schedule data and linked selection snapshots (files/folders), while preserving legacy preset compatibility.
 - Recent-session restore now merges folder scans with direct-file entries and de-duplicates resulting selections.
 - Session controls were simplified for a cleaner display:
   - removed queue-preview feature and its toggle/shortcut
   - removed session top-bar total-count wording/label
-- Updated main-window selection placeholder/help text to reflect the expanded supported image types.
+- Updated main-window selection placeholder text to reflect the expanded supported image types.
 
 ### Fixed
 

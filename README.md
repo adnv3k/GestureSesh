@@ -73,7 +73,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - **Portable single executable**—no install needed; offline AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP support.
 - **Update checks** every 2 days when online.
 
-## What's New Since v0.5.2
+## What's New Since v0.5.4
 
 - Expanded image support to include **AVIF, GIF, JXL, and WEBP** across selection and session playback.
 - Added **Manage Loaded Images** workflow tools (filtering, duplicate inspection, reorder, remove missing, quick folder open).

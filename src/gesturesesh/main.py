@@ -38,7 +38,7 @@ from gesturesesh.ui.main_window import Ui_MainWindow
 from gesturesesh.utils import resources_config  # noqa: F401
 
 
-__version__ = "0.5.2"
+__version__ = "0.5.4"
 
 
 class MainApp(
