@@ -276,6 +276,43 @@ class DotIndicator(QtWidgets.QWidget):
                     self._pulse_timer.stop()
         self.update()
 
+    # -----------------------------------------------------------------
+    #                     External trigger helpers
+    # -----------------------------------------------------------------
+    def trigger_focus_flash(self, pulses: int = 3):
+        """Trigger a prominent focus flash (used when changing images).
+
+        This starts the internal pulse timer for a small number of cycles.
+        """
+        try:
+            self._pulse_dir = 1
+            self._pulses_left = max(1, int(pulses))
+            self._flash_strength = 0.0
+            if not self._pulse_timer.isActive():
+                self._pulse_timer.start()
+        except Exception:
+            pass
+
+    def trigger_soft_pulse(self, pulses: int = 1):
+        """Trigger a soft, unobtrusive pulse (prediction cues)."""
+        try:
+            self._pulse_dir = 1
+            self._pulses_left = max(1, int(pulses))
+            if not self._pulse_timer.isActive():
+                self._pulse_timer.start()
+        except Exception:
+            pass
+
+    def trigger_milestone_pulse(self, pulses: int = 2):
+        """Trigger a milestone pulse used for entry progress bursts."""
+        try:
+            self._pulse_dir = 1
+            self._pulses_left = max(1, int(pulses))
+            if not self._pulse_timer.isActive():
+                self._pulse_timer.start()
+        except Exception:
+            pass
+
     # ---------------------------------------------------------------------
     #                           Painting
     # ---------------------------------------------------------------------

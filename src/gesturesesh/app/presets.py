@@ -404,13 +404,20 @@ class MainAppPresetsMixin:
                 return
             self.remove_rows()
             try:
-                for row_idx, row_data in sorted(
-                    preset.items(), key=lambda x: int(x[0])
-                ):
+                try:
+                    sorted_items = sorted(preset.items(), key=lambda x: int(x[0]))
+                except Exception as e:
+                    # Malformed preset schedule keys (non-numeric) — show a clear error
+                    self.show_error_status(
+                        f"Error loading preset: invalid schedule format ({e})",
+                        4000,
+                    )
+                    return
+                for row_idx, row_data in sorted_items:
                     row = self.entry_table.rowCount()
                     self.entry_table.insertRow(row)
                     for column, value in enumerate(row_data):
-                        item = QTableWidgetItem(value)
+                        item = QTableWidgetItem(str(value))
                         item.setTextAlignment(4)
                         if column == 0:
                             item.setFlags(QtCore.Qt.ItemIsEnabled)
