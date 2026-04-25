@@ -39,10 +39,20 @@ class MainAppSessionMixin:
         self.insert_breaks()
         main_module = importlib.import_module("gesturesesh.main")
 
+        # Pass any saved recent session settings into the display so initial
+        # state matches the user's last-used preferences.
+        try:
+            session_settings = self.config.get("recent_session", {}).get(
+                "session_settings", None
+            )
+        except Exception:
+            session_settings = None
+
         self.display = main_module.SessionDisplay(
             schedule=self.session_schedule,
             items=self.selection["files"],
             total=self.total_scheduled_images,
+            settings=session_settings,
         )
         self.display.closed.connect(self.session_closed)
         self.display.show()
@@ -151,10 +161,16 @@ class MainAppSessionMixin:
             for file_path in self.selection["files"]
             if file_path != BREAK_IMAGE_PATH
         ]
-        self.config["recent_session"] = {
+        previous = self.config.get("recent_session") or {}
+        recent = {
             "folders": list(self.selection["folders"]),
             "files": list(files_to_save),
             "recent_preset": self.preset_loader_box.currentIndex(),
             "randomized": self.randomize_selection.isChecked(),
         }
+        # Preserve display preferences across runs; session_closed() refreshes
+        # them when the session window is closed.
+        if "session_settings" in previous:
+            recent["session_settings"] = previous["session_settings"]
+        self.config["recent_session"] = recent
         main_module.save_config(self.config_path, self.config)

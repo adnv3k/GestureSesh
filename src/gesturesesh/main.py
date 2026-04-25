@@ -1011,10 +1011,21 @@ class MainApp(
         self.save(wait_status=False)
 
         self.insert_breaks()
+        # Pass recent session settings (if any) into the SessionDisplay so
+        # initial display state (resize, grayscale, zoom, etc.) is preserved.
+        session_settings = None
+        try:
+            session_settings = self.config.get("recent_session", {}).get(
+                "session_settings", None
+            )
+        except Exception:
+            session_settings = None
+
         self.display = SessionDisplay(
             schedule=self.session_schedule,
             items=self.selection["files"],
             total=self.total_scheduled_images,
+            settings=session_settings,
         )
         self.display.closed.connect(self.session_closed)
         self.display.show()
@@ -1025,6 +1036,61 @@ class MainApp(
         self.display_status()
         self.activateWindow()
         self.raise_()
+        # Persist a compact snapshot of display-related toggles so subsequent
+        # sessions can restore the user's preferences (zoom, resize, grayscale,
+        # frameless, etc.). Stored under 'recent_session' -> 'session_settings'.
+        try:
+            if hasattr(self, "display") and self.display is not None:
+                ds = self.display
+                ss = {}
+                try:
+                    ss["zoom_enabled"] = bool(getattr(ds, "zoom_enabled", False))
+                except Exception:
+                    ss["zoom_enabled"] = False
+                try:
+                    ss["reset_zoom_between_images"] = bool(
+                        getattr(ds, "reset_zoom_between_images", True)
+                    )
+                except Exception:
+                    ss["reset_zoom_between_images"] = True
+                try:
+                    ss["default_zoom"] = float(getattr(ds, "default_zoom_factor", 1.0))
+                except Exception:
+                    ss["default_zoom"] = 1.0
+                try:
+                    imgmods = getattr(ds, "image_mods", {}) or {}
+                    ss["grayscale"] = bool(imgmods.get("grayscale", False))
+                    ss["grayscale_mode"] = imgmods.get(
+                        "grayscale_mode", imgmods.get("grayscale_mode", "perceptual")
+                    )
+                except Exception:
+                    ss["grayscale"] = False
+                    ss["grayscale_mode"] = "perceptual"
+                try:
+                    ss["toggle_resize_status"] = bool(
+                        getattr(ds, "toggle_resize_status", False)
+                    )
+                except Exception:
+                    ss["toggle_resize_status"] = False
+                try:
+                    ss["frameless_status"] = bool(getattr(ds, "frameless_status", False))
+                except Exception:
+                    ss["frameless_status"] = False
+                try:
+                    ss["always_on_top"] = bool(
+                        getattr(ds, "toggle_always_on_top_status", False)
+                    )
+                except Exception:
+                    ss["always_on_top"] = False
+
+                # Merge into recent_session and save config
+                recent = self.config.get("recent_session", {})
+                recent["session_settings"] = ss
+                self.config["recent_session"] = recent
+                save_config(self.config_path, self.config)
+        except Exception:
+            pass
+
         self.show_temporary_status("Recent session settings saved!", 3000)
 
     def is_valid_session(self):
@@ -1122,12 +1188,19 @@ class MainApp(
         """
         Saves current session settings into unified config.json.
         """
-        self.config["recent_session"] = {
+        previous = self.config.get("recent_session") or {}
+        recent = {
             "folders": self.selection["folders"],
             "files": self.selection["files"],
             "recent_preset": self.preset_loader_box.currentIndex(),
             "randomized": self.randomize_selection.isChecked(),
         }
+        # Preserve display preferences (resize, frameless, zoom, grayscale, etc.)
+        # so they survive across new sessions. They are refreshed on session
+        # close in session_closed().
+        if "session_settings" in previous:
+            recent["session_settings"] = previous["session_settings"]
+        self.config["recent_session"] = recent
         save_config(self.config_path, self.config)
 
     # endregion

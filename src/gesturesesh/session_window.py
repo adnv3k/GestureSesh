@@ -69,7 +69,7 @@ def sound_file(name: str):
 class SessionDisplay(QWidget, Ui_session_display):
     closed = QtCore.pyqtSignal()  # Needed here for close event to work.
 
-    def __init__(self, schedule=None, items=None, total=None, parent=None):
+    def __init__(self, schedule=None, items=None, total=None, parent=None, settings=None):
         super().__init__(parent)
         self.setupUi(self)
         self.init_sizing()
@@ -128,6 +128,12 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.init_animation_state()
         self.init_zoom_pan()
         self.init_session_toggles()
+        # Apply persisted session settings (if supplied) before loading first image
+        if settings:
+            try:
+                self.apply_session_settings(settings)
+            except Exception:
+                pass
         self.init_button_sizes()
         self.horizontalLayout_2.setAlignment(QtCore.Qt.AlignVCenter)
         self.horizontalLayout.setAlignment(QtCore.Qt.AlignVCenter)
@@ -1974,6 +1980,55 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.frameless_status = False
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint, self.frameless_status)
             self.show()
+
+    def apply_session_settings(self, settings: dict):
+        """Apply persisted session settings (best-effort, non-raising).
+
+        Expected keys: zoom_enabled, reset_zoom_between_images, default_zoom,
+        grayscale, grayscale_mode, toggle_resize_status, frameless_status,
+        always_on_top
+        """
+        if not isinstance(settings, dict):
+            return
+        try:
+            if "zoom_enabled" in settings:
+                self.zoom_enabled = bool(settings.get("zoom_enabled"))
+                self.zoom_toggle_button.setChecked(self.zoom_enabled)
+            if "reset_zoom_between_images" in settings:
+                self.reset_zoom_between_images = bool(
+                    settings.get("reset_zoom_between_images")
+                )
+            if "default_zoom" in settings:
+                try:
+                    self.default_zoom_factor = float(settings.get("default_zoom"))
+                except Exception:
+                    pass
+            if "grayscale" in settings:
+                self.image_mods["grayscale"] = bool(settings.get("grayscale"))
+            if "grayscale_mode" in settings:
+                self.image_mods["grayscale_mode"] = settings.get(
+                    "grayscale_mode", self.image_mods.get("grayscale_mode")
+                )
+            if "toggle_resize_status" in settings:
+                self.toggle_resize_status = bool(settings.get("toggle_resize_status"))
+                # Keep sizePolicy consistent with toggle semantics: when
+                # toggle_resize_status is True (dynamic/fill) we set
+                # HeightForWidth False (so height is not forced by width).
+                self.sizePolicy().setHeightForWidth(False if self.toggle_resize_status else True)
+            if "frameless_status" in settings and settings.get("frameless_status"):
+                self.frameless_status = True
+                self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
+            if "always_on_top" in settings and settings.get("always_on_top"):
+                self.toggle_always_on_top_status = True
+                self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+            # brief summary for the user
+            try:
+                self._show_temporary_indicator("Session settings applied", ms=1000)
+            except Exception:
+                pass
+        except Exception:
+            # never fail during construction
+            return
 
     def previous_playlist_position(self):
         was_timer_active = self.timer.isActive()
