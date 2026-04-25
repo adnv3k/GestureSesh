@@ -1,7 +1,10 @@
+import os
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import sys
 import unittest
 import tempfile
-import os
 import shutil
 import random
 from unittest.mock import patch, MagicMock  # for explicit mock call reference
