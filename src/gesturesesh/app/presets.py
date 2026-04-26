@@ -7,6 +7,7 @@ import random
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
+from gesturesesh.session.constants import BREAK_IMAGE_PATH
 from gesturesesh.utils.config import save_config
 from gesturesesh.utils.time import format_seconds
 
@@ -20,12 +21,27 @@ class MainAppPresetsMixin:
         if not recent:
             return self.selected_items.clear()
 
+        # Start from a clean selection so reloading recent state doesn't merge
+        # with stale in-memory picks from the current app run.
+        self.selection["files"] = []
+        self.selection["folders"] = []
+
         folders = recent.get("folders", [])
+        files = recent.get("files", [])
         loaded_any = False
         if folders:
             self.selection["folders"] = folders
             self.scan_directories(folders)
             loaded_any = True
+        if files:
+            checked = self.check_files(files)
+            self.selection["files"].extend(
+                file for file in checked["valid_files"] if file != BREAK_IMAGE_PATH
+            )
+            loaded_any = loaded_any or bool(checked["valid_files"])
+
+        # Preserve order while dropping accidental duplicates.
+        self.selection["files"] = list(dict.fromkeys(self.selection["files"]))
 
         if "recent_preset" in recent:
             self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
