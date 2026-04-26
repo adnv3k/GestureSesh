@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
+from PyQt5 import QtCore
 
 
 class SessionImageModsMixin:
@@ -27,6 +28,83 @@ class SessionImageModsMixin:
             "edge": False,
             "grayscale_mode": "perceptual",  # or "simple"
         }
+
+    def apply_session_settings(self, settings):
+        """Apply persisted session settings (best-effort, non-raising).
+
+        Mirrors the snapshot written by ``MainAppSessionMixin.session_closed``.
+        """
+        if not isinstance(settings, dict):
+            return
+        try:
+            if "zoom_enabled" in settings:
+                try:
+                    self.zoom_enabled = bool(settings.get("zoom_enabled"))
+                    self.zoom_toggle_button.setChecked(self.zoom_enabled)
+                except Exception:
+                    pass
+            if "reset_zoom_between_images" in settings:
+                try:
+                    self.reset_zoom_between_images = bool(
+                        settings.get("reset_zoom_between_images")
+                    )
+                except Exception:
+                    pass
+            if "default_zoom" in settings:
+                try:
+                    self.default_zoom_factor = float(settings.get("default_zoom"))
+                except Exception:
+                    pass
+            if "grayscale" in settings:
+                self.image_mods["grayscale"] = bool(settings.get("grayscale"))
+            if "grayscale_mode" in settings:
+                self.image_mods["grayscale_mode"] = settings.get(
+                    "grayscale_mode", self.image_mods.get("grayscale_mode")
+                )
+            if "hflip" in settings:
+                self.image_mods["hflip"] = bool(settings.get("hflip"))
+            if "vflip" in settings:
+                self.image_mods["vflip"] = bool(settings.get("vflip"))
+            if "brightness" in settings:
+                try:
+                    self.image_mods["brightness"] = int(settings.get("brightness", 0))
+                except Exception:
+                    pass
+            if "contrast" in settings:
+                try:
+                    self.image_mods["contrast"] = float(settings.get("contrast", 1.0))
+                except Exception:
+                    pass
+            if "threshold" in settings:
+                self.image_mods["threshold"] = bool(settings.get("threshold"))
+            if "edge" in settings:
+                self.image_mods["edge"] = bool(settings.get("edge"))
+            if "toggle_resize_status" in settings:
+                try:
+                    self.toggle_resize_status = bool(
+                        settings.get("toggle_resize_status")
+                    )
+                    self.sizePolicy().setHeightForWidth(
+                        not self.toggle_resize_status
+                    )
+                except Exception:
+                    pass
+            if "frameless_status" in settings and settings.get("frameless_status"):
+                try:
+                    self.frameless_status = True
+                    self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
+                except Exception:
+                    pass
+            if "always_on_top" in settings and settings.get("always_on_top"):
+                try:
+                    self.toggle_always_on_top_status = True
+                    self.setWindowFlag(QtCore.Qt.X11BypassWindowManagerHint, True)
+                    self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+                    self.show()
+                except Exception:
+                    pass
+        except Exception:
+            return
 
     def reset_image_mods(self):
         """Reset all image modifications to their default values and update the display."""
