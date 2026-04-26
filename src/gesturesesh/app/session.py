@@ -8,6 +8,10 @@ from pathlib import Path
 from PyQt5.QtTest import QTest
 
 from gesturesesh.app.models import ScheduleEntry
+from gesturesesh.app.selection_order import (
+    effective_selection_order,
+    playlist_with_breaks,
+)
 from gesturesesh.session.constants import BREAK_IMAGE_PATH
 from gesturesesh.session_window import SessionDisplay
 from gesturesesh.utils.config import save_config
@@ -31,13 +35,14 @@ class MainAppSessionMixin:
             QTest.qWait(4000)
             self.display_status()
             return
-        if self.randomize_selection.isChecked():
-            self.randomize_items()
         self.save_to_recent()
 
         self.save(wait_status=False)
 
-        self.insert_breaks()
+        ordered_files = effective_selection_order(
+            self.selection["files"], randomize=self.randomize_selection.isChecked()
+        )
+        session_playlist = self.insert_breaks(ordered_files)
         # Pass recent session settings (if any) into the SessionDisplay so
         # initial display state (resize, grayscale, zoom, etc.) is preserved.
         session_settings = None
@@ -66,7 +71,7 @@ class MainAppSessionMixin:
 
         self.display = SessionDisplay(
             schedule=self.session_schedule,
-            items=self.selection["files"],
+            items=session_playlist,
             total=self.total_scheduled_images,
             settings=session_settings,
         )
@@ -211,16 +216,17 @@ class MainAppSessionMixin:
             return False
         return True
 
-    def insert_breaks(self):
+    def insert_breaks(self, files=None):
         """Inserts break images as specified by the schedule."""
-        if self.has_break:
-            current_index = 0
-            for entry in self.session_schedule:
-                if entry.images == 0:
-                    self.selection["files"].insert(current_index, BREAK_IMAGE_PATH)
-                    current_index += 1
-                else:
-                    current_index += entry.images
+        source_files = self.selection["files"] if files is None else files
+        playlist = playlist_with_breaks(source_files, self.session_schedule)
+        if files is None:
+            self.selection["files"] = playlist
+        return playlist
+
+    def build_session_playlist(self, files):
+        """Build a session playlist from an explicit file order."""
+        return playlist_with_breaks(files, self.session_schedule)
 
     def remove_breaks(self):
         """Removes all occurrences of break.png from the list of selected files."""
@@ -233,6 +239,7 @@ class MainAppSessionMixin:
     def grab_schedule(self):
         """Builds self.session_schedule with data from the schedule."""
         self.session_schedule = []
+        self.has_break = False
         for row in range(self.entry_table.rowCount()):
             images = int(self.entry_table.item(row, 1).text())
             time = int(self.entry_table.item(row, 2).text())

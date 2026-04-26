@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import random
-
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
+from gesturesesh.app.selection_order import effective_selection_order
 from gesturesesh.session.constants import BREAK_IMAGE_PATH
 from gesturesesh.utils.config import save_config
 from gesturesesh.utils.time import format_seconds
@@ -148,12 +147,9 @@ class MainAppPresetsMixin:
             self.entry_table.removeRow(0)
 
     def randomize_items(self):
-        copy = self.selection["files"].copy()
-        randomized_items = []
-        while len(copy) > 0:
-            random_index = random.randint(0, len(copy) - 1)
-            randomized_items.append(copy.pop(random_index))
-        self.selection["files"] = randomized_items
+        self.selection["files"] = effective_selection_order(
+            self.selection["files"], randomize=True
+        )
         self.display_status()
 
     def update_total(self):
