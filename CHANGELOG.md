@@ -7,22 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## v0.5.4 - 2026-04-24
+
 ### Added
 
+- Session display preferences now persist between runs, including zoom/inspect toggles, grayscale mode, resize/fill behavior, frameless, and always-on-top settings.
+- Image modification state now persists across sessions (`hflip`, `vflip`, brightness, contrast, threshold, edge mode), so your display adjustments are restored on next launch.
 - Broader image-format support in selection and session playback: `.avif`, `.gif`, `.jxl`, and `.webp` were added to supported types.
-- New **Manage Loaded Images** dialog for curation workflows:
+- New **Selection Order Viewer** (`Ctrl+Shift+I`) for curation workflows:
+  - thumbnail list with selection order, filename, path, and status markers
+  - detail preview panel with image metadata
+  - selection stats for scheduled/extra/short images, folders, missing files, duplicates, and file types
   - filter by name/path
+  - add files/folders
   - remove selected/missing entries
-  - move selected items up/down
+  - move selected items up/down/top/bottom
+  - shuffle or sort by filename/path
   - duplicate highlighting toggle
   - open containing folder
-- New in-session Manage warning banner: when opened during an active session, Manage now explains that edits apply to the next session.
-- New **Shortcut Map** dialog (`F1` / `Ctrl+/`) for in-session key and input discovery.
+- New in-session order viewer access (`Ctrl+Shift+I`) for inspecting the live session order and editing upcoming images while already-shown items and break markers remain locked.
+- Randomized selections can now be previewed in their effective order; applying that preview locks the order and disables additional randomization for the next session start.
+- New **Shortcut Map** dialog (`F1` / `Ctrl+/`) available in the session window for quick access to keyboard, wheel, trackpad, and stylus controls.
 - New zoom and inspection controls in the session window:
   - zoom enable toggle (`Z`)
   - reset zoom (`0`)
   - quick inspect toggle (`I`)
-  - auto-reset zoom toggle (`Ctrl+Shift+Z`)
+  - auto-reset zoom (`Ctrl+Shift+Z`)
+- New frameless fullscreen toggle (`Ctrl+Shift+F`) for distraction-free sessions.
 - New touch/pen zoom-panning paths:
   - cursor-aware mouse-wheel zoom
   - trackpad pinch/native gesture zoom
@@ -34,36 +45,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Presets now use a wrapped payload format (`schedule` + optional `session_settings`) while remaining backward-compatible with legacy preset entries.
+- Preset snapshots can now include linked selection data (files and folders); loading such a preset restores the associated image set where possible.
+- Active preset resize behavior (`toggle_resize_status`) is now preserved with each preset and reused at session startup.
 - Refactored the app structure for maintainability:
   - extracted session runtime out of `main.py` into `session_window.py`
   - split main-window logic into app-layer modules (`selection`, `status`, `presets`, `session`, plus shared models)
+- Refactored the session runtime further so image decode/render logic now lives in a dedicated loader mixin instead of `session_window.py`, and shortcut registration is centralized in `SessionShortcutsMixin`.
 - Reworked status messaging into a queued system with dedupe behavior and richer fade/blink rendering.
-- Presets now store both schedule data and linked selection snapshots (files/folders), while preserving legacy preset compatibility.
-- Recent-session restore now merges folder scans with direct-file entries and de-duplicates resulting selections.
+- Session startup now builds randomized and break-inserted playlists from copies, so the saved selection order is no longer mutated just by starting a session.
 - Session controls were simplified for a cleaner display:
   - removed queue-preview feature and its toggle/shortcut
   - removed session top-bar total-count wording/label
-- Updated main-window selection placeholder/help text to reflect the expanded supported image types.
+- Updated main-window selection placeholder text to reflect the expanded supported image types.
 
 ### Fixed
 
+- Improved always-on-top reliability on X11 by applying and clearing `X11BypassWindowManagerHint` with the topmost toggle lifecycle.
+- Prevented config-save failures by normalizing recent-session folder/file selections to JSON-safe list values.
+- Recent-session restore now reloads both selected folders and directly-added files, with de-duplication and break-placeholder filtering.
 - Fixed duplicate detection and duplicate reporting for file additions with more robust file identity handling.
 - Improved review-mode and break synchronization behavior across playlist navigation:
   - better alignment between scheduled entries and current playlist position
   - safer end-of-session anchoring to scheduled span
 - Improved decode robustness for high bit-depth and mixed-source images via normalization before render.
+- Improved selection viewer responsiveness by loading only visible thumbnails plus a small scroll buffer, using scaled image reads instead of decoding every selected image during dialog startup.
 - Preserved import and patch compatibility during refactor (`MainApp`, `SessionDisplay`, `BREAK_IMAGE_PATH`, `ScheduleEntry`, and `save_config` patch points).
 
 ### Technical
 
+- Expanded modularization by splitting `SessionDisplay` behavior into focused session mixins (`image_mods`, `image_loader`, `shortcuts`, `timer`, `zoom_pan`) and moving utility helpers to `gesturesesh.utils`.
 - Added and expanded automated coverage for:
   - decode fallbacks and dtype normalization
   - animation decode decisions and cache behavior
+  - extracted loader-path cache reuse behavior
   - zoom pacing/snap behavior
   - break/review-mode schedule synchronization
   - preset-linked selection persistence and backward compatibility
   - duplicate detection/reporting paths
-
+  - selection order helper behavior, shortcut registration, and order-dialog mutation rules
 
 ## v0.5.2 - 2026-04-23
 

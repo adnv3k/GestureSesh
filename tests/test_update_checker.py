@@ -8,7 +8,7 @@ import os
 # Add the src directory to sys.path to import gesturesesh modules
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
-from gesturesesh.update_checker import UpdateChecker
+from gesturesesh.utils.update_checker import UpdateChecker
 
 def test_changelog_parsing():
     """Test the changelog parsing functionality."""

@@ -54,14 +54,15 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 
 - **Cross-platform** PyQt5 interface with a unified dark theme.
 - **Recursive folder scanning** with duplicate cleanup.
-- **Manage Loaded Images** dialog for quick filtering, reordering, duplicate review, and cleanup.
+- **Selection Order Viewer** (`Ctrl + Shift + I`) with thumbnails, selection stats, filtering, duplicate/missing review, add/remove tools, sorting, shuffling, and manual order controls.
 - **Custom schedule builder**: timed entries, breaks (0-image rows), randomization, and preset saving.
-- **Auto-reload** of your last session (images, schedule, randomization).
-- **In-session safety notice**: opening Manage during an active session shows a warning that changes apply to the next session, not the current one.
+- **Auto-reload** of your last session (images, schedule, randomization) plus persisted session display preferences and image modifications.
+- **In-session order management**: open the same viewer from the session window to inspect the current order and manage upcoming images without changing already-shown items.
 - **Window options** (grayscale, flip, always-on-top, frameless) via hotkeys.  
   <div align="center">
     <img src="docs/Screenshots/Grayscale%20Comparison.png" alt="Grayscale example" width="80%" />
   </div>
+- **Session shortcut map** with `F1` for a quick in-window reference to keyboard, wheel, trackpad, and stylus controls.
 - **Intuitive timer**: click to pause, drag to move (auto-pause), resume where you left off.
 - **Review mode**: 15 s auto-close with arrow navigation; double-click or Ctrl + O to open image folder.
 - **Simplified session controls**: queue preview and the session total-count label were removed for a cleaner display.
@@ -70,19 +71,23 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
     <img src="docs/Screenshots/Break.png" alt="Break example" width="80%" />
   </div>
 - **Sound cues** for new entry and last image.
-- **Portable single executable**—no install needed; offline AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP support.
+- **Portable single executable**—no install needed; supports AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP image libraries.
 - **Update checks** every 2 days when online.
 
-## What's New Since v0.5.2
+## What's New Since v0.5.3
 
+- Added persistence for session display and image-modification settings, so zoom/layout/visual adjustments are restored across restarts.
+- Presets remain backward-compatible and can now store schedule, selection, and session display metadata, including per-preset resize behavior.
+- Improved recent-session restore to reload both folders and direct-file selections with duplicate-safe filtering.
 - Expanded image support to include **AVIF, GIF, JXL, and WEBP** across selection and session playback.
-- Added **Manage Loaded Images** workflow tools (filtering, duplicate inspection, reorder, remove missing, quick folder open).
-- Added **in-session Manage warning** so edits are clearly marked as applying to future sessions.
+- Added **Selection Order Viewer** (`Ctrl + Shift + I`) with thumbnail previews, stats, filtering, duplicate/missing inspection, add/remove tools, sorting, shuffling, and manual order controls.
+- Added **in-session order management** so the current session order can be inspected and upcoming images can be adjusted while already-shown items and break markers stay protected.
+- Randomized selections can now be previewed in their effective order before starting a session; applying the preview locks that order and turns randomization off.
 - Added **Shortcut Map dialog** (`F1` / `Ctrl + /`) for in-session key and input reference.
 - Added richer **zoom/pan controls** (wheel/pinch/stylus paths, quick inspect, zoom reset, and auto-reset toggle).
-- Improved decode/render robustness with fallback decode paths and still/animation caching.
+- Improved decode/render robustness with fallback decode paths and still/animation caching; JXL fallback can use `djxl`, and animated fallback can use `ffmpeg` when available.
 - Improved playlist/schedule synchronization around breaks and review navigation.
-- Refactored the codebase for maintainability (main-window modules + dedicated session runtime module).
+- Refactored the session runtime for maintainability by splitting shortcut, timer, zoom/pan, image-modification, and image-loading responsibilities into focused session modules.
 - Simplified session display by removing queue preview and session total-count text.
 
 ## Hotkeys
@@ -96,6 +101,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Clear Selection        | Ctrl + Shift + C                 |
 | Toggle Randomization   | Ctrl + R                         |
 | Remove Duplicates      | Ctrl + 1 *(one per filename)*    |
+| Manage Selection Order | Ctrl + Shift + I                 |
 | Add Entry              | Shift + Enter                    |
 | Save Preset            | Ctrl + S                         |
 | Delete Preset          | Ctrl + Shift + D                 |
@@ -116,6 +122,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Toggle Resizing (dyn/static)  | R                                     |
 | Toggle Always On Top          | A                                     |
 | Toggle Frameless Window       | Ctrl + F                              |
+| Toggle Frameless Fullscreen   | Ctrl + Shift + F                      |
 | Toggle Mute                   | M                                     |
 | Previous Image                | ← (Left Arrow)                        |
 | Stop                          | Esc                                   |
@@ -129,6 +136,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Toggle Zoom / Pan             | Z                                     |
 | Reset Zoom                    | 0                                     |
 | Quick Inspect                 | I                                     |
+| Manage Session Order          | Ctrl + Shift + I                      |
 | Toggle Auto Zoom Reset        | Ctrl + Shift + Z                      |
 | Open Shortcut Map             | F1 or Ctrl + /                        |
 | Increase Brightness           | Ctrl + PgUp                           |
@@ -251,7 +259,9 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 ## Note
 
 * Supported file types: **.avif**, **.bmp**, **.gif**, **.jxl**, **.jpg**, **.jpeg**, **.png**, **.webp**.
+* Expanded image decoding uses bundled Python libraries first where possible; JXL fallback can use `djxl`, and animated fallback can use `ffmpeg` when those tools are installed.
 * Settings are stored in a cross-platform `config.json` under your app data directory (includes recent session, presets, and update-check metadata).
+* Presets are backward-compatible across legacy and wrapped formats, and newer presets can retain schedule, selection, and session display metadata.
 * Last session’s images, randomization, and schedule are auto-loaded on startup.
 * Updates are checked every 2 days when online. You’ll see a notice if there’s a new version.
 * **GestureSesh** is built with **PyQt5** using the “Fusion” style for a consistent dark theme across Windows & macOS.

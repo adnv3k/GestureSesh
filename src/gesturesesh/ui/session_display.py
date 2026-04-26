@@ -314,21 +314,18 @@ class Ui_session_display(object):
                 "Grayscale<br><span style='font-weight:650;'>G</span>",
             )
         )
-        self.grayscale_button.setShortcut(_translate("session_display", "G"))
         self.flip_horizontal_button.setToolTip(
             _translate(
                 "session_display",
                 "Flip horizontal<br><span style='font-weight:650;'>H</span>",
             )
         )
-        self.flip_horizontal_button.setShortcut(_translate("session_display", "H"))
         self.flip_vertical_button.setToolTip(
             _translate(
                 "session_display",
                 "Flip vertical<br><span style='font-weight:650;'>V</span>",
             )
         )
-        self.flip_vertical_button.setShortcut(_translate("session_display", "V"))
         self.previous_image.setToolTip(
             _translate(
                 "session_display",

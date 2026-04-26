@@ -21,9 +21,11 @@ if app is None:
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
-from gesturesesh.main import MainApp, SessionDisplay, ScheduleEntry, BREAK_IMAGE_PATH
+from gesturesesh.main import MainApp
+from gesturesesh.session_window import SessionDisplay, BREAK_IMAGE_PATH
+from gesturesesh.app.models import ScheduleEntry
+from gesturesesh.utils.time import format_seconds
 from gesturesesh.ui.main_window import Ui_MainWindow
-from gesturesesh.ui.session_display import Ui_session_display
 
 
 def mock_main_app_setup_ui(self, main_window):
@@ -36,18 +38,7 @@ def mock_main_app_setup_ui(self, main_window):
     self.set_minutes = MagicMock(spec=QtWidgets.QSpinBox)
     self.set_seconds = MagicMock(spec=QtWidgets.QSpinBox)
     self.dialog_buttons = MagicMock(spec=QtWidgets.QDialogButtonBox)
-def mock_session_display_setup_ui(self, session_display_window):
-    """Mocks the SessionDisplay's setupUi, creating all necessary widgets."""
-    self.image_display = MagicMock(spec=QtWidgets.QLabel)
-    self.timer_display = MagicMock(spec=QtWidgets.QLabel)
-    self.session_info = MagicMock(spec=QtWidgets.QLabel)
-    self.previous_image = MagicMock(spec=QtWidgets.QPushButton)
-    self.pause_timer = MagicMock(spec=QtWidgets.QPushButton)
-    self.stop_session = MagicMock(spec=QtWidgets.QPushButton)
-    self.next_image = MagicMock(spec=QtWidgets.QPushButton)
-    self.grayscale_button = MagicMock(spec=QtWidgets.QPushButton)
-    self.flip_horizontal_button = MagicMock(spec=QtWidgets.QPushButton)
-    self.flip_vertical_button = MagicMock(spec=QtWidgets.QPushButton)
+
 
 # ----------------- Helpers to stub MainApp methods for logic-only tests -----------------
 def _stub_save(self):
@@ -358,7 +349,7 @@ class TestMainAppLogic(unittest.TestCase):
         ]
         for seconds, expected in test_cases:
             with self.subTest(seconds=seconds):
-                self.assertEqual(self.app.format_seconds(seconds), expected)
+                self.assertEqual(format_seconds(seconds), expected)
 
 
     def test_check_files_filtering(self):
@@ -623,7 +614,7 @@ class TestMainAppLogic(unittest.TestCase):
              patch.object(self.app, "insert_breaks") as insert_breaks, \
              patch.object(self.app, "save_to_recent") as save_recent, \
              patch.object(self.app, "save") as save_preset, \
-             patch("gesturesesh.main.SessionDisplay", autospec=True) as Display:
+             patch("gesturesesh.app.session.SessionDisplay", autospec=True) as Display:
 
             # Configure the mocked SessionDisplay instance so .closed.connect exists
             display_instance = Display.return_value
