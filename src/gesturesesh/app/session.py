@@ -244,8 +244,8 @@ class MainAppSessionMixin:
         """Saves current session settings into unified config.json."""
         previous = self.config.get("recent_session") or {}
         recent = {
-            "folders": self.selection["folders"],
-            "files": self.selection["files"],
+            "folders": list(self.selection["folders"]),
+            "files": list(self.selection["files"]),
             "recent_preset": self.preset_loader_box.currentIndex(),
             "randomized": self.randomize_selection.isChecked(),
         }
