@@ -54,10 +54,10 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 
 - **Cross-platform** PyQt5 interface with a unified dark theme.
 - **Recursive folder scanning** with duplicate cleanup.
-- **Manage Loaded Images** dialog for quick filtering, reordering, duplicate review, and cleanup.
+- **Selection Order Viewer** (`Ctrl + Shift + I`) with thumbnails, selection stats, filtering, duplicate/missing review, add/remove tools, sorting, shuffling, and manual order controls.
 - **Custom schedule builder**: timed entries, breaks (0-image rows), randomization, and preset saving.
 - **Auto-reload** of your last session (images, schedule, randomization) plus persisted session display preferences and image modifications.
-- **In-session safety notice**: opening Manage during an active session shows a warning that changes apply to the next session, not the current one.
+- **In-session order management**: open the same viewer from the session window to inspect the current order and manage upcoming images without changing already-shown items.
 - **Window options** (grayscale, flip, always-on-top, frameless) via hotkeys.  
   <div align="center">
     <img src="docs/Screenshots/Grayscale%20Comparison.png" alt="Grayscale example" width="80%" />
@@ -80,8 +80,9 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - Presets now support wrapped session metadata and preserve per-preset resize behavior when loading sessions.
 - Improved recent-session restore to reload both folders and direct-file selections with duplicate-safe filtering.
 - Expanded image support to include **AVIF, GIF, JXL, and WEBP** across selection and session playback.
-- Added **Manage Loaded Images** workflow tools (filtering, duplicate inspection, reorder, remove missing, quick folder open).
-- Added **in-session Manage warning** so edits are clearly marked as applying to future sessions.
+- Added **Selection Order Viewer** (`Ctrl + Shift + I`) with thumbnail previews, stats, filtering, duplicate/missing inspection, add/remove tools, sorting, shuffling, and manual order controls.
+- Added **in-session order management** so the current session order can be inspected and upcoming images can be adjusted while already-shown items and break markers stay protected.
+- Randomized selections can now be previewed in their effective order before starting a session; applying the preview locks that order and turns randomization off.
 - Added **Shortcut Map dialog** (`F1` / `Ctrl + /`) for in-session key and input reference.
 - Added richer **zoom/pan controls** (wheel/pinch/stylus paths, quick inspect, zoom reset, and auto-reset toggle).
 - Improved decode/render robustness with fallback decode paths and still/animation caching.
@@ -100,6 +101,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Clear Selection        | Ctrl + Shift + C                 |
 | Toggle Randomization   | Ctrl + R                         |
 | Remove Duplicates      | Ctrl + 1 *(one per filename)*    |
+| Manage Selection Order | Ctrl + Shift + I                 |
 | Add Entry              | Shift + Enter                    |
 | Save Preset            | Ctrl + S                         |
 | Delete Preset          | Ctrl + Shift + D                 |
@@ -134,6 +136,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Toggle Zoom / Pan             | Z                                     |
 | Reset Zoom                    | 0                                     |
 | Quick Inspect                 | I                                     |
+| Manage Session Order          | Ctrl + Shift + I                      |
 | Toggle Auto Zoom Reset        | Ctrl + Shift + Z                      |
 | Open Shortcut Map             | F1 or Ctrl + /                        |
 | Increase Brightness           | Ctrl + PgUp                           |
