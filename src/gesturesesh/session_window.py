@@ -1278,6 +1278,9 @@ class SessionDisplay(
         else:
             self.toggle_always_on_top_status = False
             self.setWindowFlag(
+                QtCore.Qt.X11BypassWindowManagerHint, self.toggle_always_on_top_status
+            )
+            self.setWindowFlag(
                 QtCore.Qt.WindowStaysOnTopHint, self.toggle_always_on_top_status
             )
             self.show()
@@ -1349,7 +1352,9 @@ class SessionDisplay(
                 self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
             if "always_on_top" in settings and settings.get("always_on_top"):
                 self.toggle_always_on_top_status = True
+                self.setWindowFlag(QtCore.Qt.X11BypassWindowManagerHint, True)
                 self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+                self.show()
             # brief summary for the user
             try:
                 self._show_temporary_indicator("Session settings applied", ms=1000)
