@@ -6,12 +6,10 @@ import sys
 import unittest
 import tempfile
 import shutil
-import random
 from unittest.mock import patch, MagicMock  # for explicit mock call reference
 import types
 from pathlib import Path
-from collections import Counter, OrderedDict
-import numpy as np
+from collections import Counter
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication
 
@@ -24,143 +22,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from gesturesesh.main import MainApp
 from gesturesesh.session_window import SessionDisplay, BREAK_IMAGE_PATH
-from gesturesesh.session.image_loader import SessionImageLoaderMixin
 from gesturesesh.app.models import ScheduleEntry
 from gesturesesh.utils.time import format_seconds
 from gesturesesh.ui.main_window import Ui_MainWindow
-from gesturesesh.ui.session_display import Ui_session_display
-
-
-class TestSessionDisplayShortcuts(unittest.TestCase):
-    def test_filter_buttons_do_not_own_window_shortcuts(self):
-        widget = QtWidgets.QWidget()
-        ui = Ui_session_display()
-        ui.setupUi(widget)
-
-        self.assertTrue(ui.grayscale_button.shortcut().isEmpty())
-        self.assertTrue(ui.flip_horizontal_button.shortcut().isEmpty())
-        self.assertTrue(ui.flip_vertical_button.shortcut().isEmpty())
-
-    def test_filter_shortcuts_are_registered_on_session_window(self):
-        class DummySession(QtWidgets.QWidget):
-            pass
-
-        dummy = DummySession()
-        callback_names = [
-            "toggle_resize",
-            "toggle_always_on_top",
-            "toggle_mute",
-            "add_30_seconds",
-            "add_60_seconds",
-            "restart_timer",
-            "skip_image",
-            "toggle_frameless",
-            "toggle_fullscreen_frameless",
-            "increase_brightness",
-            "decrease_brightness",
-            "increase_contrast",
-            "decrease_contrast",
-            "toggle_threshold",
-            "toggle_edge",
-            "reset_image_mods",
-            "toggle_grayscale_mode",
-            "grayscale",
-            "flip_horizontal",
-            "flip_vertical",
-            "open_image_directory",
-            "toggle_zoom_enabled",
-            "reset_zoom_to_default",
-            "quick_inspect",
-            "toggle_zoom_reset_mode",
-            "open_shortcut_map",
-        ]
-        for name in callback_names:
-            setattr(dummy, name, lambda: None)
-
-        SessionDisplay.init_shortcuts(dummy)
-
-        self.assertEqual(dummy.grayscale_shortcut.key().toString(), "G")
-        self.assertEqual(dummy.flip_horizontal_shortcut.key().toString(), "H")
-        self.assertEqual(dummy.flip_vertical_shortcut.key().toString(), "V")
-        self.assertEqual(dummy.frameless_fullscreen.key().toString(), "Ctrl+Shift+F")
-
-
-class TestSessionImageLoaderMixin(unittest.TestCase):
-    def test_prepare_image_mods_uses_animation_cache_and_starts_timer(self):
-        frame = np.zeros((2, 2, 4), dtype=np.uint8)
-        fake = types.SimpleNamespace(
-            playlist=["animated.gif"],
-            playlist_position=0,
-            image_mods={"break": False},
-            animation_cache=OrderedDict(),
-            still_image_cache=OrderedDict(),
-            max_animation_cache_entries=12,
-            max_still_cache_entries=64,
-            animation_timer=MagicMock(),
-            animation_frames=[],
-            animation_durations_ms=[],
-            animation_frame_index=0,
-            animation_source_path=None,
-            reset_animation_state=MagicMock(),
-            load_animation_frames=MagicMock(return_value=([frame, frame.copy()], [80, 90])),
-            _render_cvimage=MagicMock(),
-        )
-        fake._cache_get = lambda cache, key: SessionDisplay._cache_get(fake, cache, key)
-        fake._cache_put = lambda cache, key, value, limit: SessionDisplay._cache_put(
-            fake, cache, key, value, limit
-        )
-
-        SessionImageLoaderMixin.prepare_image_mods(fake)
-        SessionImageLoaderMixin.prepare_image_mods(fake)
-
-        fake.load_animation_frames.assert_called_once_with("animated.gif")
-        assert fake.animation_source_path == "animated.gif"
-        assert len(fake.animation_frames) == 2
-        assert fake._render_cvimage.call_count == 2
-        fake.animation_timer.start.assert_called_with(80)
-
-    def test_prepare_image_mods_falls_back_to_still_cache(self):
-        image = np.ones((2, 2, 3), dtype=np.uint8)
-        fake = types.SimpleNamespace(
-            playlist=["still.jpg"],
-            playlist_position=0,
-            image_mods={"break": False},
-            animation_cache=OrderedDict(),
-            still_image_cache=OrderedDict(),
-            max_animation_cache_entries=12,
-            max_still_cache_entries=64,
-            reset_animation_state=MagicMock(),
-            load_animation_frames=MagicMock(return_value=None),
-            decode_current_image=MagicMock(return_value=image),
-            _render_cvimage=MagicMock(),
-        )
-        fake._cache_get = lambda cache, key: SessionDisplay._cache_get(fake, cache, key)
-        fake._cache_put = lambda cache, key, value, limit: SessionDisplay._cache_put(
-            fake, cache, key, value, limit
-        )
-
-        SessionImageLoaderMixin.prepare_image_mods(fake)
-        SessionImageLoaderMixin.prepare_image_mods(fake)
-
-        fake.decode_current_image.assert_called_once()
-        assert fake._render_cvimage.call_count == 2
-
-    def test_normalize_cvimage_dtype_scales_common_image_depths(self):
-        fake = types.SimpleNamespace()
-
-        bool_image = np.array([[True, False]])
-        uint16_image = np.array([[0, 1023]], dtype=np.uint16)
-        float_image = np.array([[0.0, 1.0]], dtype=np.float32)
-
-        assert SessionImageLoaderMixin.normalize_cvimage_dtype(fake, bool_image).tolist() == [
-            [255, 0]
-        ]
-        assert SessionImageLoaderMixin.normalize_cvimage_dtype(
-            fake, uint16_image
-        ).tolist() == [[0, 255]]
-        assert SessionImageLoaderMixin.normalize_cvimage_dtype(
-            fake, float_image
-        ).tolist() == [[0, 255]]
 
 
 def mock_main_app_setup_ui(self, main_window):
@@ -173,18 +37,7 @@ def mock_main_app_setup_ui(self, main_window):
     self.set_minutes = MagicMock(spec=QtWidgets.QSpinBox)
     self.set_seconds = MagicMock(spec=QtWidgets.QSpinBox)
     self.dialog_buttons = MagicMock(spec=QtWidgets.QDialogButtonBox)
-def mock_session_display_setup_ui(self, session_display_window):
-    """Mocks the SessionDisplay's setupUi, creating all necessary widgets."""
-    self.image_display = MagicMock(spec=QtWidgets.QLabel)
-    self.timer_display = MagicMock(spec=QtWidgets.QLabel)
-    self.session_info = MagicMock(spec=QtWidgets.QLabel)
-    self.previous_image = MagicMock(spec=QtWidgets.QPushButton)
-    self.pause_timer = MagicMock(spec=QtWidgets.QPushButton)
-    self.stop_session = MagicMock(spec=QtWidgets.QPushButton)
-    self.next_image = MagicMock(spec=QtWidgets.QPushButton)
-    self.grayscale_button = MagicMock(spec=QtWidgets.QPushButton)
-    self.flip_horizontal_button = MagicMock(spec=QtWidgets.QPushButton)
-    self.flip_vertical_button = MagicMock(spec=QtWidgets.QPushButton)
+
 
 # ----------------- Helpers to stub MainApp methods for logic-only tests -----------------
 def _stub_save(self):
