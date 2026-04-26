@@ -15,14 +15,26 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QWidget
 
-from gesturesesh.session.constants import BREAK_IMAGE_PATH, sound_file
+from gesturesesh.session.constants import (
+    BREAK_IMAGE_PATH,
+    SUPPORTED_IMAGE_TYPES,
+    sound_file,
+)
+from gesturesesh.app.selection_order import (
+    real_image_paths,
+    remaining_required_images,
+)
 from gesturesesh.session.image_loader import SessionImageLoaderMixin
 from gesturesesh.session.image_mods import SessionImageModsMixin
 from gesturesesh.session.shortcuts import SessionShortcutsMixin
 from gesturesesh.session.timer import SessionTimerMixin
 from gesturesesh.session.zoom_pan import SessionZoomPanMixin
 from gesturesesh.utils import resources_config  # noqa: F401
-from gesturesesh.ui.dialogs import run_shortcut_map_dialog, ShortcutMapDialog
+from gesturesesh.ui.dialogs import (
+    run_selection_order_dialog,
+    run_shortcut_map_dialog,
+    ShortcutMapDialog,
+)
 from gesturesesh.ui.dot_indicator import DotIndicator
 from gesturesesh.ui.session_display import Ui_session_display
 
@@ -223,8 +235,15 @@ class SessionDisplay(
         self.shortcuts_button.setToolTip("Open shortcut map.\nShortcut: F1")
         self.shortcuts_button.clicked.connect(self.open_shortcut_map)
 
+        self.order_button = QtWidgets.QPushButton("Order", self)
+        self.order_button.setToolTip(
+            "View and manage session order.\nShortcut: Ctrl+Shift+I"
+        )
+        self.order_button.clicked.connect(self.open_session_order_viewer)
+
         for button in (
             self.zoom_toggle_button,
+            self.order_button,
             self.shortcuts_button,
         ):
             button.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -381,6 +400,8 @@ class SessionDisplay(
             btn.setIconSize(icon_size)
         self.zoom_toggle_button.setMinimumWidth(54)
         self.zoom_toggle_button.setFixedHeight(button_size.height())
+        self.order_button.setMinimumWidth(58)
+        self.order_button.setFixedHeight(button_size.height())
         self.shortcuts_button.setFixedSize(QtCore.QSize(36, button_size.height()))
         self._update_control_density()
 
@@ -419,6 +440,8 @@ class SessionDisplay(
 
         self.zoom_toggle_button.setFixedHeight(text_h)
         self.zoom_toggle_button.setMinimumWidth(46 if width <= 520 else 54)
+        self.order_button.setFixedHeight(text_h)
+        self.order_button.setMinimumWidth(52 if width <= 520 else 58)
         self.shortcuts_button.setFixedSize(QtCore.QSize(30 if width <= 520 else 36, text_h))
         self.timer_display.setFixedHeight(text_h)
         self.horizontalLayout_3.setAlignment(self.timer_display, QtCore.Qt.AlignVCenter)
@@ -431,6 +454,7 @@ class SessionDisplay(
         self.flip_horizontal_button.setVisible(not compact)
         self.flip_vertical_button.setVisible(not compact)
         self.shortcuts_button.setVisible(not ultra_compact)
+        self.order_button.setVisible(not micro)
         self.zoom_toggle_button.setVisible(not micro)
 
         self.horizontalLayout.setSpacing(spacing)
@@ -466,6 +490,45 @@ class SessionDisplay(
                 run_shortcut_map_dialog(parent=self, shortcut_rows=self.shortcut_map_rows)
             except Exception:
                 pass
+
+    def _validate_session_order(self, files):
+        required = remaining_required_images(
+            self.schedule, self.playlist, self.playlist_position
+        )
+        available = len(real_image_paths(files[self.playlist_position :]))
+        if available < required:
+            return (
+                "The session still needs "
+                f"{required} image(s) from the current point forward, but this order "
+                f"only has {available}. Add images or undo removals before applying."
+            )
+        return None
+
+    def open_session_order_viewer(self):
+        was_timer_active = self.timer.isActive()
+        if not self.session_finished and was_timer_active:
+            self.timer.stop()
+            self._set_timer_visuals(False)
+
+        result = run_selection_order_dialog(
+            parent=self,
+            files=self.playlist,
+            schedule=self.schedule,
+            valid_file_types=SUPPORTED_IMAGE_TYPES,
+            locked_until=self.playlist_position if not self.session_finished else -1,
+            current_index=self.playlist_position,
+            validate_files=None if self.session_finished else self._validate_session_order,
+            title="Session Order",
+        )
+        if result is not None:
+            self.playlist = result["files"]
+            self.clear_decode_caches()
+            self._sync_entry_to_playlist_position()
+            self.display_image(play_sound=False)
+
+        if not self.session_finished and was_timer_active:
+            self.timer.start(500)
+            self._set_timer_visuals(True)
 
     # --- dynamic centring helpers ------------------------------------------
     # --- SessionDisplay ---------------------------------------------------

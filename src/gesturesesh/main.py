@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QGraphicsOpacityEffect,
     QMainWindow,
+    QPushButton,
     QShortcut,
 )
 
@@ -64,6 +65,7 @@ class MainApp(
         self.status_opacity_effect = QGraphicsOpacityEffect()
         self.selected_items.setGraphicsEffect(self.status_opacity_effect)
 
+        self.init_selection_order_controls()
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
@@ -119,6 +121,22 @@ class MainApp(
         self.set_number_of_images.setFont(font)
         self.set_minutes.setFont(font)
         self.set_seconds.setFont(font)
+        if hasattr(self, "manage_order"):
+            self.manage_order.setFont(font)
+
+    def init_selection_order_controls(self):
+        parent = getattr(self, "centralwidget", self)
+        self.manage_order = QPushButton("Manage Order", parent)
+        self.manage_order.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.manage_order.setStyleSheet("background: rgb(119, 153, 146); color: white;")
+        self.manage_order.setToolTip("View and reorder selected images.\nShortcut: Ctrl+Shift+I")
+        try:
+            self.horizontalLayout_5.addWidget(self.manage_order)
+        except Exception:
+            try:
+                self.verticalLayout_4.addWidget(self.manage_order)
+            except Exception:
+                pass
 
     def init_buttons(self):
         # Buttons for selection
@@ -126,6 +144,7 @@ class MainApp(
         self.clear_items.clicked.connect(self.remove_items)
         self.randomize_selection.clicked.connect(self.display_random_status)
         self.remove_duplicates.clicked.connect(self.remove_dupes)
+        self.manage_order.clicked.connect(self.open_selection_order_viewer)
         # Buttons for preset
         self.add_entry.clicked.connect(self.append_schedule)
         self.save_preset.clicked.connect(self.save)
@@ -155,6 +174,10 @@ class MainApp(
         # Escape to close window
         self.escape_shortcut = QShortcut(QtGui.QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.close)
+        self.manage_order_shortcut = QShortcut(
+            QtGui.QKeySequence("Ctrl+Shift+I"), self
+        )
+        self.manage_order_shortcut.activated.connect(self.open_selection_order_viewer)
 
     def check_version(self):
         """

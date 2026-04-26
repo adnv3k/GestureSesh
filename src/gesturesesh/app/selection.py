@@ -7,6 +7,11 @@ import os
 from PyQt5.QtWidgets import QFileDialog
 
 from gesturesesh.app.file_dialog import FileDialog
+from gesturesesh.app.selection_order import (
+    duplicate_indices,
+    effective_selection_order,
+)
+from gesturesesh.ui.dialogs import run_selection_order_dialog
 
 
 class MainAppSelectionMixin:
@@ -162,4 +167,43 @@ class MainAppSelectionMixin:
         else:
             self.show_temporary_status("No duplicates found")
 
+        self.display_status()
+
+    def open_selection_order_viewer(self):
+        """Open the selection viewer/order editor from the main window."""
+        if not self.selection["files"]:
+            self.show_error_status("No images selected to manage.", 2500)
+            return
+
+        try:
+            self.grab_schedule()
+        except Exception:
+            self.session_schedule = []
+
+        random_preview = bool(self.randomize_selection.isChecked())
+        files = effective_selection_order(
+            self.selection["files"], randomize=random_preview
+        )
+        result = run_selection_order_dialog(
+            parent=self,
+            files=files,
+            folders=self.selection["folders"],
+            schedule=self.session_schedule,
+            valid_file_types=self.valid_file_types,
+            duplicate_indices_fn=duplicate_indices,
+            title="Selection Order",
+            random_preview=random_preview,
+        )
+        if result is None:
+            return
+
+        self.selection["files"] = result["files"]
+        self.selection["folders"] = result["folders"]
+        if result.get("random_preview"):
+            self.randomize_selection.setChecked(False)
+            self.show_temporary_status(
+                "Selection order applied. Randomization turned off.", 3500
+            )
+        else:
+            self.show_temporary_status("Selection order updated.", 2500)
         self.display_status()
