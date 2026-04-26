@@ -71,13 +71,13 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
     <img src="docs/Screenshots/Break.png" alt="Break example" width="80%" />
   </div>
 - **Sound cues** for new entry and last image.
-- **Portable single executable**—no install needed; offline AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP support.
+- **Portable single executable**—no install needed; supports AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP image libraries.
 - **Update checks** every 2 days when online.
 
 ## What's New Since v0.5.3
 
 - Added persistence for session display and image-modification settings, so zoom/layout/visual adjustments are restored across restarts.
-- Presets now support wrapped session metadata and preserve per-preset resize behavior when loading sessions.
+- Presets remain backward-compatible and can now store schedule, selection, and session display metadata, including per-preset resize behavior.
 - Improved recent-session restore to reload both folders and direct-file selections with duplicate-safe filtering.
 - Expanded image support to include **AVIF, GIF, JXL, and WEBP** across selection and session playback.
 - Added **Selection Order Viewer** (`Ctrl + Shift + I`) with thumbnail previews, stats, filtering, duplicate/missing inspection, add/remove tools, sorting, shuffling, and manual order controls.
@@ -85,7 +85,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - Randomized selections can now be previewed in their effective order before starting a session; applying the preview locks that order and turns randomization off.
 - Added **Shortcut Map dialog** (`F1` / `Ctrl + /`) for in-session key and input reference.
 - Added richer **zoom/pan controls** (wheel/pinch/stylus paths, quick inspect, zoom reset, and auto-reset toggle).
-- Improved decode/render robustness with fallback decode paths and still/animation caching.
+- Improved decode/render robustness with fallback decode paths and still/animation caching; JXL fallback can use `djxl`, and animated fallback can use `ffmpeg` when available.
 - Improved playlist/schedule synchronization around breaks and review navigation.
 - Refactored the session runtime for maintainability by splitting shortcut, timer, zoom/pan, image-modification, and image-loading responsibilities into focused session modules.
 - Simplified session display by removing queue preview and session total-count text.
@@ -259,8 +259,9 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 ## Note
 
 * Supported file types: **.avif**, **.bmp**, **.gif**, **.jxl**, **.jpg**, **.jpeg**, **.png**, **.webp**.
+* Expanded image decoding uses bundled Python libraries first where possible; JXL fallback can use `djxl`, and animated fallback can use `ffmpeg` when those tools are installed.
 * Settings are stored in a cross-platform `config.json` under your app data directory (includes recent session, presets, and update-check metadata).
-* Presets are backward-compatible across legacy and wrapped formats, and can now retain session display metadata (for example resize preference).
+* Presets are backward-compatible across legacy and wrapped formats, and newer presets can retain schedule, selection, and session display metadata.
 * Last session’s images, randomization, and schedule are auto-loaded on startup.
 * Updates are checked every 2 days when online. You’ll see a notice if there’s a new version.
 * **GestureSesh** is built with **PyQt5** using the “Fusion” style for a consistent dark theme across Windows & macOS.
