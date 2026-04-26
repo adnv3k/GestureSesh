@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored the app structure for maintainability:
   - extracted session runtime out of `main.py` into `session_window.py`
   - split main-window logic into app-layer modules (`selection`, `status`, `presets`, `session`, plus shared models)
+- Refactored the session runtime further so image decode/render logic now lives in a dedicated loader mixin instead of `session_window.py`, and shortcut registration is centralized in `SessionShortcutsMixin`.
 - Reworked status messaging into a queued system with dedupe behavior and richer fade/blink rendering.
 - Recent-session restore now merges folder scans with direct-file entries and de-duplicates resulting selections.
 - Session controls were simplified for a cleaner display:
@@ -80,10 +81,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical
 
-- Expanded modularization by splitting `SessionDisplay` behavior into focused session mixins (`image_mods`, `shortcuts`, `timer`, `zoom_pan`) and moving utility helpers to `gesturesesh.utils`.
+- Expanded modularization by splitting `SessionDisplay` behavior into focused session mixins (`image_mods`, `image_loader`, `shortcuts`, `timer`, `zoom_pan`) and moving utility helpers to `gesturesesh.utils`.
 - Added and expanded automated coverage for:
   - decode fallbacks and dtype normalization
   - animation decode decisions and cache behavior
+  - extracted loader-path cache reuse behavior
   - zoom pacing/snap behavior
   - break/review-mode schedule synchronization
   - preset-linked selection persistence and backward compatibility

@@ -62,6 +62,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
   <div align="center">
     <img src="docs/Screenshots/Grayscale%20Comparison.png" alt="Grayscale example" width="80%" />
   </div>
+- **Session shortcut map** with `F1` for a quick in-window reference to keyboard, wheel, trackpad, and stylus controls.
 - **Intuitive timer**: click to pause, drag to move (auto-pause), resume where you left off.
 - **Review mode**: 15 s auto-close with arrow navigation; double-click or Ctrl + O to open image folder.
 - **Simplified session controls**: queue preview and the session total-count label were removed for a cleaner display.
@@ -85,7 +86,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - Added richer **zoom/pan controls** (wheel/pinch/stylus paths, quick inspect, zoom reset, and auto-reset toggle).
 - Improved decode/render robustness with fallback decode paths and still/animation caching.
 - Improved playlist/schedule synchronization around breaks and review navigation.
-- Refactored the codebase for maintainability (main-window modules + dedicated session runtime module).
+- Refactored the session runtime for maintainability by splitting shortcut, timer, zoom/pan, image-modification, and image-loading responsibilities into focused session modules.
 - Simplified session display by removing queue preview and session total-count text.
 
 ## Hotkeys
@@ -119,6 +120,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 | Toggle Resizing (dyn/static)  | R                                     |
 | Toggle Always On Top          | A                                     |
 | Toggle Frameless Window       | Ctrl + F                              |
+| Toggle Frameless Fullscreen   | Ctrl + Shift + F                      |
 | Toggle Mute                   | M                                     |
 | Previous Image                | ← (Left Arrow)                        |
 | Stop                          | Esc                                   |
