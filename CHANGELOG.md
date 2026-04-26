@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Session display preferences now persist between runs, including zoom/inspect toggles, grayscale mode, resize/fill behavior, frameless, and always-on-top settings.
+- Image modification state now persists across sessions (`hflip`, `vflip`, brightness, contrast, threshold, edge mode), so your display adjustments are restored on next launch.
+- Recent-session restore now reloads both selected folders and directly-added files (with de-duplication and break-placeholder filtering).
 - Broader image-format support in selection and session playback: `.avif`, `.gif`, `.jxl`, and `.webp` were added to supported types.
 - New **Manage Loaded Images** dialog for curation workflows:
   - filter by name/path
@@ -52,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Presets now use a wrapped payload format (`schedule` + optional `session_settings`) while remaining backward-compatible with legacy preset entries.
+- Active preset resize behavior (`toggle_resize_status`) is now preserved with each preset and reused at session startup.
 - Refactored the app structure for maintainability:
   - extracted session runtime out of `main.py` into `session_window.py`
   - split main-window logic into app-layer modules (`selection`, `status`, `presets`, `session`, plus shared models)
@@ -64,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Improved always-on-top reliability on X11 by applying and clearing `X11BypassWindowManagerHint` with the topmost toggle lifecycle.
+- Prevented config-save failures by normalizing recent-session folder/file selections to JSON-safe list values.
 - Fixed duplicate detection and duplicate reporting for file additions with more robust file identity handling.
 - Improved review-mode and break synchronization behavior across playlist navigation:
   - better alignment between scheduled entries and current playlist position
@@ -73,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical
 
+- Expanded modularization by splitting `SessionDisplay` behavior into focused session mixins (`image_mods`, `shortcuts`, `timer`, `zoom_pan`) and moving utility helpers to `gesturesesh.utils`.
 - Added and expanded automated coverage for:
   - decode fallbacks and dtype normalization
   - animation decode decisions and cache behavior

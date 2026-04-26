@@ -56,7 +56,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - **Recursive folder scanning** with duplicate cleanup.
 - **Manage Loaded Images** dialog for quick filtering, reordering, duplicate review, and cleanup.
 - **Custom schedule builder**: timed entries, breaks (0-image rows), randomization, and preset saving.
-- **Auto-reload** of your last session (images, schedule, randomization).
+- **Auto-reload** of your last session (images, schedule, randomization) plus persisted session display preferences and image modifications.
 - **In-session safety notice**: opening Manage during an active session shows a warning that changes apply to the next session, not the current one.
 - **Window options** (grayscale, flip, always-on-top, frameless) via hotkeys.  
   <div align="center">
@@ -73,8 +73,11 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 - **Portable single executable**—no install needed; offline AVIF/BMP/GIF/JXL/JPG/JPEG/PNG/WEBP support.
 - **Update checks** every 2 days when online.
 
-## What's New Since v0.5.4
+## What's New Since v0.5.3
 
+- Added persistence for session display and image-modification settings, so zoom/layout/visual adjustments are restored across restarts.
+- Presets now support wrapped session metadata and preserve per-preset resize behavior when loading sessions.
+- Improved recent-session restore to reload both folders and direct-file selections with duplicate-safe filtering.
 - Expanded image support to include **AVIF, GIF, JXL, and WEBP** across selection and session playback.
 - Added **Manage Loaded Images** workflow tools (filtering, duplicate inspection, reorder, remove missing, quick folder open).
 - Added **in-session Manage warning** so edits are clearly marked as applying to future sessions.
@@ -252,6 +255,7 @@ GestureSesh supercharges gesture practice using your own reference folders. The 
 
 * Supported file types: **.avif**, **.bmp**, **.gif**, **.jxl**, **.jpg**, **.jpeg**, **.png**, **.webp**.
 * Settings are stored in a cross-platform `config.json` under your app data directory (includes recent session, presets, and update-check metadata).
+* Presets are backward-compatible across legacy and wrapped formats, and can now retain session display metadata (for example resize preference).
 * Last session’s images, randomization, and schedule are auto-loaded on startup.
 * Updates are checked every 2 days when online. You’ll see a notice if there’s a new version.
 * **GestureSesh** is built with **PyQt5** using the “Fusion” style for a consistent dark theme across Windows & macOS.
