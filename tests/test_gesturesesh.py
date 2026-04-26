@@ -21,7 +21,10 @@ if app is None:
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
-from gesturesesh.main import MainApp, SessionDisplay, ScheduleEntry, BREAK_IMAGE_PATH
+from gesturesesh.main import MainApp
+from gesturesesh.session_window import SessionDisplay, BREAK_IMAGE_PATH
+from gesturesesh.app.models import ScheduleEntry
+from gesturesesh.utils.time import format_seconds
 from gesturesesh.ui.main_window import Ui_MainWindow
 from gesturesesh.ui.session_display import Ui_session_display
 
@@ -358,7 +361,7 @@ class TestMainAppLogic(unittest.TestCase):
         ]
         for seconds, expected in test_cases:
             with self.subTest(seconds=seconds):
-                self.assertEqual(self.app.format_seconds(seconds), expected)
+                self.assertEqual(format_seconds(seconds), expected)
 
 
     def test_check_files_filtering(self):
@@ -623,7 +626,7 @@ class TestMainAppLogic(unittest.TestCase):
              patch.object(self.app, "insert_breaks") as insert_breaks, \
              patch.object(self.app, "save_to_recent") as save_recent, \
              patch.object(self.app, "save") as save_preset, \
-             patch("gesturesesh.main.SessionDisplay", autospec=True) as Display:
+             patch("gesturesesh.app.session.SessionDisplay", autospec=True) as Display:
 
             # Configure the mocked SessionDisplay instance so .closed.connect exists
             display_instance = Display.return_value

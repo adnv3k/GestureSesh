@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import html
-
 from PyQt5 import QtCore
 
 from gesturesesh.app.models import StatusMessage
@@ -30,11 +28,9 @@ class MainAppStatusMixin:
             self.selected_items.setHtml(f"<div>{default_message}</div>")
             self.showing_default_status = True
 
-    def show_temporary_status(
-        self, message, duration_ms=2000, is_error=False, allow_rich_text=False
-    ):
+    def show_temporary_status(self, message, duration_ms=2000, is_error=False):
         """Shows a temporary status message with sophisticated animations"""
-        self._add_status_message(message, duration_ms, is_error, allow_rich_text)
+        self._add_status_message(message, duration_ms, is_error)
 
     def show_error_status(self, message, duration_ms=3000):
         """Shows an error/warning status message with faster, more attention-grabbing animations"""
@@ -42,17 +38,13 @@ class MainAppStatusMixin:
 
     def _remove_status_message(self, status_msg):
         """Start fade-out animation and remove a status message after its timer expires."""
-        if status_msg not in self.status_messages:
-            return
         if getattr(status_msg, "_is_fading_out", False):
             return
 
         status_msg._is_fading_out = True
 
-        if status_msg.timer is not None:
-            status_msg.timer.stop()
-            status_msg.timer.deleteLater()
-            status_msg.timer = None
+        status_msg.timer.stop()
+        status_msg.timer.deleteLater()
 
         self._fade_out_and_remove(status_msg)
 
@@ -77,84 +69,48 @@ class MainAppStatusMixin:
             if status_msg._fade_step > fade_steps:
                 fade_timer.stop()
                 fade_timer.deleteLater()
-                status_msg.fade_timer = None
                 if status_msg in self.status_messages:
                     self.status_messages.remove(status_msg)
                 self._update_status_display()
 
         fade_timer.timeout.connect(_step)
         fade_timer.start(step_duration)
-        status_msg.fade_timer = fade_timer
+        status_msg._fade_timer = fade_timer
 
-    def _stop_status_animations(self, status_msg, stop_blink=True, stop_fade=True):
-        if stop_blink:
-            status_msg.is_blinking = False
-            if status_msg.blink_timer is not None:
-                status_msg.blink_timer.stop()
-                status_msg.blink_timer.deleteLater()
-                status_msg.blink_timer = None
-        if stop_fade and status_msg.fade_timer is not None:
-            status_msg.fade_timer.stop()
-            status_msg.fade_timer.deleteLater()
-            status_msg.fade_timer = None
-
-    def _add_status_message(
-        self, message, duration_ms, is_error=False, allow_rich_text=False
-    ):
+    def _add_status_message(self, message, duration_ms, is_error=False):
         """Add a new status message to the queue and display it"""
-        message = str(message)
-        duration_ms = max(250, int(duration_ms))
-
-        for existing_msg in list(self.status_messages):
-            if (
-                existing_msg.text == message
-                and existing_msg.is_error == is_error
-                and existing_msg.allow_rich_text == allow_rich_text
-            ):
-                self._stop_status_animations(
-                    existing_msg, stop_blink=True, stop_fade=True
-                )
-                existing_msg._is_fading_out = False
-                existing_msg._fade_step = 0
-                if existing_msg.timer is None:
-                    existing_msg.timer = QtCore.QTimer()
-                    existing_msg.timer.setSingleShot(True)
-                    existing_msg.timer.timeout.connect(
-                        lambda msg=existing_msg: self._remove_status_message(msg)
-                    )
-                else:
-                    existing_msg.timer.stop()
-
-                self.status_messages.remove(existing_msg)
-                self.status_messages.append(existing_msg)
-                self._update_status_display_text()
-                self._start_message_blink_animation(existing_msg, is_error)
-                existing_msg.timer.start(duration_ms)
-                return
-
         message_timer = QtCore.QTimer()
         message_timer.setSingleShot(True)
 
-        status_msg = StatusMessage(
-            text=message,
-            duration=duration_ms,
-            is_error=is_error,
-            allow_rich_text=allow_rich_text,
-        )
+        status_msg = StatusMessage(message, duration_ms, is_error)
         status_msg.timer = message_timer
 
         message_timer.timeout.connect(lambda: self._remove_status_message(status_msg))
 
         for existing_msg in self.status_messages:
-            self._stop_status_animations(
-                existing_msg, stop_blink=True, stop_fade=False
-            )
+            try:
+                existing_msg.is_blinking = False
+            except Exception as e:
+                print(f"Exception while setting is_blinking: {e}")
+                pass
+            try:
+                blink_timer = getattr(existing_msg, "blink_timer", None)
+                if blink_timer is not None:
+                    try:
+                        blink_timer.stop()
+                    except Exception as e:
+                        print(f"Exception while stopping blink timer: {e}")
+            except Exception as e:
+                print(f"Exception while stopping blink timer: {e}")
+                pass
 
         self.status_messages.append(status_msg)
+
         self._update_status_display_text()
+
         self._start_message_blink_animation(status_msg, is_error)
 
-        message_timer.start(duration_ms)
+        message_timer.start(7000)
 
     def _debounced_update_status_display(self):
         """Debounce status display updates to prevent UI freezing"""
@@ -182,11 +138,6 @@ class MainAppStatusMixin:
         status_msg._max_blink_cycles = max_blink_cycles
         status_msg._fade_steps = fade_steps
 
-        if status_msg.blink_timer is not None:
-            status_msg.blink_timer.stop()
-            status_msg.blink_timer.deleteLater()
-            status_msg.blink_timer = None
-
         blink_timer = QtCore.QTimer()
         blink_timer.setSingleShot(False)
 
@@ -196,7 +147,6 @@ class MainAppStatusMixin:
             if not status_msg.is_blinking or status_msg not in self.status_messages:
                 blink_timer.stop()
                 blink_timer.deleteLater()
-                status_msg.blink_timer = None
                 return
 
             if status_msg._fade_direction == "out":
@@ -231,12 +181,11 @@ class MainAppStatusMixin:
 
                         QtCore.QTimer.singleShot(200, restart_cycle)
                         return
-
-                    self._finish_message_blink_animation(status_msg)
-                    blink_timer.stop()
-                    blink_timer.deleteLater()
-                    status_msg.blink_timer = None
-                    return
+                    else:
+                        self._finish_message_blink_animation(status_msg)
+                        blink_timer.stop()
+                        blink_timer.deleteLater()
+                        return
 
         blink_timer.timeout.connect(animate_message_fade)
         blink_timer.start(fade_step_duration)
@@ -244,12 +193,23 @@ class MainAppStatusMixin:
     def _finish_message_blink_animation(self, status_msg):
         """Restore normal state for a specific message after blinking completes"""
         status_msg.is_blinking = False
-        if status_msg.blink_timer is not None:
-            status_msg.blink_timer.stop()
-            status_msg.blink_timer.deleteLater()
-            status_msg.blink_timer = None
+        try:
+            bt = getattr(status_msg, "blink_timer", None)
+            if bt is not None:
+                try:
+                    bt.stop()
+                except Exception as e:
+                    print(f"Exception while finishing blink timer: {e}")
+                try:
+                    bt.deleteLater()
+                except Exception:
+                    pass
+                status_msg.blink_timer = None
+        except Exception:
+            pass
 
         self.status_opacity_effect.setOpacity(1.0)
+
         self._update_status_display_text()
 
     def _render_status(
@@ -257,7 +217,7 @@ class MainAppStatusMixin:
     ) -> None:
         """
         Draw all status messages. If *highlight* is supplied, that message is
-        rendered in the given *opacity* (0-1). All others use full color.
+        rendered in the given *opacity* (0-1). All others use full colour.
         """
         if not self.status_messages:
             self.display_status()
@@ -265,7 +225,7 @@ class MainAppStatusMixin:
 
         self.status_opacity_effect.setOpacity(1.0)
 
-        html_lines = ['<div style="line-height:1.1;">']
+        html = ['<div style="line-height:1.1;">']
         visible = list(reversed(self.status_messages))
         for i, msg in enumerate(visible):
             margin = "margin-top:3px;" if i else ""
@@ -281,11 +241,10 @@ class MainAppStatusMixin:
             else:
                 css = f"color:rgb(102,102,102); {margin}"
 
-            text = msg.text if msg.allow_rich_text else html.escape(msg.text)
-            html_lines.append(f'<div style="{css}">{text}</div>')
-        html_lines.append("</div>")
+            html.append(f'<div style="{css}">{msg.text}</div>')
+        html.append("</div>")
 
-        self.selected_items.setHtml("".join(html_lines))
+        self.selected_items.setHtml("".join(html))
         self.showing_default_status = False
 
     def _update_display_with_selective_opacity(self, blinking_msg, opacity):

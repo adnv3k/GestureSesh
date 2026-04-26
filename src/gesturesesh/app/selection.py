@@ -3,63 +3,36 @@
 from __future__ import annotations
 
 import os
-import importlib
+
+from PyQt5.QtWidgets import QFileDialog
 
 from gesturesesh.app.file_dialog import FileDialog
-from gesturesesh.session_window import BREAK_IMAGE_PATH
-from gesturesesh.ui.dialogs import run_image_manager_dialog
 
 
 class MainAppSelectionMixin:
     """Selection management methods mixed into ``MainApp``."""
 
     def open_files(self):
-        main_module = importlib.import_module("gesturesesh.main")
-        selected_files = main_module.QFileDialog().getOpenFileNames()
-        if not selected_files or not selected_files[0]:
-            self.show_temporary_status("0 file(s) added!", 2000)
-            return
-
+        selected_files = QFileDialog().getOpenFileNames()
         checked_files = self.check_files(selected_files[0])
-        keys_seen = {}
-        for existing_file in self.selection["files"]:
-            key = self._file_identity_key(existing_file)
-            keys_seen[key] = keys_seen.get(key, 0) + 1
-
-        duplicate_count = 0
-        for file_path in checked_files["valid_files"]:
-            key = self._file_identity_key(file_path)
-            if keys_seen.get(key, 0) > 0:
-                duplicate_count += 1
-            keys_seen[key] = keys_seen.get(key, 0) + 1
-
         self.selection["files"].extend(checked_files["valid_files"])
-        added = len(checked_files["valid_files"])
 
         self.show_temporary_status(
-            f"{added} file(s) added."
-            + (
-                f" {duplicate_count} duplicate(s) detected."
-                if duplicate_count > 0
-                else ""
-            ),
-            4000,
+            f'{len(checked_files["valid_files"])} file(s) added!', 4000
         )
 
         if len(checked_files["invalid_files"]) > 0:
             self.show_temporary_status(
                 f'{len(checked_files["invalid_files"])} file(s) not added. '
-                f'Supported file types: {", ".join(sorted(self.valid_file_types))}.',
+                f'Supported file types: {", ".join(self.valid_file_types)}.',
                 duration_ms=4000,
                 is_error=True,
             )
 
     def open_folder(self):
         """
-        Calls on self.check_files to check each file in the user selected directories
-        Saves folder paths, and file names
-        Displays message of result
-
+        Calls on self.check_files to check each file in the user selected directories.
+        Saves folder paths and file names. Displays a message of the result.
         """
         selected_dir = FileDialog()
         if selected_dir.exec():
@@ -74,7 +47,7 @@ class MainAppSelectionMixin:
             if total_invalid_files > 0:
                 self.show_temporary_status(
                     f"{total_invalid_files} file(s) not added. "
-                    f'Supported file types: {", ".join(sorted(self.valid_file_types))}.',
+                    f'Supported file types: {", ".join(self.valid_file_types)}.',
                     duration_ms=4000,
                     is_error=True,
                 )
@@ -83,7 +56,7 @@ class MainAppSelectionMixin:
         self.show_temporary_status("0 folder(s) added!", 2000)
 
     def scan_directories(self, directories):
-        """Scan a list of directories and collect valid files from all subfolders, robust to symlinks, permissions, and case."""
+        """Scan directories and collect valid files from all subfolders, robust to symlinks, permissions, and case."""
         total_valid_files, total_invalid_files = 0, 0
         visited = set()
         seen_paths = set()
@@ -154,71 +127,14 @@ class MainAppSelectionMixin:
                 res["invalid_files"].append(file)
         return res
 
-    def _file_identity_key(self, file_path):
-        try:
-            stat = os.stat(file_path)
-            return ("inode", stat.st_dev, stat.st_ino)
-        except (OSError, PermissionError):
-            return ("path", os.path.normcase(os.path.abspath(file_path)))
-
-    def _duplicate_indices(self, file_paths):
-        index_by_key = {}
-        for index, file_path in enumerate(file_paths):
-            key = self._file_identity_key(file_path)
-            index_by_key.setdefault(key, []).append(index)
-
-        duplicates = set()
-        for indices in index_by_key.values():
-            if len(indices) > 1:
-                duplicates.update(indices)
-        return duplicates
-
     def remove_items(self):
-        """Clears entire selection"""
+        """Clears entire selection."""
         self.selection["files"].clear()
         self.selection["folders"].clear()
         self.show_temporary_status("All files and folders cleared!", 2000)
 
-    def _is_session_window_open(self):
-        display = getattr(self, "display", None)
-        if display is None:
-            return False
-        try:
-            return bool(display.isVisible())
-        except RuntimeError:
-            return False
-
-    def open_image_manager(self):
-        files = [f for f in self.selection["files"] if f != BREAK_IMAGE_PATH]
-        if not files:
-            self.show_temporary_status("No loaded images to manage.", 2000)
-            return
-
-        notice_text = None
-        if self._is_session_window_open():
-            notice_text = (
-                "Changes in this window do not affect the current session. "
-                "They apply the next time you start a session."
-            )
-
-        updated_files = run_image_manager_dialog(
-            parent=self,
-            files=files,
-            duplicate_indices_fn=self._duplicate_indices,
-            on_no_duplicates=lambda: self.show_temporary_status("No duplicates found.", 2000),
-            notice_text=notice_text,
-        )
-        if updated_files is None:
-            return
-
-        self.selection["files"] = updated_files
-        self.display_status()
-        self.show_temporary_status(
-            f"{len(self.selection['files'])} image(s) in current selection.", 2500
-        )
-
     def remove_dupes(self):
-        """Remove duplicate files from selection (case-sensitive)"""
+        """Remove duplicate files from selection (case-sensitive)."""
         if not self.selection["files"]:
             self.show_temporary_status("No files to check for duplicates")
             return
