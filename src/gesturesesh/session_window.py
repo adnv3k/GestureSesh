@@ -112,6 +112,7 @@ class SessionDisplay(
         self.init_timer()
         self.init_animation_state()
         self.init_zoom_pan()
+        self.init_image_mods()
         self.init_session_toggles()
         self.init_button_sizes()
         self.horizontalLayout_2.setAlignment(QtCore.Qt.AlignVCenter)
@@ -138,7 +139,6 @@ class SessionDisplay(
             btn.setStyleSheet(pause_style)
             self.horizontalLayout.setAlignment(btn, QtCore.Qt.AlignVCenter)
             self.horizontalLayout_2.setAlignment(btn, QtCore.Qt.AlignVCenter)
-        self.init_image_mods()
         # Apply persisted session settings after init_image_mods so that
         # image_mods exists when apply_session_settings accesses it.
         if settings:
@@ -146,6 +146,7 @@ class SessionDisplay(
                 self.apply_session_settings(settings)
             except Exception:
                 pass
+        self._restore_persisted_display_settings(settings)
         self.init_mixer()
         break_indices = [
             i for i, entry in enumerate(self.schedule) if entry.images == 0
@@ -158,6 +159,73 @@ class SessionDisplay(
         self.init_shortcuts()
         self.skip_count = 0
 
+    def init_sizing(self):
+        """
+        Resizes the window to half of the current screen's resolution,
+        sets states for window flags,
+        and initializes self.previous_size.
+
+        """
+        self.resize(self.screen().availableSize() / 2)
+        self.setMinimumSize(QtCore.QSize(360, 1))
+        self.toggle_resize_status = False
+        self.toggle_always_on_top_status = False
+        self.frameless_status = False
+        self.sizePolicy().setHeightForWidth(True)
+        self.previous_size = self.size()
+
+    def _get_main_window_for_persistence(self):
+        try:
+            import __main__
+
+            main_window = getattr(__main__, "window", None)
+            if main_window is not None and hasattr(main_window, "config"):
+                return main_window
+        except Exception:
+            pass
+        return None
+
+    def _restore_persisted_display_settings(self, settings=None):
+        toggle_resize = None
+
+        if isinstance(settings, dict):
+            session_display = settings.get("session_display", {})
+            if isinstance(session_display, dict) and "toggle_resize_status" in session_display:
+                toggle_resize = bool(session_display.get("toggle_resize_status"))
+            elif "toggle_resize_status" in settings:
+                toggle_resize = bool(settings.get("toggle_resize_status"))
+
+        if toggle_resize is None:
+            main_window = self._get_main_window_for_persistence()
+            if main_window is not None:
+                try:
+                    toggle_resize = bool(
+                        main_window.config.get("session_display", {}).get(
+                            "toggle_resize_status", self.toggle_resize_status
+                        )
+                    )
+                except Exception:
+                    toggle_resize = self.toggle_resize_status
+
+        if toggle_resize is None:
+            toggle_resize = self.toggle_resize_status
+
+        self.toggle_resize_status = bool(toggle_resize)
+        self.sizePolicy().setHeightForWidth(not self.toggle_resize_status)
+
+    def _persist_display_settings(self):
+        main_window = self._get_main_window_for_persistence()
+        if main_window is None:
+            return
+        try:
+            main_window.config.setdefault("session_display", {})[
+                "toggle_resize_status"
+            ] = bool(self.toggle_resize_status)
+            from gesturesesh.utils.config import save_config
+
+            save_config(main_window.config_path, main_window.config)
+        except Exception:
+            pass
     def init_session_toggles(self):
         self.zoom_toggle_button = QtWidgets.QPushButton("Zoom", self)
         self.zoom_toggle_button.setCheckable(True)
@@ -181,21 +249,20 @@ class SessionDisplay(
 
         self.session_info.hide()
 
+    # def init_sizing(self):
+    #     """
+    #     Resizes the window to half of the current screen's resolution,
+    #     sets states for window flags,
+    #     and initializes self.previous_size.
 
-    def init_sizing(self):
-        """
-        Resizes the window to half of the current screen's resolution,
-        sets states for window flags,
-        and initializes self.previous_size.
-
-        """
-        self.resize(self.screen().availableSize() / 2)
-        self.setMinimumSize(QtCore.QSize(360, 1))
-        self.toggle_resize_status = False
-        self.toggle_always_on_top_status = False
-        self.frameless_status = False
-        self.sizePolicy().setHeightForWidth(True)
-        self.previous_size = self.size()
+    #     """
+    #     self.resize(self.screen().availableSize() / 2)
+    #     self.setMinimumSize(QtCore.QSize(360, 1))
+    #     self.toggle_resize_status = False
+    #     self.toggle_always_on_top_status = False
+    #     self.frameless_status = False
+    #     self.sizePolicy().setHeightForWidth(True)
+    #     self.previous_size = self.size()
 
     def init_scaling_size(self):
         """
@@ -428,6 +495,22 @@ class SessionDisplay(
             "Hide/show window frame.",
             "Window & View",
         )
+        # Frameless fullscreen (no chrome)
+        self.frameless_fullscreen = register_shortcut(
+            "Ctrl+Shift+F",
+            self.toggle_fullscreen_frameless,
+            "Toggle frameless fullscreen",
+            "Enter/exit frameless fullscreen with no OS chrome.",
+            "Window & View",
+        )
+        # Shortcut map / hotkey legend
+        self.shortcut_map_key = register_shortcut(
+            "F1",
+            self.open_shortcut_map,
+            "Open shortcut map",
+            "Show the keyboard shortcut legend for the session window.",
+            "Help",
+        )
         # Image adjustments
         self.brightness_up = register_shortcut(
             "Ctrl+PgUp",
@@ -485,6 +568,27 @@ class SessionDisplay(
             "Switch between perceptual and simple grayscale conversion.",
             "Image Filters",
         )
+        self.grayscale_shortcut = register_shortcut(
+            "G",
+            self.grayscale,
+            "Toggle grayscale",
+            "Enable or disable grayscale for the current image.",
+            "Image Filters",
+        )
+        self.flip_horizontal_shortcut = register_shortcut(
+            "H",
+            self.flip_horizontal,
+            "Flip horizontal",
+            "Mirror the current image horizontally.",
+            "Image Filters",
+        )
+        self.flip_vertical_shortcut = register_shortcut(
+            "V",
+            self.flip_vertical,
+            "Flip vertical",
+            "Mirror the current image vertically.",
+            "Image Filters",
+        )
         # Open image directory
         self.open_directory_key = register_shortcut(
             "Ctrl+O",
@@ -521,20 +625,6 @@ class SessionDisplay(
             "Toggle auto zoom reset",
             "Enable/disable resetting zoom when moving to another image.",
             "Zoom & Pan",
-        )
-        self.shortcut_map_key = register_shortcut(
-            "F1",
-            self.open_shortcut_map,
-            "Open shortcut map",
-            "Show all available shortcuts and what they do.",
-            "Help",
-        )
-        self.shortcut_map_key2 = register_shortcut(
-            "Ctrl+/",
-            self.open_shortcut_map,
-            "Open shortcut map",
-            "Show all available shortcuts and what they do.",
-            "Help",
         )
         self.shortcut_map_rows.extend(
             [
@@ -715,6 +805,8 @@ class SessionDisplay(
                 aspectRatioMode=QtCore.Qt.KeepAspectRatio,
                 transformMode=QtCore.Qt.SmoothTransformation,
             )
+        else:
+            self.image_scaled = None
         self.update_image_view()
 
     def closeEvent(self, event):
@@ -727,6 +819,15 @@ class SessionDisplay(
         self.close_timer.stop()
         if hasattr(self, "idle_indicator_pulse_timer"):
             self.idle_indicator_pulse_timer.stop()
+        # If closing while in frameless fullscreen, restore the pre-fullscreen
+        # window-state attributes so the persisted snapshot reflects what the
+        # user actually had configured before entering fullscreen.
+        if getattr(self, "_fullscreen_frameless", False):
+            self.frameless_status = bool(getattr(self, "_prev_frameless_status", False))
+            self.toggle_resize_status = bool(
+                getattr(self, "_prev_toggle_resize_status", False)
+            )
+            self._fullscreen_frameless = False
         # Store session sound settings globally for next session
         try:
             import __main__
@@ -1345,6 +1446,7 @@ class SessionDisplay(
             self.zoom_factor = max(
                 self.min_zoom_factor, min(self.max_zoom_factor, self.zoom_factor)
             )
+
         if self.toggle_resize_status:
             self.image_scaled = self.image.scaled(
                 self.image_display.size(),
@@ -1356,22 +1458,29 @@ class SessionDisplay(
 
         if self.size() != self.previous_size:
             resized_pixmap = self.image_display.pixmap()
-            scaled_size = self.scaling_size.scaled(
-                resized_pixmap.size(), QtCore.Qt.KeepAspectRatio
-            )
-            self.scaling_size = QtCore.QSize(scaled_size)
+            if resized_pixmap is not None and not resized_pixmap.isNull():
+                scaled_size = self.scaling_size.scaled(
+                    resized_pixmap.size(), QtCore.Qt.KeepAspectRatio
+                )
+                self.scaling_size = QtCore.QSize(scaled_size)
 
-        self.image_scaled = self.image.scaled(
+        scaled_for_resize = self.image.scaled(
             self.scaling_size,
             aspectRatioMode=QtCore.Qt.KeepAspectRatioByExpanding,
             transformMode=QtCore.Qt.SmoothTransformation,
         )
+
+        if getattr(self, "_fullscreen_frameless", False):
+            self.image_scaled = scaled_for_resize
+        else:
+            self.image_scaled = None
+
         self.update_image_view()
-        self.image_display.resize(self.image_scaled.size())
+        self.image_display.resize(scaled_for_resize.size())
         controls_height = self._controls_row_height()
         self.resize(
-            self.image_scaled.size().width(),
-            self.image_scaled.size().height() + controls_height,
+            scaled_for_resize.size().width(),
+            scaled_for_resize.size().height() + controls_height,
         )
         self.previous_size = self.size()
 
@@ -1515,6 +1624,7 @@ class SessionDisplay(
         else:
             self.toggle_resize_status = False
             self.sizePolicy().setHeightForWidth(True)
+        self._persist_display_settings()
 
     def toggle_always_on_top(self):
         if self.toggle_always_on_top_status is not True:
@@ -1545,6 +1655,119 @@ class SessionDisplay(
             self.frameless_status = False
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint, self.frameless_status)
             self.show()
+
+    def toggle_fullscreen_frameless(self):
+        """Enter or exit frameless fullscreen mode with no window chrome."""
+        if not getattr(self, "_fullscreen_frameless", False):
+            # Enter frameless fullscreen.
+            self._fullscreen_frameless = True
+
+            # Remember exact previous window state so exit can restore it cleanly.
+            self._prev_geometry = self.geometry()
+            self._prev_window_state = self.windowState()
+            self._prev_frameless_status = self.frameless_status
+            self._prev_toggle_resize_status = getattr(self, "toggle_resize_status", False)
+            self._prev_height_for_width = self.sizePolicy().hasHeightForWidth()
+
+            try:
+                # Frameless fullscreen should fit the whole image inside the screen
+                # without overwriting the user's persisted normal-session preference.
+                self.toggle_resize_status = True
+                self.sizePolicy().setHeightForWidth(False)
+                self.image_scaled = None
+            except Exception:
+                pass
+
+            try:
+                self.setWindowFlag(QtCore.Qt.FramelessWindowHint, True)
+                self.frameless_status = True
+                self.showFullScreen()
+            except Exception:
+                self.showFullScreen()
+
+            try:
+                QtCore.QTimer.singleShot(0, self._refresh_image_for_window_change)
+                QtCore.QTimer.singleShot(60, self._refresh_image_for_window_change)
+            except Exception:
+                pass
+
+            try:
+                self._show_temporary_indicator("Frameless fullscreen: On", ms=1000)
+            except Exception:
+                pass
+
+            return
+
+        # Exit frameless fullscreen.
+        self._fullscreen_frameless = False
+
+        try:
+            self.toggle_resize_status = bool(
+                getattr(self, "_prev_toggle_resize_status", False)
+            )
+            self.sizePolicy().setHeightForWidth(
+                bool(getattr(self, "_prev_height_for_width", True))
+            )
+            self.image_scaled = None
+        except Exception:
+            pass
+
+        restored_frameless = bool(getattr(self, "_prev_frameless_status", False))
+        prev_geometry = getattr(self, "_prev_geometry", None)
+        prev_window_state = getattr(self, "_prev_window_state", QtCore.Qt.WindowNoState)
+
+        def restore_windowed_state():
+            try:
+                self.setWindowFlag(QtCore.Qt.FramelessWindowHint, restored_frameless)
+                self.frameless_status = restored_frameless
+            except Exception:
+                pass
+
+            try:
+                self.showNormal()
+
+                if prev_geometry is not None:
+                    self.setGeometry(prev_geometry)
+
+                if prev_window_state not in (
+                    QtCore.Qt.WindowFullScreen,
+                    QtCore.Qt.WindowNoState,
+                ):
+                    self.setWindowState(prev_window_state & ~QtCore.Qt.WindowFullScreen)
+
+                self.show()
+                self.raise_()
+                self.activateWindow()
+            except Exception:
+                pass
+
+            try:
+                QtCore.QTimer.singleShot(0, self._refresh_image_for_window_change)
+                QtCore.QTimer.singleShot(60, self._refresh_image_for_window_change)
+            except Exception:
+                pass
+
+            try:
+                self._show_temporary_indicator("Frameless fullscreen: Off", ms=800)
+            except Exception:
+                pass
+
+        try:
+            self.showNormal()
+        except Exception:
+            pass
+
+        QtCore.QTimer.singleShot(0, restore_windowed_state)
+
+    def _refresh_image_for_window_change(self):
+        try:
+            self.image_scaled = None
+        except Exception:
+            pass
+        try:
+            self.update_image_view()
+        except Exception:
+            pass
 
     def previous_playlist_position(self):
         was_timer_active = self.timer.isActive()
