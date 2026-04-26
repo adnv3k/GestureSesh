@@ -1,30 +1,42 @@
 # GestureSesh Test Suite
 
-This directory contains automated tests for the GestureSesh application.
+This directory contains automated tests for GestureSesh. Most tests are pytest-compatible Python tests; a few packaging checks are platform-specific shell scripts.
 
-## Update Checker Tests
+## Running Tests
 
-### Core Files
-- **`test_update_checker.py`** - Comprehensive test suite for UpdateChecker functionality
-  - `TestUpdateCheckerChangelog` - Tests for changelog parsing and content extraction
-  - `TestUpdateCheckerCore` - Tests for core update checking logic (version comparison, network handling, etc.)
-- **`test_update_checker_suite.py`** - Test runner with multiple modes and debug capabilities
-- **`debug_changelog.py`** - Interactive debug utility for changelog analysis
-
-### Running Tests
-
-#### Individual Test File
 ```bash
-# Run with pytest (recommended)
-python -m pytest tests/test_update_checker.py -v
+# Full Python test suite
+python -m pytest -q
 
-# Run directly
-python tests/test_update_checker.py
+# Focused app/session tests
+python -m pytest tests/test_gesturesesh.py -q
+python -m pytest tests/test_selection_order.py -q
+python -m pytest tests/test_session_shortcuts.py -q
+python -m pytest tests/test_session_image_loader.py -q
+python -m pytest tests/test_scan_directories.py -q
+
+# GUI smoke flow
+python tools/smoke_gui_test.py
 ```
 
-#### Test Suite Runner
+## Test Layout
+
+- `test_gesturesesh.py` - MainApp logic and session orchestration tests that share the larger mocked main-window fixture.
+- `test_selection_order.py` - Selection order helpers and Selection Order Viewer dialog mutation/performance rules.
+- `test_session_shortcuts.py` - Session display shortcut ownership and shortcut-map registration.
+- `test_session_image_loader.py` - Session image loader cache behavior and dtype normalization.
+- `test_scan_directories.py` - Directory scanning behavior, symlink handling, duplicate filtering, and file type checks.
+- `test_update_checker.py` - UpdateChecker changelog parsing, version checks, network handling, and config behavior.
+- `test_update_checker_suite.py` - Update checker runner with unit, integration, debug, and no-network modes.
+- `debug_changelog.py` - Interactive changelog parsing/debug utility.
+- `test_app_launch.sh` - Bash launch check.
+- `test_dmg.sh` - macOS DMG packaging check.
+- `test_windows_build.ps1` - Windows build check.
+
+## Update Checker Runner
+
 ```bash
-# Run all tests
+# Run all update-checker modes without network access
 python tests/test_update_checker_suite.py --mode all --no-network
 
 # Run only unit tests
@@ -37,28 +49,9 @@ python tests/test_update_checker_suite.py --mode debug
 python tests/test_update_checker_suite.py --mode integration
 ```
 
-#### Debug Utility
-```bash
-# Interactive changelog debugging
-python tests/debug_changelog.py
-```
+## Coverage Notes
 
-### Test Coverage
-- ✅ Changelog parsing (multiple formats)
-- ✅ Version comparison logic
-- ✅ Network error handling
-- ✅ Configuration management
-- ✅ Update detection workflow
-- ✅ Content extraction and formatting
-
-## Other Tests
-- `test_gesturesesh.py` - Main application tests
-- `test_scan_directories.py` - Directory scanning functionality
-- `test_app_launch.sh` - Application launch tests (bash)
-- `test_dmg.sh` - macOS DMG packaging tests (bash)
-- `test_windows_build.ps1` - Windows build tests (PowerShell)
-
-## Notes
-- Update checker tests use local `CHANGELOG.md` file for testing
-- Network tests can be skipped with `--no-network` flag
-- All tests pass and provide comprehensive coverage of update functionality
+- Core selection-order behavior is covered by pure helper tests and dialog logic tests.
+- Thumbnail loading has a regression test to ensure the viewer queues only visible rows plus a small buffer, instead of loading every selected image at once.
+- Main/session behavior is covered at the orchestration level with mocked Qt widgets; manual QA is still useful for subjective UI smoothness with very large real image libraries.
+- Update checker tests use the local `CHANGELOG.md`; network-dependent checks can be skipped with `--no-network`.

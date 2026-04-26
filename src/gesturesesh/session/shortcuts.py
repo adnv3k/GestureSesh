@@ -190,6 +190,13 @@ class SessionShortcutsMixin:
             "Toggle between default zoom and inspection zoom.",
             "Zoom & Pan",
         )
+        self.selection_order_key = register_shortcut(
+            "Ctrl+Shift+I",
+            self.open_session_order_viewer,
+            "Open selection order",
+            "View and manage the current session image order.",
+            "Navigation",
+        )
         self.zoom_autoreset_key = register_shortcut(
             "Ctrl+Shift+Z",
             self.toggle_zoom_reset_mode,
