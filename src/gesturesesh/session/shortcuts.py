@@ -78,6 +78,13 @@ class SessionShortcutsMixin:
             "Hide/show window frame.",
             "Window & View",
         )
+        self.frameless_fullscreen = register_shortcut(
+            "Ctrl+Shift+F",
+            self.toggle_fullscreen_frameless,
+            "Toggle frameless fullscreen",
+            "Enter/exit frameless fullscreen with no OS chrome.",
+            "Window & View",
+        )
         self.brightness_up = register_shortcut(
             "Ctrl+PgUp",
             self.increase_brightness,
@@ -134,6 +141,27 @@ class SessionShortcutsMixin:
             "Switch between perceptual and simple grayscale conversion.",
             "Image Filters",
         )
+        self.grayscale_shortcut = register_shortcut(
+            "G",
+            self.grayscale,
+            "Toggle grayscale",
+            "Enable or disable grayscale for the current image.",
+            "Image Filters",
+        )
+        self.flip_horizontal_shortcut = register_shortcut(
+            "H",
+            self.flip_horizontal,
+            "Flip horizontal",
+            "Mirror the current image horizontally.",
+            "Image Filters",
+        )
+        self.flip_vertical_shortcut = register_shortcut(
+            "V",
+            self.flip_vertical,
+            "Flip vertical",
+            "Mirror the current image vertically.",
+            "Image Filters",
+        )
         self.open_directory_key = register_shortcut(
             "Ctrl+O",
             self.open_image_directory,
@@ -173,14 +201,7 @@ class SessionShortcutsMixin:
             "F1",
             self.open_shortcut_map,
             "Open shortcut map",
-            "Show all available shortcuts and what they do.",
-            "Help",
-        )
-        self.shortcut_map_key2 = register_shortcut(
-            "Ctrl+/",
-            self.open_shortcut_map,
-            "Open shortcut map",
-            "Show all available shortcuts and what they do.",
+            "Show the keyboard shortcut legend for the session window.",
             "Help",
         )
         self.shortcut_map_rows.extend(
