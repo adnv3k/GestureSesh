@@ -926,13 +926,20 @@ class MainApp(
         if preset_name == "":
             self.show_error_status("Cannot save an empty name!", 5500)
             return
-        tmppreset = {}
+        schedule = {}
         for row in range(self.entry_table.rowCount()):
-            tmppreset[row] = []
+            schedule[row] = []
             for column in range(self.entry_table.columnCount()):
-                tmppreset[row].append(self.entry_table.item(row, column).text())
-        # Save to config.json under 'presets'
-        self.presets[preset_name] = tmppreset
+                schedule[row].append(self.entry_table.item(row, column).text())
+        # Save to config.json under 'presets'. Use the wrapped format so
+        # per-preset display settings (e.g. toggle_resize_status) survive across
+        # schedule edits.
+        existing = self.presets.get(preset_name)
+        if isinstance(existing, dict) and "schedule" in existing:
+            existing["schedule"] = schedule
+            self.presets[preset_name] = existing
+        else:
+            self.presets[preset_name] = {"schedule": schedule}
         self.config["presets"] = self.presets
         if preset_name not in self.preset_names:
             self.update_presets()
@@ -1021,6 +1028,22 @@ class MainApp(
         except Exception:
             session_settings = None
 
+        # The toggle_resize_status is persisted per-preset rather than shared
+        # across all sessions, so override the global value with the active
+        # preset's value when present.
+        try:
+            preset_name = self.preset_loader_box.currentText()
+            preset = self.presets.get(preset_name)
+            if isinstance(preset, dict) and "session_settings" in preset:
+                preset_settings = preset.get("session_settings") or {}
+                if "toggle_resize_status" in preset_settings:
+                    session_settings = dict(session_settings or {})
+                    session_settings["toggle_resize_status"] = bool(
+                        preset_settings.get("toggle_resize_status")
+                    )
+        except Exception:
+            pass
+
         self.display = SessionDisplay(
             schedule=self.session_schedule,
             items=self.selection["files"],
@@ -1063,6 +1086,18 @@ class MainApp(
                     ss["grayscale_mode"] = imgmods.get(
                         "grayscale_mode", imgmods.get("grayscale_mode", "perceptual")
                     )
+                    ss["hflip"] = bool(imgmods.get("hflip", False))
+                    ss["vflip"] = bool(imgmods.get("vflip", False))
+                    try:
+                        ss["brightness"] = int(imgmods.get("brightness", 0))
+                    except Exception:
+                        ss["brightness"] = 0
+                    try:
+                        ss["contrast"] = float(imgmods.get("contrast", 1.0))
+                    except Exception:
+                        ss["contrast"] = 1.0
+                    ss["threshold"] = bool(imgmods.get("threshold", False))
+                    ss["edge"] = bool(imgmods.get("edge", False))
                 except Exception:
                     ss["grayscale"] = False
                     ss["grayscale_mode"] = "perceptual"
@@ -1087,6 +1122,26 @@ class MainApp(
                 recent = self.config.get("recent_session", {})
                 recent["session_settings"] = ss
                 self.config["recent_session"] = recent
+
+                # Persist toggle_resize_status onto the active preset so each
+                # preset keeps its own resize configuration rather than
+                # inheriting the last session's value.
+                try:
+                    preset_name = self.preset_loader_box.currentText()
+                    if preset_name and preset_name in self.presets:
+                        preset = self.presets[preset_name]
+                        if not (isinstance(preset, dict) and "schedule" in preset):
+                            preset = {"schedule": preset}
+                        preset_settings = preset.get("session_settings") or {}
+                        preset_settings["toggle_resize_status"] = ss[
+                            "toggle_resize_status"
+                        ]
+                        preset["session_settings"] = preset_settings
+                        self.presets[preset_name] = preset
+                        self.config["presets"] = self.presets
+                except Exception:
+                    pass
+
                 save_config(self.config_path, self.config)
         except Exception:
             pass
