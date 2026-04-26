@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import math
 import os
 import platform
@@ -12,7 +11,6 @@ import subprocess
 import sys
 import tempfile
 from collections import OrderedDict
-from importlib import resources
 from pathlib import Path
 
 import cv2
@@ -30,43 +28,30 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QShortcut, QWidget
 
+from gesturesesh.session.constants import (
+    BREAK_IMAGE_PATH,
+    SUPPORTED_ANIMATED_TYPES,
+    SUPPORTED_IMAGE_TYPES,
+    sound_file,
+)
+from gesturesesh.session.image_mods import SessionImageModsMixin
+from gesturesesh.session.shortcuts import SessionShortcutsMixin
+from gesturesesh.session.timer import SessionTimerMixin
+from gesturesesh.session.zoom_pan import SessionZoomPanMixin
 from gesturesesh.utils import resources_config  # noqa: F401
 from gesturesesh.ui.dialogs import run_shortcut_map_dialog
 from gesturesesh.ui.dot_indicator import DotIndicator
 from gesturesesh.ui.session_display import Ui_session_display
 
-BREAK_IMAGE_PATH = ":/break/break.png"
-SUPPORTED_IMAGE_TYPES = {
-    ".avif",
-    ".bmp",
-    ".gif",
-    ".jxl",
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-}
-SUPPORTED_ANIMATED_TYPES = {".avif", ".gif", ".jxl", ".webp"}
 
-
-def sound_file(name: str):
-    """Return a context manager yielding the path to an embedded sound file."""
-    try:
-        return resources.as_file(resources.files("sounds") / name)
-    except ModuleNotFoundError:
-        print("ModuleNotFoundError in sound_file")
-        current_dir = Path(__file__).parent
-        project_root = current_dir.parent.parent
-        sound_path = project_root / "sounds" / name
-
-        @contextlib.contextmanager
-        def sound_file_context():
-            yield str(sound_path)
-
-        return sound_file_context()
-
-
-class SessionDisplay(QWidget, Ui_session_display):
+class SessionDisplay(
+    SessionImageModsMixin,
+    SessionShortcutsMixin,
+    SessionTimerMixin,
+    SessionZoomPanMixin,
+    QWidget,
+    Ui_session_display,
+):
     closed = QtCore.pyqtSignal()  # Needed here for close event to work.
 
     def __init__(self, schedule=None, items=None, total=None, parent=None, settings=None):
@@ -196,260 +181,6 @@ class SessionDisplay(QWidget, Ui_session_display):
 
         self.session_info.hide()
 
-    def init_zoom_pan(self):
-        """Initialize zoom/pan interaction state for the slideshow image."""
-        self.zoom_enabled = False
-        self.reset_zoom_between_images = True
-        self.default_zoom_factor = 1.0
-        self.zoom_factor = self.default_zoom_factor
-        self.min_zoom_factor = 0.75
-        self.max_zoom_factor = 4.0
-        self.base_zoom_step = 1.14
-        self.zoom_step = self.base_zoom_step
-        self.quick_inspect_zoom = 2.2
-        self.pan_offset = QtCore.QPoint(0, 0)
-        self.is_panning = False
-        self.is_tablet_panning = False
-        self.pan_last_pos = QtCore.QPoint(0, 0)
-        self.last_zoom_input_ms = 0
-        self.zoom_snap_timestamp_ms = 0
-        self.touchpad_zoom_active_until_ms = 0
-        self.pinch_start_zoom_factor = self.default_zoom_factor
-
-        self.idle_indicator_pulse_timer = QtCore.QTimer(self)
-        self.idle_indicator_pulse_timer.setSingleShot(False)
-        self.idle_indicator_pulse_timer.timeout.connect(self._pulse_indicators_softly)
-
-    def reset_zoom_pan(self):
-        """Reset zoom/pan to defaults when showing a new image."""
-        if not hasattr(self, "default_zoom_factor"):
-            self.init_zoom_pan()
-        self.zoom_factor = self.default_zoom_factor
-        self.pan_offset = QtCore.QPoint(0, 0)
-        self.is_panning = False
-        self.is_tablet_panning = False
-
-    def _clamp_pan_offset(self, offset: QtCore.QPoint, zoomed_size: QtCore.QSize):
-        """Clamp panning so the zoomed image always covers the viewport."""
-        viewport = self.image_display.size()
-        max_x = max(0, (zoomed_size.width() - viewport.width()) // 2)
-        max_y = max(0, (zoomed_size.height() - viewport.height()) // 2)
-        return QtCore.QPoint(
-            max(-max_x, min(offset.x(), max_x)),
-            max(-max_y, min(offset.y(), max_y)),
-        )
-
-    def update_image_view(self):
-        """Render the current image applying zoom and pan transforms."""
-        if not hasattr(self, "image") or self.image.isNull():
-            return
-
-        if hasattr(self, "image_scaled") and isinstance(
-            self.image_scaled, QtGui.QPixmap
-        ):
-            base_pixmap = self.image_scaled
-        else:
-            aspect_mode = (
-                QtCore.Qt.KeepAspectRatio
-                if self.toggle_resize_status
-                else QtCore.Qt.KeepAspectRatioByExpanding
-            )
-            base_pixmap = self.image.scaled(
-                self.image_display.size(),
-                aspectRatioMode=aspect_mode,
-                transformMode=QtCore.Qt.SmoothTransformation,
-            )
-
-        if not self.zoom_enabled:
-            self.zoom_factor = self.default_zoom_factor
-            self.pan_offset = QtCore.QPoint(0, 0)
-            self.image_display.setPixmap(base_pixmap)
-            return
-
-        if abs(self.zoom_factor - self.default_zoom_factor) < 0.0001:
-            self.pan_offset = QtCore.QPoint(0, 0)
-            self.image_display.setPixmap(base_pixmap)
-            return
-
-        zoomed_size = QtCore.QSize(
-            int(base_pixmap.width() * self.zoom_factor),
-            int(base_pixmap.height() * self.zoom_factor),
-        )
-        zoomed = base_pixmap.scaled(
-            zoomed_size,
-            aspectRatioMode=QtCore.Qt.IgnoreAspectRatio,
-            transformMode=QtCore.Qt.SmoothTransformation,
-        )
-        self.pan_offset = self._clamp_pan_offset(self.pan_offset, zoomed_size)
-
-        viewport = QtGui.QPixmap(self.image_display.size())
-        viewport.fill(QtCore.Qt.transparent)
-        painter = QtGui.QPainter(viewport)
-        draw_x = (viewport.width() - zoomed.width()) // 2 + self.pan_offset.x()
-        draw_y = (viewport.height() - zoomed.height()) // 2 + self.pan_offset.y()
-        painter.drawPixmap(draw_x, draw_y, zoomed)
-        painter.end()
-        self.image_display.setPixmap(viewport)
-
-    def _zoom_velocity_multiplier(self, units, timestamp_ms):
-        if timestamp_ms is None:
-            timestamp_ms = int(QtCore.QDateTime.currentMSecsSinceEpoch())
-        if self.last_zoom_input_ms == 0:
-            self.last_zoom_input_ms = timestamp_ms
-            return 1.0
-        delta_ms = max(1, timestamp_ms - self.last_zoom_input_ms)
-        self.last_zoom_input_ms = timestamp_ms
-        units_per_second = abs(units) * 1000.0 / delta_ms
-        return min(2.2, max(0.8, 0.9 + units_per_second * 0.16))
-
-    def _zoom_slowdown_multiplier(self, zoom_in: bool):
-        if zoom_in:
-            remaining = self.max_zoom_factor - self.zoom_factor
-            span = max(0.0001, self.max_zoom_factor - self.default_zoom_factor)
-        else:
-            remaining = self.zoom_factor - self.min_zoom_factor
-            span = max(0.0001, self.default_zoom_factor - self.min_zoom_factor)
-
-        normalized = max(0.0, min(1.0, remaining / span))
-        return max(0.08, normalized**0.55)
-
-    def _zoom_at_cursor(self, target_zoom, cursor_pos=None):
-        target_zoom = max(self.min_zoom_factor, min(self.max_zoom_factor, target_zoom))
-        if not hasattr(self, "image"):
-            return
-
-        if hasattr(self, "image_scaled") and isinstance(
-            self.image_scaled, QtGui.QPixmap
-        ):
-            base_pixmap = self.image_scaled
-        else:
-            base_pixmap = self.image.scaled(
-                self.image_display.size(),
-                aspectRatioMode=QtCore.Qt.KeepAspectRatio
-                if self.toggle_resize_status
-                else QtCore.Qt.KeepAspectRatioByExpanding,
-                transformMode=QtCore.Qt.SmoothTransformation,
-            )
-
-        viewport_w = max(1, self.image_display.width())
-        viewport_h = max(1, self.image_display.height())
-        if cursor_pos is None:
-            cursor_pos = QtCore.QPoint(viewport_w // 2, viewport_h // 2)
-
-        old_zoom = max(0.0001, self.zoom_factor)
-        old_zoomed_w = base_pixmap.width() * old_zoom
-        old_zoomed_h = base_pixmap.height() * old_zoom
-        old_draw_x = (viewport_w - old_zoomed_w) / 2 + self.pan_offset.x()
-        old_draw_y = (viewport_h - old_zoomed_h) / 2 + self.pan_offset.y()
-        source_x = (cursor_pos.x() - old_draw_x) / old_zoom
-        source_y = (cursor_pos.y() - old_draw_y) / old_zoom
-
-        new_zoomed_w = base_pixmap.width() * target_zoom
-        new_zoomed_h = base_pixmap.height() * target_zoom
-        new_draw_x = cursor_pos.x() - source_x * target_zoom
-        new_draw_y = cursor_pos.y() - source_y * target_zoom
-        pan_x = new_draw_x - (viewport_w - new_zoomed_w) / 2
-        pan_y = new_draw_y - (viewport_h - new_zoomed_h) / 2
-
-        self.zoom_factor = target_zoom
-        self.pan_offset = QtCore.QPoint(int(round(pan_x)), int(round(pan_y)))
-        self.pan_offset = self._clamp_pan_offset(
-            self.pan_offset,
-            QtCore.QSize(int(new_zoomed_w), int(new_zoomed_h)),
-        )
-        self.update_image_view()
-
-    def apply_zoom_input(self, raw_delta, cursor_pos=None, source="wheel", timestamp_ms=None):
-        if not self.zoom_enabled or raw_delta == 0:
-            return
-
-        if timestamp_ms is None:
-            timestamp_ms = int(QtCore.QDateTime.currentMSecsSinceEpoch())
-
-        if source == "wheel-angle":
-            units = raw_delta / 120.0
-        elif source == "wheel-pixel":
-            units = raw_delta / 60.0
-        else:
-            units = raw_delta
-        if abs(units) < 0.001:
-            return
-
-        zoom_in = units > 0
-        if (
-            not zoom_in
-            and self.zoom_factor <= self.default_zoom_factor + 0.001
-            and timestamp_ms - self.zoom_snap_timestamp_ms < 140
-        ):
-            # absorb inertial scroll right after a snap-to-default
-            return
-
-        speed_mult = self._zoom_velocity_multiplier(units, timestamp_ms)
-        slow_mult = self._zoom_slowdown_multiplier(zoom_in)
-        effective_units = abs(units) * speed_mult * slow_mult
-        step_factor = self.base_zoom_step**effective_units
-        target_zoom = (
-            self.zoom_factor * step_factor
-            if zoom_in
-            else self.zoom_factor / max(0.0001, step_factor)
-        )
-        if (
-            not zoom_in
-            and self.zoom_factor > self.default_zoom_factor
-            and speed_mult >= 1.20
-            and target_zoom <= self.default_zoom_factor * 1.05
-        ):
-            target_zoom = self.default_zoom_factor
-            self.zoom_snap_timestamp_ms = timestamp_ms
-        else:
-            target_zoom = max(self.min_zoom_factor, min(self.max_zoom_factor, target_zoom))
-
-        if abs(target_zoom - self.zoom_factor) < 0.0005:
-            return
-        self._zoom_at_cursor(target_zoom, cursor_pos)
-
-    def zoom_image(self, zoom_in: bool, cursor_pos=None):
-        """Discrete zoom command with cursor-centered behavior."""
-        self.apply_zoom_input(
-            1.0 if zoom_in else -1.0,
-            cursor_pos=cursor_pos,
-            source="discrete",
-            timestamp_ms=int(QtCore.QDateTime.currentMSecsSinceEpoch()),
-        )
-
-    def reset_zoom_to_default(self):
-        self.reset_zoom_pan()
-        self.update_image_view()
-
-    def toggle_zoom_enabled(self, checked=None):
-        if checked is None:
-            checked = not self.zoom_enabled
-        self.zoom_enabled = bool(checked)
-        if hasattr(self, "zoom_toggle_button"):
-            self.zoom_toggle_button.setChecked(self.zoom_enabled)
-            self.zoom_toggle_button.setStyleSheet(
-                "background: rgb(68,201,176);" if self.zoom_enabled else "background: rgb(119, 153, 146);"
-            )
-        if not self.zoom_enabled:
-            self.reset_zoom_to_default()
-        self.image_display.setCursor(
-            QtCore.Qt.OpenHandCursor if self.zoom_enabled else QtCore.Qt.ArrowCursor
-        )
-
-    def toggle_zoom_reset_mode(self):
-        self.reset_zoom_between_images = not self.reset_zoom_between_images
-        mode = "ON" if self.reset_zoom_between_images else "OFF"
-        self.setWindowTitle(f"Auto zoom reset: {mode}")
-
-    def quick_inspect(self):
-        if not self.zoom_enabled:
-            self.toggle_zoom_enabled(True)
-        target = (
-            self.quick_inspect_zoom
-            if self.zoom_factor <= self.default_zoom_factor + 0.05
-            else self.default_zoom_factor
-        )
-        self._zoom_at_cursor(target, QtCore.QPoint(self.image_display.width() // 2, self.image_display.height() // 2))
 
     def init_sizing(self):
         """
@@ -477,18 +208,6 @@ class SessionDisplay(QWidget, Ui_session_display):
         half_screen = self.screen().availableSize() / 2
         min_length = min(half_screen.height(), half_screen.width())
         self.scaling_size = QtCore.QSize(min_length, min_length)
-
-    def init_timer(self):
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.countdown)
-        self.timer.start(500)
-        self.session_finished = False
-        self.close_seconds = 15
-        self.close_timer = QtCore.QTimer()
-        self.close_timer.timeout.connect(self.close_countdown)
-        self.sec = ["0", "0"]
-        self.minutes_list = ["0", "0"]
-        self.hrs_list = ["0", "0"]
 
     def init_animation_state(self):
         self.animation_timer = QtCore.QTimer(self)
@@ -584,25 +303,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.image_progress.trigger_soft_pulse()
             self._trigger_progress_burst(self._session_progress_pulse_count())
 
-    def init_image_mods(self):
-        self.image_mods = {
-            "break": False,
-            "grayscale": False,
-            "hflip": False,
-            "vflip": False,
-            "break_grayscale": False,
-            "brightness": 0,
-            "contrast": 1.0,
-            "threshold": False,
-            "edge": False,
-            "grayscale_mode": "perceptual",  # or "simple"
-        }
-
-    def reset_image_mods(self):
-        """Reset all image modifications to their default values and update the display."""
-        self.init_image_mods()
-        self.display_image(play_sound=False)
-
     def init_mixer(self):
         mixer.init()
         try:
@@ -657,237 +357,6 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.grayscale_button.clicked.connect(self.grayscale)
         self.pause_timer.clicked.connect(self.pause)
 
-    def init_shortcuts(self):
-        self.shortcut_map_rows = []
-
-        def register_shortcut(sequence, callback, action, details, group):
-            shortcut = QShortcut(QtGui.QKeySequence(sequence), self)
-            shortcut.activated.connect(callback)
-            self.shortcut_map_rows.append((group, sequence, action, details))
-            return shortcut
-
-        # Resize
-        self.toggle_resize_key = register_shortcut(
-            "R",
-            self.toggle_resize,
-            "Toggle resize mode",
-            "Switch between fit-inside and fill-window display behavior.",
-            "Window & View",
-        )
-        # Always on top
-        self.always_on_top_key = register_shortcut(
-            "A",
-            self.toggle_always_on_top,
-            "Toggle always-on-top",
-            "Keep the slideshow window above other windows.",
-            "Window & View",
-        )
-        # Mute
-        self.mute_key = register_shortcut(
-            "M",
-            self.toggle_mute,
-            "Toggle mute",
-            "Mute/unmute session sound cues.",
-            "Audio & Timing",
-        )
-        # Timer
-        self.add_30 = register_shortcut(
-            "Up",
-            self.add_30_seconds,
-            "Add 30 seconds",
-            "Increase current timer by 30 seconds.",
-            "Audio & Timing",
-        )
-        self.add_60 = register_shortcut(
-            "Ctrl+Up",
-            self.add_60_seconds,
-            "Add 60 seconds",
-            "Increase current timer by 60 seconds.",
-            "Audio & Timing",
-        )
-        self.restart = register_shortcut(
-            "Ctrl+Shift+Up",
-            self.restart_timer,
-            "Restart timer",
-            "Reset the current image timer to its scheduled duration.",
-            "Audio & Timing",
-        )
-        # Skip image
-        self.skip_image_key = register_shortcut(
-            "S",
-            self.skip_image,
-            "Skip image",
-            "Swap current image forward with a later image in the session.",
-            "Navigation",
-        )
-        # Frameless Window
-        self.frameless_window = register_shortcut(
-            "Ctrl+F",
-            self.toggle_frameless,
-            "Toggle frameless window",
-            "Hide/show window frame.",
-            "Window & View",
-        )
-        # Image adjustments
-        self.brightness_up = register_shortcut(
-            "Ctrl+PgUp",
-            self.increase_brightness,
-            "Increase brightness",
-            "Raise brightness modifier.",
-            "Image Filters",
-        )
-        self.brightness_down = register_shortcut(
-            "Ctrl+PgDown",
-            self.decrease_brightness,
-            "Decrease brightness",
-            "Lower brightness modifier.",
-            "Image Filters",
-        )
-        self.contrast_up = register_shortcut(
-            "PgUp",
-            self.increase_contrast,
-            "Increase contrast",
-            "Raise contrast modifier.",
-            "Image Filters",
-        )
-        self.contrast_down = register_shortcut(
-            "PgDown",
-            self.decrease_contrast,
-            "Decrease contrast",
-            "Lower contrast modifier.",
-            "Image Filters",
-        )
-        self.threshold_toggle = register_shortcut(
-            "T",
-            self.toggle_threshold,
-            "Toggle threshold",
-            "Enable/disable threshold filter.",
-            "Image Filters",
-        )
-        self.edge_toggle = register_shortcut(
-            "E",
-            self.toggle_edge,
-            "Toggle edge filter",
-            "Enable/disable edge detection filter.",
-            "Image Filters",
-        )
-        self.reset_mods = register_shortcut(
-            "Ctrl+0",
-            self.reset_image_mods,
-            "Reset image modifiers",
-            "Reset brightness/contrast/filters/flip for current image.",
-            "Image Filters",
-        )
-        self.toggle_grayscale_mode_shortcut = register_shortcut(
-            "Ctrl+G",
-            self.toggle_grayscale_mode,
-            "Toggle grayscale algorithm",
-            "Switch between perceptual and simple grayscale conversion.",
-            "Image Filters",
-        )
-        # Open image directory
-        self.open_directory_key = register_shortcut(
-            "Ctrl+O",
-            self.open_image_directory,
-            "Open image folder",
-            "Open the folder containing the current image.",
-            "Navigation",
-        )
-        # Zoom controls
-        self.zoom_toggle_key = register_shortcut(
-            "Z",
-            self.toggle_zoom_enabled,
-            "Toggle zoom/pan",
-            "Enable or disable zoom and pan interaction.",
-            "Zoom & Pan",
-        )
-        self.zoom_reset_key = register_shortcut(
-            "0",
-            self.reset_zoom_to_default,
-            "Reset zoom",
-            "Reset zoom back to default 1.0x and center.",
-            "Zoom & Pan",
-        )
-        self.quick_inspect_key = register_shortcut(
-            "I",
-            self.quick_inspect,
-            "Quick inspect toggle",
-            "Toggle between default zoom and inspection zoom.",
-            "Zoom & Pan",
-        )
-        self.zoom_autoreset_key = register_shortcut(
-            "Ctrl+Shift+Z",
-            self.toggle_zoom_reset_mode,
-            "Toggle auto zoom reset",
-            "Enable/disable resetting zoom when moving to another image.",
-            "Zoom & Pan",
-        )
-        self.shortcut_map_key = register_shortcut(
-            "F1",
-            self.open_shortcut_map,
-            "Open shortcut map",
-            "Show all available shortcuts and what they do.",
-            "Help",
-        )
-        self.shortcut_map_key2 = register_shortcut(
-            "Ctrl+/",
-            self.open_shortcut_map,
-            "Open shortcut map",
-            "Show all available shortcuts and what they do.",
-            "Help",
-        )
-        self.shortcut_map_rows.extend(
-            [
-                (
-                    "Navigation",
-                    "Left / Right",
-                    "Previous / next image",
-                    "Move backward or forward in the slideshow.",
-                ),
-                (
-                    "Audio & Timing",
-                    "Space",
-                    "Pause / resume",
-                    "Pause or resume the timer while in session.",
-                ),
-                (
-                    "Navigation",
-                    "Esc",
-                    "Stop session",
-                    "Close the session window.",
-                ),
-                (
-                    "Zoom & Pan",
-                    "Mouse wheel",
-                    "Zoom (when zoom enabled)",
-                    "Fast wheel movement gives larger jumps; slow wheel gives finer control.",
-                ),
-                (
-                    "Zoom & Pan",
-                    "Two-finger scroll",
-                    "Pan (touchpad)",
-                    "Pan the zoomed image directly with touchpad scroll.",
-                ),
-                (
-                    "Zoom & Pan",
-                    "Stylus drag",
-                    "Pan (tablet/pen)",
-                    "Drag with a pen when zoomed to pan the canvas.",
-                ),
-                (
-                    "Zoom & Pan",
-                    "Ctrl + stylus drag",
-                    "Zoom (tablet/pen)",
-                    "Adjust zoom by dragging vertically while holding Ctrl.",
-                ),
-                (
-                    "Zoom & Pan",
-                    "Pinch gesture",
-                    "Zoom (touchpad)",
-                    "Pinch-to-zoom is cursor-centered when zoom is enabled.",
-                ),
-            ]
-        )
 
     def _update_control_density(self):
         if not hasattr(self, "zoom_toggle_button"):
@@ -1068,62 +537,6 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.drag_timer_was_active = False
         # super().mouseReleaseEvent(event)
 
-    def _pan_by(self, delta_point):
-        if not self.zoom_enabled or self.zoom_factor <= self.default_zoom_factor:
-            return
-        self.pan_offset += delta_point
-        self.update_image_view()
-
-    def _handle_pinch_gesture(self, gesture_event):
-        pinch = gesture_event.gesture(QtCore.Qt.PinchGesture)
-        if pinch is None:
-            return False
-        if not self.zoom_enabled:
-            return True
-
-        state = pinch.state()
-        if state == QtCore.Qt.GestureStarted:
-            self.pinch_start_zoom_factor = self.zoom_factor
-        elif state == QtCore.Qt.GestureFinished:
-            self.pinch_start_zoom_factor = self.zoom_factor
-            self.touchpad_zoom_active_until_ms = int(
-                QtCore.QDateTime.currentMSecsSinceEpoch()
-            ) + 160
-            return True
-
-        if state not in (QtCore.Qt.GestureStarted, QtCore.Qt.GestureUpdated):
-            return True
-
-        if pinch.changeFlags() & QtWidgets.QPinchGesture.ScaleFactorChanged:
-            total_factor = float(pinch.totalScaleFactor() or 1.0)
-            if total_factor > 0:
-                target_zoom = self.pinch_start_zoom_factor * total_factor
-                center = pinch.centerPoint().toPoint()
-                center = self.image_display.mapFromGlobal(center)
-                self._zoom_at_cursor(target_zoom, center)
-                self.touchpad_zoom_active_until_ms = int(
-                    QtCore.QDateTime.currentMSecsSinceEpoch()
-                ) + 160
-        return True
-
-    def _handle_native_gesture(self, event):
-        if not self.zoom_enabled:
-            return True
-        if not hasattr(event, "gestureType"):
-            return False
-        zoom_native = getattr(QtCore.Qt, "ZoomNativeGesture", None)
-        if zoom_native is not None and event.gestureType() == zoom_native:
-            delta = float(event.value())
-            if abs(delta) > 0.0002:
-                cursor = self.image_display.mapFromGlobal(QtGui.QCursor.pos())
-                factor = math.exp(delta * 0.85)
-                target_zoom = self.zoom_factor * factor
-                self._zoom_at_cursor(target_zoom, cursor)
-                self.touchpad_zoom_active_until_ms = int(
-                    QtCore.QDateTime.currentMSecsSinceEpoch()
-                ) + 160
-            return True
-        return False
 
     def eventFilter(self, source, event):
         if self.session_finished and self.close_timer.isActive():
@@ -1638,42 +1051,6 @@ class SessionDisplay(QWidget, Ui_session_display):
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def _apply_modifiers_to_cvimage(self, cvimage):
-        cvimage = cvimage.copy()
-        b = self.image_mods["brightness"]
-        c = self.image_mods["contrast"]
-        if b != 0 or c != 1.0:
-            cvimage = cv2.convertScaleAbs(cvimage, alpha=c, beta=b)
-
-        grayscale_active = (
-            self.image_mods["grayscale"] or self.image_mods["break_grayscale"]
-        )
-        if grayscale_active or self.image_mods["threshold"] or self.image_mods["edge"]:
-            if self.image_mods.get("grayscale_mode", "perceptual") == "simple":
-                gray = self.to_simple_grayscale(cvimage)
-            else:
-                gray = self.to_fidelous_grayscale(cvimage)
-            if gray.ndim == 3 and gray.shape[2] == 4:
-                gray_for_binary = cv2.cvtColor(gray, cv2.COLOR_BGRA2GRAY)
-            elif gray.ndim == 3 and gray.shape[2] == 3:
-                gray_for_binary = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
-            else:
-                gray_for_binary = gray
-
-            if grayscale_active:
-                cvimage = gray
-            if self.image_mods["threshold"]:
-                _, cvimage = cv2.threshold(
-                    gray_for_binary, 1286, 255, cv2.THRESH_BINARY
-                )
-            if self.image_mods["edge"]:
-                cvimage = cv2.Canny(gray_for_binary, 100, 200)
-
-        if self.image_mods["hflip"]:
-            cvimage = cv2.flip(cvimage, 1)
-        if self.image_mods["vflip"]:
-            cvimage = cv2.flip(cvimage, 0)
-        return cvimage
 
     def _render_cvimage(self, cvimage):
         cvimage = self._apply_modifiers_to_cvimage(cvimage)
@@ -1879,83 +1256,6 @@ class SessionDisplay(QWidget, Ui_session_display):
     def convert_to_cvimage(self):
         return self.decode_with_cv2(self.playlist[self.playlist_position])
 
-    def to_fidelous_grayscale(self, image):
-        # Convert to RGB, handling alpha by compositing on white if present
-        if image.ndim == 3 and image.shape[2] == 4:
-            # Split channels
-            b, g, r, a = cv2.split(image)
-            rgb = cv2.merge([r, g, b]).astype(np.float32)
-            gray = np.dot(rgb, [0.2126, 0.7152, 0.0722])
-            gray = np.clip(gray, 0, 255).astype(np.uint8)
-            # Stack grayscale and alpha back together as BGRA
-            result = cv2.merge([gray, gray, gray, a])
-            return result
-        else:
-            rgb = image[..., ::-1].astype(np.float32)  # BGR to RGB
-            gray = np.dot(rgb, [0.2126, 0.7152, 0.0722])
-            gray = np.clip(gray, 0, 255).astype(np.uint8)
-            return gray
-
-    def to_simple_grayscale(self, image):
-        """Simple grayscale: convert BGR image to single channel grayscale."""
-        if image.ndim == 3 and image.shape[2] == 4:
-            return cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
-        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    def toggle_grayscale_mode(self):
-        """Toggle between perceptual and simple grayscale modes."""
-        if self.image_mods["grayscale_mode"] == "perceptual":
-            self.image_mods["grayscale_mode"] = "simple"
-            self.setWindowTitle("Simple Grayscale Mode")
-        else:
-            self.image_mods["grayscale_mode"] = "perceptual"
-            self.setWindowTitle("Perceptual Grayscale Mode")
-        self.display_image(play_sound=False)
-
-    def flip_horizontal(self):
-        if self.image_mods["hflip"]:
-            self.image_mods["hflip"] = False
-        else:
-            self.image_mods["hflip"] = True
-        self.display_image(play_sound=False)
-
-    def flip_vertical(self):
-        if self.image_mods["vflip"]:
-            self.image_mods["vflip"] = False
-        else:
-            self.image_mods["vflip"] = True
-        self.display_image(play_sound=False)
-
-    def grayscale(self):
-        if self.image_mods["grayscale"]:
-            self.image_mods["grayscale"] = False
-        else:
-            self.image_mods["grayscale"] = True
-        self.display_image(play_sound=False)
-
-    def increase_brightness(self):
-        self.image_mods["brightness"] = min(self.image_mods["brightness"] + 10, 100)
-        self.display_image()
-
-    def decrease_brightness(self):
-        self.image_mods["brightness"] = max(self.image_mods["brightness"] - 10, -100)
-        self.display_image()
-
-    def increase_contrast(self):
-        self.image_mods["contrast"] = min(self.image_mods["contrast"] + 0.1, 3.0)
-        self.display_image()
-
-    def decrease_contrast(self):
-        self.image_mods["contrast"] = max(self.image_mods["contrast"] - 0.1, 0.1)
-        self.display_image()
-
-    def toggle_threshold(self):
-        self.image_mods["threshold"] = not self.image_mods["threshold"]
-        self.display_image()
-
-    def toggle_edge(self):
-        self.image_mods["edge"] = not self.image_mods["edge"]
-        self.display_image()
 
     def toggle_resize(self):
         if self.toggle_resize_status is not True:
@@ -2111,158 +1411,6 @@ class SessionDisplay(QWidget, Ui_session_display):
     # endregion
 
     # region Timer functions
-    def format_seconds(self, sec):
-        minutes = int(sec / 60)
-        sec = int(self.time_seconds - (minutes * 60))
-        return f"{minutes}:{sec}"
-
-    def countdown(self):
-        self.update_timer_display()
-        self._update_predictive_indicator_cues()
-        if self.entry["time"] >= 30:
-            if self.time_seconds == self.entry["time"] // 2:
-                with sound_file("halfway.mp3") as p:
-                    mixer.music.load(str(p))
-                mixer.music.play()
-        if self.time_seconds <= 10:
-            if self.new_entry is False and self.end_of_entry is False:
-                if self.time_seconds == 10:
-                    with sound_file("first_alert.mp3") as p:
-                        mixer.music.load(str(p))
-                    mixer.music.play()
-                elif self.time_seconds == 5:
-                    with sound_file("second_alert.mp3") as p:
-                        mixer.music.load(str(p))
-                    mixer.music.play()
-                elif self.time_seconds == 0.5:
-                    with sound_file("third_alert.mp3") as p:
-                        mixer.music.load(str(p))
-                    mixer.music.play()
-            else:
-                if self.new_entry is True:
-                    self.new_entry = False
-                if self.end_of_entry is True:
-                    self.end_of_entry = False
-            if self.playlist[self.playlist_position] == BREAK_IMAGE_PATH:
-                self.image_mods["break_grayscale"] = False
-                self.prepare_image_mods()
-        if self.time_seconds == 0:
-            QTest.qWait(500)
-            self.load_next_image()
-            return
-        self.time_seconds -= 0.5
-
-    def update_timer_display(self):
-        hr = int(self.time_seconds / 3600)
-        self.hrs_list = list(str(hr))
-        if len(self.hrs_list) == 1 or self.hrs_list[0] == "0":
-            self.hrs_list.insert(0, "0")
-
-        minutes = int((self.time_seconds / 3600 - hr) * 60)
-        self.minutes_list = list(str(minutes))
-        if len(self.minutes_list) == 1 or self.minutes_list[0] == "0":
-            self.minutes_list.insert(0, "0")
-        self.sec = list(
-            str(int((((self.time_seconds / 3600 - hr) * 60) - minutes) * 60))
-        )
-        if len(self.sec) == 1 or self.sec[0] == "0":
-            self.sec.insert(0, "0")
-        self.display_time()
-
-    # Constants for timer visuals
-    PAUSE_BUTTON_RUNNING_STYLE = (
-        "background: rgb(100, 120, 118); padding:2px; border:1px solid transparent;"
-    )
-    PAUSE_BUTTON_PAUSED_STYLE = (
-        "background: rgb(100, 120, 118); padding:2px; border:1px solid white;"
-    )
-    TIMER_DISPLAY_RUNNING_STYLE = "color: white;"
-    TIMER_DISPLAY_PAUSED_STYLE = "color: white; border:1px solid white;"
-
-    def _set_timer_visuals(self, running: bool) -> None:
-        """Update pause button and display border based on running state."""
-        if running:
-            self.pause_timer.setIcon(QtGui.QIcon(":/icons/icons/Pause.png"))
-            self.pause_timer.setStyleSheet(self.PAUSE_BUTTON_RUNNING_STYLE)
-            self.timer_display.setStyleSheet(self.TIMER_DISPLAY_RUNNING_STYLE)
-        else:
-            self.pause_timer.setIcon(QtGui.QIcon(":/icons/icons/Play2.png"))
-            self.pause_timer.setStyleSheet(self.PAUSE_BUTTON_PAUSED_STYLE)
-            self.timer_display.setStyleSheet(self.TIMER_DISPLAY_PAUSED_STYLE)
-
-    def pause(self):
-        # Do nothing if the session has finished
-        if self.session_finished:
-            return
-        self.update_timer_display()  # ensure sec, minutes_list, hrs_list are set
-        if self.timer.isActive():
-            self.timer.stop()
-            self._set_timer_visuals(False)
-        else:
-            self._set_timer_visuals(True)
-            self.timer.start(500)
-        self.display_time()
-
-    def display_time(self):
-        """
-        Displays amount of time left depending on how many seconds are left.
-
-        """
-        # Hour or longer
-        if self.time_seconds >= 3600:
-            self.timer_display.setText(
-                f"{self.hrs_list[0]}{self.hrs_list[1]}:"
-                f"{self.minutes_list[0]}{self.minutes_list[1]}:"
-                f"{self.sec[0]}{self.sec[1]}"
-            )
-        # Minute or longer
-        elif self.time_seconds >= 60:
-            self.timer_display.setText(
-                f"{self.minutes_list[0]}{self.minutes_list[1]}:"
-                f"{self.sec[0]}{self.sec[1]}"
-            )
-        # Less than a minute left
-        else:
-            self.timer_display.setText(f"{self.sec[0]}{self.sec[1]}")
-
-    def add_30_seconds(self):
-        if self.session_finished:
-            return
-        self.time_seconds += 30
-        self.update_timer_display()
-
-    def add_60_seconds(self):
-        if self.session_finished:
-            return
-        self.time_seconds += 60
-        self.update_timer_display()
-
-    def restart_timer(self):
-        if self.session_finished:
-            return
-        self.time_seconds = self.schedule[self.entry["current"]].time
-
-    def update_close_title(self):
-        self.setWindowTitle(
-            f"Review mode - closing in {self.close_seconds}s (Ctrl+O opens folder)"
-        )
-
-    def close_countdown(self):
-        if not self.close_timer.isActive():
-            return
-        self.close_seconds -= 1
-        if self.close_seconds <= 0:
-            self.close_timer.stop()
-            self.close()
-            return
-        self.timer_display.setText(f"Done! Closing in {self.close_seconds}s...")
-        self.update_close_title()
-
-    def cancel_close_countdown(self):
-        if self.close_timer.isActive():
-            self.close_timer.stop()
-            self.timer_display.setText("Done!")
-            self.setWindowTitle("Session complete - review mode (Ctrl+O opens folder)")
 
     def open_image_directory(self, event=None):
         path = self.playlist[self.playlist_position]

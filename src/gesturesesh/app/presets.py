@@ -7,7 +7,7 @@ import random
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
-from gesturesesh.update_checker import save_config
+from gesturesesh.utils.config import save_config
 from gesturesesh.utils.time import format_seconds
 
 

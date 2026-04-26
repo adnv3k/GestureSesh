@@ -21,10 +21,11 @@ from gesturesesh.app.presets import MainAppPresetsMixin
 from gesturesesh.app.selection import MainAppSelectionMixin
 from gesturesesh.app.session import MainAppSessionMixin
 from gesturesesh.app.status import MainAppStatusMixin
-from gesturesesh.session_window import SUPPORTED_IMAGE_TYPES
-from gesturesesh.update_checker import UpdateChecker, load_config
+from gesturesesh.session.constants import SUPPORTED_IMAGE_TYPES
 from gesturesesh.ui.main_window import Ui_MainWindow
 from gesturesesh.utils import resources_config  # noqa: F401
+from gesturesesh.utils.config import load_config
+from gesturesesh.utils.update_checker import UpdateChecker
 
 
 __version__ = "0.5.2"

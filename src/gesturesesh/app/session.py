@@ -8,8 +8,9 @@ from pathlib import Path
 from PyQt5.QtTest import QTest
 
 from gesturesesh.app.models import ScheduleEntry
-from gesturesesh.session_window import BREAK_IMAGE_PATH, SessionDisplay
-from gesturesesh.update_checker import save_config
+from gesturesesh.session.constants import BREAK_IMAGE_PATH
+from gesturesesh.session_window import SessionDisplay
+from gesturesesh.utils.config import save_config
 
 
 class MainAppSessionMixin:

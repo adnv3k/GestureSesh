@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
 try:
-    from gesturesesh.update_checker import UpdateChecker
+    from gesturesesh.utils.update_checker import UpdateChecker
     import requests
 except ImportError as e:
     print(f"Warning: Could not import dependencies: {e}")
@@ -144,7 +144,7 @@ class TestUpdateCheckerChangelog(unittest.TestCase):
                              f"Should include section headers for format {i+1}")
 
     @patch("builtins.open", side_effect=FileNotFoundError("Local file not found"))
-    @patch("gesturesesh.update_checker.Path.exists", return_value=False)
+    @patch("gesturesesh.utils.update_checker.Path.exists", return_value=False)
     def test_changelog_network_error_handling(self, mock_exists, mock_open):
         """Test graceful handling when both network and local file access fail."""
         print("\n=== Testing Network Error Handling ===")
@@ -159,7 +159,7 @@ class TestUpdateCheckerChangelog(unittest.TestCase):
         self.assertIn("v0.5.0", notes)
 
     @patch("builtins.open", side_effect=FileNotFoundError("Local file not found"))
-    @patch("gesturesesh.update_checker.Path.exists", return_value=False)
+    @patch("gesturesesh.utils.update_checker.Path.exists", return_value=False)
     def test_changelog_parsing_error_handling(self, mock_exists, mock_open):
         """Test handling when changelog content cannot be accessed."""
         print("\n=== Testing Malformed Content Handling ===")
@@ -172,7 +172,7 @@ class TestUpdateCheckerChangelog(unittest.TestCase):
         # Should return fallback when no content can be accessed
         self.assertIn("Unable to fetch detailed release notes", notes)
 
-    @patch("gesturesesh.update_checker.requests.get")
+    @patch("gesturesesh.utils.update_checker.requests.get")
     def test_full_update_check_with_changelog(self, mock_get):
         """Test complete update check flow with changelog integration."""
         print("\n=== Testing Full Update Check Flow ===")
@@ -217,7 +217,7 @@ class TestUpdateCheckerCore(unittest.TestCase):
         """Clean up test environment."""
         self.temp_dir.cleanup()
 
-    @patch("gesturesesh.update_checker.requests.get")
+    @patch("gesturesesh.utils.update_checker.requests.get")
     def test_check_for_updates_new_version(self, mock_get):
         """Test detection of new version availability."""
         # Simulate GitHub API response with a newer version (0.4.2)
@@ -241,7 +241,7 @@ class TestUpdateCheckerCore(unittest.TestCase):
         # Should now contain changelog content instead of GitHub release body
         self.assertIn("Mute now works properly", update["notes"])
 
-    @patch("gesturesesh.update_checker.requests.get")
+    @patch("gesturesesh.utils.update_checker.requests.get")
     def test_check_for_updates_no_new_version(self, mock_get):
         """Test behavior when no new version is available."""
         # Simulate GitHub API response with same version (0.4.2)
@@ -283,7 +283,7 @@ class TestUpdateCheckerCore(unittest.TestCase):
         checker.config = {"update_check": {"last_checked": old_time}}
         self.assertTrue(checker._is_check_needed())
 
-    @patch("gesturesesh.update_checker.requests.get")
+    @patch("gesturesesh.utils.update_checker.requests.get")
     def test_check_for_updates_network_error(self, mock_get):
         """Test graceful handling of network errors during update check."""
         # Simulate a realistic network error from the requests library
