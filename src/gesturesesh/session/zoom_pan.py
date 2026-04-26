@@ -58,21 +58,35 @@ class SessionZoomPanMixin:
         if not hasattr(self, "image") or self.image.isNull():
             return
 
-        if hasattr(self, "image_scaled") and isinstance(
-            self.image_scaled, QtGui.QPixmap
-        ):
+        target_size = self.image_display.size()
+        aspect_mode = (
+            QtCore.Qt.KeepAspectRatio
+            if self.toggle_resize_status
+            else QtCore.Qt.KeepAspectRatioByExpanding
+        )
+
+        # Only reuse cached scaling while in frameless fullscreen.
+        # In normal session flow, always rescale against the current widget size
+        # so the window keeps its original behavior and does not drift larger.
+        use_cached = (
+            getattr(self, "_fullscreen_frameless", False)
+            and isinstance(getattr(self, "image_scaled", None), QtGui.QPixmap)
+            and not self.image_scaled.isNull()
+            and self.image_scaled.size() == target_size
+        )
+
+        if use_cached:
             base_pixmap = self.image_scaled
         else:
-            aspect_mode = (
-                QtCore.Qt.KeepAspectRatio
-                if self.toggle_resize_status
-                else QtCore.Qt.KeepAspectRatioByExpanding
-            )
             base_pixmap = self.image.scaled(
-                self.image_display.size(),
+                target_size,
                 aspectRatioMode=aspect_mode,
                 transformMode=QtCore.Qt.SmoothTransformation,
             )
+            if getattr(self, "_fullscreen_frameless", False):
+                self.image_scaled = base_pixmap
+            else:
+                self.image_scaled = None
 
         if not self.zoom_enabled:
             self.zoom_factor = self.default_zoom_factor

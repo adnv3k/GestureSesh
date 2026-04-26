@@ -232,6 +232,12 @@ class ShortcutMapDialog(QtWidgets.QDialog):
 
         self._setup_ui()
         self._populate_rows()
+        # Allow F1 to close the dialog as a toggle (mirrors session hotkey)
+        try:
+            close_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("F1"), self)
+            close_shortcut.activated.connect(self.accept)
+        except Exception:
+            pass
 
     def _setup_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
