@@ -128,12 +128,6 @@ class SessionDisplay(QWidget, Ui_session_display):
         self.init_animation_state()
         self.init_zoom_pan()
         self.init_session_toggles()
-        # Apply persisted session settings (if supplied) before loading first image
-        if settings:
-            try:
-                self.apply_session_settings(settings)
-            except Exception:
-                pass
         self.init_button_sizes()
         self.horizontalLayout_2.setAlignment(QtCore.Qt.AlignVCenter)
         self.horizontalLayout.setAlignment(QtCore.Qt.AlignVCenter)
@@ -160,6 +154,13 @@ class SessionDisplay(QWidget, Ui_session_display):
             self.horizontalLayout.setAlignment(btn, QtCore.Qt.AlignVCenter)
             self.horizontalLayout_2.setAlignment(btn, QtCore.Qt.AlignVCenter)
         self.init_image_mods()
+        # Apply persisted session settings after init_image_mods so that
+        # image_mods exists when apply_session_settings accesses it.
+        if settings:
+            try:
+                self.apply_session_settings(settings)
+            except Exception:
+                pass
         self.init_mixer()
         break_indices = [
             i for i, entry in enumerate(self.schedule) if entry.images == 0
@@ -984,6 +985,16 @@ class SessionDisplay(QWidget, Ui_session_display):
         super().resizeEvent(event)
         self._adjust_progressbar_width()
         self._update_control_density()
+        if (
+            getattr(self, "toggle_resize_status", False)
+            and hasattr(self, "image")
+            and not self.image.isNull()
+        ):
+            self.image_scaled = self.image.scaled(
+                self.image_display.size(),
+                aspectRatioMode=QtCore.Qt.KeepAspectRatio,
+                transformMode=QtCore.Qt.SmoothTransformation,
+            )
         self.update_image_view()
 
     def closeEvent(self, event):
@@ -2009,6 +2020,24 @@ class SessionDisplay(QWidget, Ui_session_display):
                 self.image_mods["grayscale_mode"] = settings.get(
                     "grayscale_mode", self.image_mods.get("grayscale_mode")
                 )
+            if "hflip" in settings:
+                self.image_mods["hflip"] = bool(settings.get("hflip"))
+            if "vflip" in settings:
+                self.image_mods["vflip"] = bool(settings.get("vflip"))
+            if "brightness" in settings:
+                try:
+                    self.image_mods["brightness"] = int(settings.get("brightness", 0))
+                except Exception:
+                    pass
+            if "contrast" in settings:
+                try:
+                    self.image_mods["contrast"] = float(settings.get("contrast", 1.0))
+                except Exception:
+                    pass
+            if "threshold" in settings:
+                self.image_mods["threshold"] = bool(settings.get("threshold"))
+            if "edge" in settings:
+                self.image_mods["edge"] = bool(settings.get("edge"))
             if "toggle_resize_status" in settings:
                 self.toggle_resize_status = bool(settings.get("toggle_resize_status"))
                 # Keep sizePolicy consistent with toggle semantics: when
