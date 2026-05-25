@@ -481,6 +481,11 @@ class SessionDisplay(
                 return
             dlg = ShortcutMapDialog(parent=self, shortcut_rows=self.shortcut_map_rows)
             dlg.setModal(False)
+            # Clear the cached reference when the dialog closes, otherwise the
+            # next toggle would call isVisible() on a wrapper whose C++ object
+            # was already destroyed by WA_DeleteOnClose, fall into the except
+            # branch, and open the blocking modal dialog instead.
+            dlg.finished.connect(self._clear_shortcut_map_dialog)
             dlg.show()
             dlg.raise_()
             self._shortcut_map_dialog = dlg
@@ -490,6 +495,9 @@ class SessionDisplay(
                 run_shortcut_map_dialog(parent=self, shortcut_rows=self.shortcut_map_rows)
             except Exception:
                 pass
+
+    def _clear_shortcut_map_dialog(self, *_args):
+        self._shortcut_map_dialog = None
 
     def _validate_session_order(self, files):
         required = remaining_required_images(
