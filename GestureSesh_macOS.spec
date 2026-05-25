@@ -6,7 +6,7 @@ from PyInstaller.building.api import COLLECT, EXE, PYZ
 from PyInstaller.building.build_main import Analysis
 
 block_cipher = None
-hiddenimports = collect_submodules('pygame')
+hiddenimports = collect_submodules('pygame') + ['pillow_jxl']
 
 a = Analysis(
     ['src/gesturesesh/main.py'],

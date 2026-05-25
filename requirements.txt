@@ -3,6 +3,7 @@ numpy
 requests
 opencv-python
 Pillow
+pillow-jxl-plugin
 
 # Game and GUI
 pygame

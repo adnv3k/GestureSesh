@@ -5,6 +5,18 @@ All notable changes to GestureSesh will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.5 - 2026-05-25
+
+### Fixed
+
+- JPEG XL (`.jxl`) images now display during sessions. Pillow has no built-in JXL support, so the `pillow-jxl-plugin` dependency was added and registered, removing the reliance on an external `djxl` executable.
+- Manage Order / Selection Order Viewer previews now render `.avif` and `.jxl` files. When Qt lacks a plugin for the format, the preview falls back to decoding via Pillow.
+- Closing the Shortcut Map or Manage Order dialogs now destroys them instead of leaving hidden window instances parented to the session, which had been accumulating in the Windows taskbar thumbnail preview.
+
+### Changed
+
+- Improved Shortcut Map readability with higher-contrast text and explicit row, header, and selection colors.
+
 ## v0.5.4 - 2026-04-24
 
 ### Added

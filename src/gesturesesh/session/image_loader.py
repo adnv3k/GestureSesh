@@ -19,6 +19,13 @@ except ImportError:
     ImageOps = None
     ImageSequence = None
 
+# Registers the JPEG XL codec with Pillow on import. Pillow has no built-in
+# JXL support, so without this plugin .jxl files cannot be decoded.
+try:
+    import pillow_jxl  # noqa: F401
+except ImportError:
+    pass
+
 from gesturesesh.session.constants import SUPPORTED_ANIMATED_TYPES
 
 
@@ -258,26 +265,14 @@ class SessionImageLoaderMixin:
 
     def decode_current_image(self):
         image_path = self.playlist[self.playlist_position]
-        suffix = Path(image_path).suffix.lower()
 
-        if suffix == ".jxl":
-            decoders = (
-                self.decode_with_cv2,
-                self.decode_with_djxl,
-                self.decode_with_pillow,
-            )
-        elif suffix in {".avif", ".gif", ".webp"}:
-            decoders = (
-                self.decode_with_cv2,
-                self.decode_with_pillow,
-                self.decode_with_djxl,
-            )
-        else:
-            decoders = (
-                self.decode_with_cv2,
-                self.decode_with_pillow,
-                self.decode_with_djxl,
-            )
+        # cv2 handles common formats; Pillow covers AVIF/WEBP/JXL (the latter
+        # via pillow-jxl-plugin); djxl is a last-resort fallback for JXL.
+        decoders = (
+            self.decode_with_cv2,
+            self.decode_with_pillow,
+            self.decode_with_djxl,
+        )
 
         for decoder in decoders:
             cvimage = decoder(image_path)
