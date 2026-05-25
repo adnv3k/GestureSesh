@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Manage Order / Selection Order Viewer previews now render `.avif` and `.jxl` files. When Qt lacks a plugin for the format, the preview falls back to decoding via Pillow.
 - Closing the Shortcut Map or Manage Order dialogs now destroys them instead of leaving hidden window instances parented to the session, which had been accumulating in the Windows taskbar thumbnail preview.
 
+*hotfix*
+- **`open_shortcut_map`** now connects `dlg.finished` to a small handler that clears `self._shortcut_map_dialog`. The `WA_DeleteOnClose` change in #38 destroyed the C++ widget on close but left the Python wrapper cached, so the next F1 press called `isVisible()` on a deleted wrapper, raised `RuntimeError`, and silently fell through to the blocking modal `run_shortcut_map_dialog(...)` fallback. 
+
 ### Changed
 
 - Improved Shortcut Map readability with higher-contrast text and explicit row, header, and selection colors.
