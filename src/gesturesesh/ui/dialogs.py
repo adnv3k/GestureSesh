@@ -7,6 +7,18 @@ from pathlib import Path
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+try:
+    from PIL import Image, ImageOps
+except ImportError:
+    Image = None
+    ImageOps = None
+
+# Registers the JPEG XL codec with Pillow so .jxl previews can be decoded.
+try:
+    import pillow_jxl  # noqa: F401
+except ImportError:
+    pass
+
 from gesturesesh.app.selection_order import (
     BREAK_IMAGE_PATH,
     duplicate_indices,
@@ -44,6 +56,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
         random_preview=False,
     ):
         super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
         self.setWindowTitle(title)
         self.resize(1100, 680)
         self.setModal(True)
@@ -245,6 +258,9 @@ class ImageManagerDialog(QtWidgets.QDialog):
 
         image = reader.read()
         if image.isNull():
+            # Qt has no plugin for formats like AVIF/JXL; fall back to Pillow.
+            image = self._read_image_with_pillow(file_path)
+        if image is None or image.isNull():
             return QtGui.QPixmap()
         pixmap = QtGui.QPixmap.fromImage(image)
         if pixmap.isNull():
@@ -256,6 +272,23 @@ class ImageManagerDialog(QtWidgets.QDialog):
                 QtCore.Qt.SmoothTransformation,
             )
         return pixmap
+
+    def _read_image_with_pillow(self, file_path):
+        if Image is None:
+            return None
+        try:
+            with Image.open(file_path) as pil_image:
+                if ImageOps is not None:
+                    pil_image = ImageOps.exif_transpose(pil_image)
+                pil_image = pil_image.convert("RGBA")
+                width, height = pil_image.size
+                data = pil_image.tobytes("raw", "RGBA")
+            image = QtGui.QImage(
+                data, width, height, QtGui.QImage.Format_RGBA8888
+            )
+            return image.copy()
+        except Exception:
+            return None
 
     def _thumbnail_for_path(self, file_path):
         if file_path in self._thumbnail_cache:
@@ -657,6 +690,7 @@ class ShortcutMapDialog(QtWidgets.QDialog):
 
     def __init__(self, parent, shortcut_rows):
         super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
         self.setWindowTitle("Shortcut Map")
         self.resize(620, 460)
         self._shortcut_rows = shortcut_rows
@@ -693,6 +727,18 @@ class ShortcutMapDialog(QtWidgets.QDialog):
         self.tree.setRootIsDecorated(False)
         self.tree.setAlternatingRowColors(True)
         self.tree.setUniformRowHeights(True)
+        self.tree.setStyleSheet(
+            "QTreeWidget {"
+            " background-color: rgb(24, 43, 59);"
+            " alternate-background-color: rgb(33, 57, 76);"
+            " color: rgb(236, 242, 247); }"
+            "QTreeWidget::item { padding: 3px 4px; }"
+            "QTreeWidget::item:selected {"
+            " background-color: rgb(68, 201, 176); color: rgb(12, 24, 33); }"
+            "QHeaderView::section {"
+            " background-color: rgb(30, 56, 78); color: rgb(236, 242, 247);"
+            " padding: 4px; border: 0px; }"
+        )
         self.tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
         self.tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         layout.addWidget(self.tree)
@@ -715,7 +761,7 @@ class ShortcutMapDialog(QtWidgets.QDialog):
             parent = QtWidgets.QTreeWidgetItem([group, ""])
             parent.setFirstColumnSpanned(True)
             parent.setFlags(parent.flags() & ~QtCore.Qt.ItemIsSelectable)
-            parent.setForeground(0, QtGui.QBrush(QtGui.QColor(140, 199, 216)))
+            parent.setForeground(0, QtGui.QBrush(QtGui.QColor(125, 214, 240)))
             font = parent.font(0)
             font.setBold(True)
             parent.setFont(0, font)
