@@ -295,9 +295,45 @@ class SessionImageLoaderMixin:
             else:
                 with open(image_path, "rb") as f:
                     file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
-            return cv2.imdecode(file_bytes, cv2.IMREAD_UNCHANGED)
+            cvimage = cv2.imdecode(file_bytes, cv2.IMREAD_UNCHANGED)
+            return self._apply_exif_orientation(cvimage, image_path)
         except Exception:
             return None
+
+    def _apply_exif_orientation(self, cvimage, image_path):
+        """Rotate/flip a cv2-decoded array to honor the source's EXIF orientation.
+
+        ``cv2.imdecode(..., IMREAD_UNCHANGED)`` deliberately ignores the EXIF
+        orientation tag (unlike ``IMREAD_COLOR``), so photos shot on phones and
+        cameras would display rotated. We read just the orientation tag via
+        Pillow (no pixel decode) and apply the matching transform, preserving the
+        alpha channel and bit depth that ``IMREAD_UNCHANGED`` gives us. The
+        transforms mirror ``PIL.ImageOps.exif_transpose`` so still images match
+        the Selection Order Viewer thumbnails.
+        """
+        if cvimage is None or Image is None or image_path.startswith(":/"):
+            return cvimage
+        try:
+            with Image.open(image_path) as pil_image:
+                orientation = int(pil_image.getexif().get(0x0112, 1) or 1)
+        except Exception:
+            return cvimage
+
+        if orientation == 2:  # mirror horizontal
+            return cv2.flip(cvimage, 1)
+        if orientation == 3:  # rotate 180
+            return cv2.rotate(cvimage, cv2.ROTATE_180)
+        if orientation == 4:  # mirror vertical
+            return cv2.flip(cvimage, 0)
+        if orientation == 5:  # mirror along the main diagonal (transpose)
+            return cv2.transpose(cvimage)
+        if orientation == 6:  # rotate 90 clockwise
+            return cv2.rotate(cvimage, cv2.ROTATE_90_CLOCKWISE)
+        if orientation == 7:  # mirror along the anti-diagonal (transverse)
+            return cv2.rotate(cv2.transpose(cvimage), cv2.ROTATE_180)
+        if orientation == 8:  # rotate 90 counterclockwise
+            return cv2.rotate(cvimage, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        return cvimage
 
     def decode_with_pillow(self, image_path):
         if Image is None or image_path.startswith(":/"):
