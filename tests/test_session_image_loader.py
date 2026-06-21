@@ -2,13 +2,16 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import io
 import sys
+import tempfile
 import types
 import unittest
 from collections import OrderedDict
 from unittest.mock import MagicMock
 
 import numpy as np
+from PIL import Image
 from PyQt5.QtWidgets import QApplication
 
 sys.path.insert(
@@ -101,3 +104,76 @@ class TestSessionImageLoaderMixin(unittest.TestCase):
         assert SessionImageLoaderMixin.normalize_cvimage_dtype(
             fake, float_image
         ).tolist() == [[0, 255]]
+
+
+class TestExifOrientation(unittest.TestCase):
+    """``IMREAD_UNCHANGED`` ignores EXIF orientation, so decode_with_cv2 must
+    re-apply it (regression from the 0.5.x image-loading refactor)."""
+
+    @staticmethod
+    def _decoder_fake():
+        fake = types.SimpleNamespace()
+        fake._apply_exif_orientation = (
+            lambda cvimage, path: SessionImageLoaderMixin._apply_exif_orientation(
+                fake, cvimage, path
+            )
+        )
+        return fake
+
+    @staticmethod
+    def _write_jpeg(path, height, width, orientation):
+        # A distinctive bright patch in the top-left so we can confirm not just
+        # the shape swap but the rotation direction.
+        arr = np.full((height, width, 3), 30, dtype=np.uint8)
+        arr[0 : height // 2, 0 : width // 2] = (255, 0, 0)
+        image = Image.fromarray(arr)
+        exif = image.getexif()
+        exif[0x0112] = orientation
+        image.save(path, format="JPEG", quality=95, exif=exif)
+
+    def test_decode_with_cv2_rotates_per_orientation_tag(self):
+        fake = self._decoder_fake()
+        with tempfile.TemporaryDirectory() as tmp:
+            # Stored pixels are landscape 20x40 (H x W).
+            for orientation, expect_swap in ((1, False), (6, True), (8, True)):
+                path = os.path.join(tmp, f"o{orientation}.jpg")
+                self._write_jpeg(path, height=20, width=40, orientation=orientation)
+                out = SessionImageLoaderMixin.decode_with_cv2(fake, path)
+                self.assertIsNotNone(out)
+                h, w = out.shape[:2]
+                if expect_swap:
+                    self.assertEqual((h, w), (40, 20), f"orientation {orientation}")
+                else:
+                    self.assertEqual((h, w), (20, 40), f"orientation {orientation}")
+
+    def test_orientation_6_and_8_rotate_opposite_directions(self):
+        fake = self._decoder_fake()
+        with tempfile.TemporaryDirectory() as tmp:
+            p6 = os.path.join(tmp, "o6.jpg")
+            p8 = os.path.join(tmp, "o8.jpg")
+            self._write_jpeg(p6, height=20, width=40, orientation=6)
+            self._write_jpeg(p8, height=20, width=40, orientation=8)
+            out6 = SessionImageLoaderMixin.decode_with_cv2(fake, p6)
+            out8 = SessionImageLoaderMixin.decode_with_cv2(fake, p8)
+            # Both become portrait but the red patch lands in opposite corners:
+            # orientation 6 (90 CW) -> top-right; orientation 8 (90 CCW) -> bottom-left.
+            def is_red(px):
+                b, g, r = int(px[0]), int(px[1]), int(px[2])
+                return r > 150 and g < 80 and b < 80
+            self.assertTrue(is_red(out6[2, -2]))   # top-right
+            self.assertTrue(is_red(out8[-3, 1]))   # bottom-left
+
+    def test_apply_exif_orientation_is_a_noop_without_metadata(self):
+        fake = self._decoder_fake()
+        cvimage = np.zeros((4, 6, 3), dtype=np.uint8)
+        # Resource paths (the break image) and missing Pillow metadata are left
+        # untouched rather than raising.
+        self.assertIs(
+            SessionImageLoaderMixin._apply_exif_orientation(
+                fake, cvimage, ":/break/break.png"
+            ),
+            cvimage,
+        )
+        self.assertIsNone(
+            SessionImageLoaderMixin._apply_exif_orientation(fake, None, "missing.jpg")
+        )
