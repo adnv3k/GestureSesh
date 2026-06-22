@@ -177,18 +177,78 @@ class MainAppSelectionSetsMixin:
         missing = len(stored_files) - len(valid_files)
         if missing > 0:
             self.show_temporary_status(
-                f"Loaded {len(valid_files)} of {len(stored_files)} images "
-                f"— {missing} currently unavailable (kept in this preset).",
-                4000,
+                f"Loaded {len(valid_files)} of {len(stored_files)} images — "
+                f"{missing} not found. Open Manage Order to review them.",
+                5000,
             )
         self.display_status()
 
-    def write_back_active_set(self) -> None:
+    def _active_set_unavailable(self) -> dict:
+        """Files/folders linked to the active preset that aren't on disk now.
+
+        Lets the Manage Order viewer tell the user *which* saved entries a
+        preset switch could not load (they stay saved in the preset). Returns
+        empty lists when there is no active preset or it has no linked set.
+        """
+        name = getattr(self, "_active_set_preset", None)
+        preset = self.presets.get(name) if name else None
+        set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+        data = self.selection_sets.get(set_id) if set_id else None
+        if not data:
+            return {"files": [], "folders": []}
+        stored_files = list(data.get("files", []))
+        loadable = set(self.check_files(stored_files)["valid_files"])
+        return {
+            "files": [f for f in stored_files if f not in loadable],
+            "folders": [d for d in data.get("folders", []) if not os.path.isdir(d)],
+        }
+
+    def _merge_missing_into_order(self, live_files):
+        """Return *live_files* with the active preset's stored-but-unavailable
+        entries reinserted at their stored positions.
+
+        The Manage Order viewer shows the full set and its result is written
+        back authoritatively, so appending missing items at the end would let an
+        unchanged Apply reorder the saved set (e.g. ``[missingA, presentB]`` ->
+        ``[presentB, missingA]``). Reinserting each unavailable entry just before
+        the next stored entry that is still loadable keeps the saved order stable
+        for a no-op round trip, while preserving live reordering and additions.
+        """
+        result = list(live_files)
+        name = getattr(self, "_active_set_preset", None)
+        preset = self.presets.get(name) if name else None
+        set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+        data = self.selection_sets.get(set_id) if set_id else None
+        if not data:
+            return result
+        stored = list(data.get("files", []))
+        loadable = set(self.check_files(stored)["valid_files"])
+        live_set = set(live_files)
+        for index, path in enumerate(stored):
+            if path in loadable or path in result:
+                continue  # available (already live) or already placed
+            anchor = next(
+                (stored[j] for j in range(index + 1, len(stored)) if stored[j] in live_set),
+                None,
+            )
+            if anchor in result:
+                result.insert(result.index(anchor), path)
+            else:
+                result.append(path)
+        return result
+
+    def write_back_active_set(self, snapshot=None, *, authoritative=False) -> None:
         """Boundary write: persist the live selection to the active preset's set.
 
         Applies copy-on-write when the current set is shared, creates a set on
         first write, GCs orphans, and persists. A no-op when there is no real
         active preset or when nothing changed.
+
+        With an explicit *snapshot* the caller supplies the files/folders to
+        store instead of the live selection; *authoritative* then skips the
+        offline-preserving merge so the stored set becomes exactly *snapshot*.
+        Used after the user curates the full set (including missing entries) in
+        Manage Order, so a removal there actually sticks.
         """
         if getattr(self, "_loading", False):
             return
@@ -196,24 +256,30 @@ class MainAppSelectionSetsMixin:
         if not name or name not in self.presets:
             return
 
-        snapshot = self._selection_snapshot()
+        if snapshot is None:
+            snapshot = self._selection_snapshot()
         preset = self._wrapped_preset(name)
         existing_id = preset.get("selection_id")
 
         if existing_id and existing_id in self.selection_sets:
             stored = self.selection_sets[existing_id]
-            # Preserve entries missing only because their drive/tree is
-            # disconnected; never let an offline drive prune the stored set.
-            merged = self._merge_unavailable(snapshot, stored)
-            if merged == stored:
+            if authoritative:
+                # Caller curated the full set (e.g. via Manage Order); store it
+                # verbatim so removals are honored.
+                new_data = snapshot
+            else:
+                # Preserve entries missing only because their drive/tree is
+                # disconnected; never let an offline drive prune the stored set.
+                new_data = self._merge_unavailable(snapshot, stored)
+            if new_data == stored:
                 return  # no real change
             if self._set_refcount(existing_id) > 1:
                 # shared + changed -> fork a new set for this preset
                 new_id = self._new_set_id()
-                self.selection_sets[new_id] = merged
+                self.selection_sets[new_id] = new_data
                 preset["selection_id"] = new_id
             else:
-                self.selection_sets[existing_id] = merged
+                self.selection_sets[existing_id] = new_data
         else:
             # No link yet: only worth remembering if there is something to store.
             if not snapshot["files"] and not snapshot["folders"]:
