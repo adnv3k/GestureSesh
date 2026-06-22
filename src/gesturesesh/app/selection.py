@@ -177,7 +177,10 @@ class MainAppSelectionMixin:
 
     def open_selection_order_viewer(self):
         """Open the selection viewer/order editor from the main window."""
-        if not self.selection["files"]:
+        unavailable = self._active_set_unavailable()
+        if not self.selection["files"] and not (
+            unavailable["files"] or unavailable["folders"]
+        ):
             self.show_error_status("No images selected to manage.", 2500)
             return
 
@@ -190,21 +193,42 @@ class MainAppSelectionMixin:
         files = effective_selection_order(
             self.selection["files"], randomize=random_preview
         )
+        # Surface the active preset's saved-but-missing entries as MISSING rows
+        # the user can see and act on (Remove Missing), instead of dropping them
+        # silently. De-dupe against what is already loaded.
+        seen_files = set(files)
+        files += [f for f in unavailable["files"] if f not in seen_files]
+        folders = list(self.selection["folders"])
+        seen_folders = set(folders)
+        folders += [d for d in unavailable["folders"] if d not in seen_folders]
+
         result = run_selection_order_dialog(
             parent=self,
             files=files,
-            folders=self.selection["folders"],
+            folders=folders,
             schedule=self.session_schedule,
             valid_file_types=self.valid_file_types,
             duplicate_indices_fn=duplicate_indices,
             title="Selection Order",
             random_preview=random_preview,
+            focus_missing=bool(unavailable["files"] or unavailable["folders"]),
         )
         if result is None:
             return
 
-        self.selection["files"] = result["files"]
-        self.selection["folders"] = result["folders"]
+        # The viewer showed every entry (including missing ones), so its result
+        # is the authoritative set for this preset: persist it directly so that
+        # "Remove Missing" sticks even for offline-drive files. The live
+        # selection then keeps only what is currently loadable.
+        self.write_back_active_set(
+            snapshot={
+                "files": list(result["files"]),
+                "folders": list(result["folders"]),
+            },
+            authoritative=True,
+        )
+        self.selection["files"] = [f for f in result["files"] if os.path.isfile(f)]
+        self.selection["folders"] = [d for d in result["folders"] if os.path.isdir(d)]
         if result.get("random_preview"):
             self.randomize_selection.setChecked(False)
             self.show_temporary_status(

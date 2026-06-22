@@ -245,6 +245,177 @@ class TestSelectionSets(unittest.TestCase):
         self.app.apply_selection_set("does-not-exist")
         self.assertEqual(self.app.selection, {"files": ["/keep.png"], "folders": ["/keep"]})
 
+    # -- unavailable reporting -------------------------------------------------
+
+    def test_active_set_unavailable_lists_missing_files_and_folders(self):
+        present = self._touch("here.png")
+        gone = os.path.join(self.test_dir, "gone.png")
+        missing_dir = os.path.join(self.test_dir, "no_such_dir")
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "set1"}}
+        self.app.selection_sets = {
+            "set1": {"files": [present, gone], "folders": [self.test_dir, missing_dir]}
+        }
+        self.app._active_set_preset = "A"
+
+        result = self.app._active_set_unavailable()
+
+        self.assertEqual(result["files"], [gone])
+        self.assertEqual(result["folders"], [missing_dir])
+
+    def test_active_set_unavailable_empty_when_all_present(self):
+        present = self._touch("here.png")
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "set1"}}
+        self.app.selection_sets = {
+            "set1": {"files": [present], "folders": [self.test_dir]}
+        }
+        self.app._active_set_preset = "A"
+
+        self.assertEqual(
+            self.app._active_set_unavailable(), {"files": [], "folders": []}
+        )
+
+    def test_active_set_unavailable_empty_without_active_preset(self):
+        self.app._active_set_preset = None
+        self.assertEqual(
+            self.app._active_set_unavailable(), {"files": [], "folders": []}
+        )
+
+    def test_active_set_unavailable_empty_when_preset_has_no_link(self):
+        self.app.presets = {"A": {"schedule": {}}}  # no selection_id
+        self.app._active_set_preset = "A"
+        self.assertEqual(
+            self.app._active_set_unavailable(), {"files": [], "folders": []}
+        )
+
+    # -- authoritative write (Manage Order curation) ---------------------------
+
+    def test_authoritative_write_drops_offline_file_user_removed(self):
+        # An offline file (whole dir gone) the user removed in Manage Order must
+        # stay removed, even though the boundary merge would normally preserve it.
+        present = self._touch("keep.png")
+        offline = "/mnt/usb/gone.png"  # parent dir missing -> reads as offline
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "set1"}}
+        self.app.selection_sets = {"set1": {"files": [present, offline], "folders": []}}
+        self.app._active_set_preset = "A"
+
+        self.app.write_back_active_set(
+            snapshot={"files": [present], "folders": []}, authoritative=True
+        )
+
+        self.assertEqual(
+            self.app.selection_sets["set1"], {"files": [present], "folders": []}
+        )
+
+    def test_authoritative_write_keeps_supplied_missing_files(self):
+        present = self._touch("keep.png")
+        offline = "/mnt/usb/later.png"
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "set1"}}
+        self.app.selection_sets = {"set1": {"files": [present], "folders": []}}
+        self.app._active_set_preset = "A"
+
+        self.app.write_back_active_set(
+            snapshot={"files": [present, offline], "folders": []},
+            authoritative=True,
+        )
+
+        self.assertEqual(
+            self.app.selection_sets["set1"],
+            {"files": [present, offline], "folders": []},
+        )
+
+    def test_authoritative_write_forks_shared_set(self):
+        present = self._touch("keep.png")
+        self.app.presets = {
+            "A": {"schedule": {}, "selection_id": "set1"},
+            "B": {"schedule": {}, "selection_id": "set1"},
+        }
+        self.app.selection_sets = {"set1": {"files": ["/x.png"], "folders": []}}
+        self.app._active_set_preset = "B"
+
+        self.app.write_back_active_set(
+            snapshot={"files": [present], "folders": []}, authoritative=True
+        )
+
+        # A keeps the shared set; B forks its own.
+        self.assertEqual(self.app.presets["A"]["selection_id"], "set1")
+        new_id = self.app.presets["B"]["selection_id"]
+        self.assertNotEqual(new_id, "set1")
+        self.assertEqual(
+            self.app.selection_sets[new_id], {"files": [present], "folders": []}
+        )
+        self.assertEqual(
+            self.app.selection_sets["set1"], {"files": ["/x.png"], "folders": []}
+        )
+
+    # -- Manage Order viewer integration ---------------------------------------
+
+    def _prime_viewer_app(self, set_files):
+        """Set up an active preset + live selection for viewer tests."""
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "set1"}}
+        self.app.selection_sets = {"set1": {"files": list(set_files), "folders": []}}
+        self.app._active_set_preset = "A"
+        loadable = [f for f in set_files if os.path.isfile(f)]
+        self.app.selection = {"files": loadable, "folders": []}
+        self.app.session_schedule = []
+        self.app.grab_schedule = types.MethodType(lambda s: None, self.app)
+        self.app.randomize_selection.isChecked = lambda: False
+
+    def test_viewer_feeds_missing_files_as_rows(self):
+        present = self._touch("keep.png")
+        offline = "/mnt/usb/gone.png"
+        self._prime_viewer_app([present, offline])
+
+        with patch(
+            "gesturesesh.app.selection.run_selection_order_dialog",
+            return_value={"files": [present], "folders": [], "random_preview": False},
+        ) as mock_dialog:
+            self.app.open_selection_order_viewer()
+
+        # The viewer received the loaded file AND the missing one (as a row).
+        _, kwargs = mock_dialog.call_args
+        self.assertEqual(kwargs["files"], [present, offline])
+
+    def test_viewer_removing_missing_file_sticks(self):
+        present = self._touch("keep.png")
+        offline = "/mnt/usb/gone.png"  # offline drive -> merge would resurrect it
+        self._prime_viewer_app([present, offline])
+
+        # User removes the MISSING row and applies.
+        with patch(
+            "gesturesesh.app.selection.run_selection_order_dialog",
+            return_value={"files": [present], "folders": [], "random_preview": False},
+        ):
+            self.app.open_selection_order_viewer()
+
+        self.assertEqual(
+            self.app.selection_sets["set1"], {"files": [present], "folders": []}
+        )
+        self.assertEqual(self.app.selection["files"], [present])
+
+    def test_viewer_keeping_missing_file_preserves_in_set_not_live(self):
+        present = self._touch("keep.png")
+        offline = "/mnt/usb/later.png"
+        self._prime_viewer_app([present, offline])
+
+        # User keeps the MISSING row and applies.
+        with patch(
+            "gesturesesh.app.selection.run_selection_order_dialog",
+            return_value={
+                "files": [present, offline],
+                "folders": [],
+                "random_preview": False,
+            },
+        ):
+            self.app.open_selection_order_viewer()
+
+        # Kept in the preset for when the drive returns...
+        self.assertEqual(
+            self.app.selection_sets["set1"],
+            {"files": [present, offline], "folders": []},
+        )
+        # ...but excluded from the live, loadable-only selection.
+        self.assertEqual(self.app.selection["files"], [present])
+
     # -- switch handler --------------------------------------------------------
 
     def test_on_preset_switch_writes_old_and_applies_new(self):
