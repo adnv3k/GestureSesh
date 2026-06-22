@@ -298,26 +298,31 @@ class MainAppSelectionSetsMixin:
     def on_preset_switch(self, *args) -> None:
         """Deliberate user preset switch: write back the old set, apply the new.
 
-        Wired to ``QComboBox.activated`` so it fires only on real user selection,
-        not on programmatic index changes or text editing.
+        Wired to ``QComboBox.activated`` (dropdown pick) and the editable line
+        edit's ``editingFinished`` (a typed name committed with Enter/focus-out),
+        so it runs on deliberate selection — not on programmatic index changes
+        or mid-typing text edits.
         """
         if getattr(self, "_loading", False):
             return
         new_name = self.preset_loader_box.currentText()
         if new_name == self._active_set_preset:
             return
+        if new_name not in self.presets:
+            # A typed, not-yet-saved name (Save As). This is not a switch:
+            # writing back here would persist the current selection — intended
+            # for the new preset — onto the OLD preset. Leave the active preset
+            # as-is; save() adopts the new name and stores the selection itself.
+            return
 
         # Boundary write for the preset we are leaving (still the live selection).
         self.write_back_active_set()
 
         # Read for the preset we are entering.
-        self._active_set_preset = new_name if new_name in self.presets else None
-        if self._active_set_preset:
-            preset = self.presets.get(new_name)
-            set_id = (
-                preset.get("selection_id") if isinstance(preset, dict) else None
-            )
-            if set_id:
-                self.apply_selection_set(set_id)
-            # No linked set -> leave the current selection; it becomes this
-            # preset's set on the next boundary write.
+        self._active_set_preset = new_name
+        preset = self.presets.get(new_name)
+        set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+        if set_id:
+            self.apply_selection_set(set_id)
+        # No linked set -> leave the current selection; it becomes this preset's
+        # set on the next boundary write.

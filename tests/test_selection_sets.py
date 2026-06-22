@@ -511,6 +511,26 @@ class TestSelectionSets(unittest.TestCase):
         self.assertEqual(self.app.selection["files"], ["/keep.png"])
         self.assertEqual(self.app._active_set_preset, "B")
 
+    def test_on_preset_switch_ignores_unsaved_typed_name(self):
+        # Save As: committing a brand-new (unsaved) name must NOT write the
+        # current selection — intended for the new preset — back onto the
+        # previously active preset (Codex P2). on_preset_switch is a no-op for
+        # names that are not saved presets; save() adopts the name instead.
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "setA"}}
+        self.app.selection_sets = {"setA": {"files": ["/a.png"], "folders": []}}
+        self.app._active_set_preset = "A"
+        # Selection diverged from A's set, intended for the new preset.
+        self.app.selection = {"files": ["/new.png"], "folders": []}
+        self.app.preset_loader_box.currentText = lambda: "BrandNew"
+
+        self.app.on_preset_switch()
+
+        # A's set is untouched and it stays active (save() will retarget it).
+        self.assertEqual(
+            self.app.selection_sets["setA"], {"files": ["/a.png"], "folders": []}
+        )
+        self.assertEqual(self.app._active_set_preset, "A")
+
     # -- deleting the active preset --------------------------------------------
 
     def test_delete_active_preset_applies_fallback_set(self):
