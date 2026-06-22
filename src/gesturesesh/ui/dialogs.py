@@ -25,6 +25,7 @@ from gesturesesh.app.selection_order import (
     selection_stats,
 )
 from gesturesesh.session.constants import is_hidden_file
+from gesturesesh.utils.file_reveal import reveal_in_file_manager
 
 
 class OrderListWidget(QtWidgets.QListWidget):
@@ -164,6 +165,9 @@ class ImageManagerDialog(QtWidgets.QDialog):
         self.sort_name_btn = QtWidgets.QPushButton("Sort Name", self)
         self.sort_path_btn = QtWidgets.QPushButton("Sort Path", self)
         self.open_folder_btn = QtWidgets.QPushButton("Open Folder", self)
+        self.open_folder_btn.setToolTip(
+            "Reveal the highlighted image in your file browser, selecting it."
+        )
         self.clear_all_btn = QtWidgets.QPushButton("Clear All", self)
 
         for widget in (
@@ -668,11 +672,10 @@ class ImageManagerDialog(QtWidgets.QDialog):
             return
 
         target = self.working_files[indices[0]]
-        folder = os.path.dirname(target)
-        if folder and os.path.isdir(folder):
-            QtGui.QDesktopServices.openUrl(
-                QtCore.QUrl.fromLocalFile(os.path.abspath(folder))
-            )
+        if target and target != BREAK_IMAGE_PATH:
+            # Reveal-and-select the highlighted image so it's easy to spot,
+            # mirroring the session window's "open folder" behavior.
+            reveal_in_file_manager(target)
 
     def _clear_all(self):
         self.working_files = [
