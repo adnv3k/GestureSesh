@@ -6,7 +6,6 @@ import math
 import random
 import sys
 from collections import OrderedDict
-from pathlib import Path
 
 from pygame import mixer
 
