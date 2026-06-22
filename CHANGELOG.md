@@ -5,6 +5,13 @@ All notable changes to GestureSesh will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.6 - 2026-06-21
+
+### Fixed
+
+- Photos carrying an EXIF orientation tag (most phone and camera images) once again display upright during sessions. The image-loading refactor in v0.5.4 routed every format through `cv2.imdecode(..., IMREAD_UNCHANGED)`, which ignores EXIF orientation, so images that auto-rotated under v0.5.1's `IMREAD_COLOR` path began appearing rotated 90°. The orientation tag is now read and re-applied after decoding, preserving the alpha channel and bit depth.
+- macOS AppleDouble sidecar files (`._name.ext`) and other hidden dotfiles are no longer added to selections. They mirror a real image's extension but contain only metadata, so they were being queued and then failing to decode mid-session. They are now skipped silently when adding files or scanning folders.
+
 ## v0.5.5 - 2026-05-25
 
 ### Fixed

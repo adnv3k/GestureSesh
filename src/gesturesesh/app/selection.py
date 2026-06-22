@@ -11,6 +11,7 @@ from gesturesesh.app.selection_order import (
     duplicate_indices,
     effective_selection_order,
 )
+from gesturesesh.session.constants import is_hidden_file
 from gesturesesh.ui.dialogs import run_selection_order_dialog
 
 
@@ -122,6 +123,11 @@ class MainAppSelectionMixin:
         """Checks if files are supported file types and are accessible."""
         res = {"valid_files": [], "invalid_files": []}
         for file in files:
+            # Hidden dotfiles and macOS AppleDouble sidecars (._name.ext) are OS
+            # noise, not user images; skip them silently so they are neither
+            # added nor counted as unsupported files.
+            if is_hidden_file(file):
+                continue
             ext = os.path.splitext(file)[1].lower()
             if ext not in self.valid_file_types:
                 res["invalid_files"].append(file)

@@ -24,6 +24,7 @@ from gesturesesh.app.selection_order import (
     duplicate_indices,
     selection_stats,
 )
+from gesturesesh.session.constants import is_hidden_file
 
 
 class OrderListWidget(QtWidgets.QListWidget):
@@ -543,6 +544,10 @@ class ImageManagerDialog(QtWidgets.QDialog):
     def _check_files(self, files):
         valid = []
         for file_path in files:
+            # Skip hidden dotfiles / macOS AppleDouble sidecars (._name.ext);
+            # they share a real image's extension but aren't decodable images.
+            if is_hidden_file(file_path):
+                continue
             ext = os.path.splitext(file_path)[1].lower()
             if self._valid_file_types and ext not in self._valid_file_types:
                 continue

@@ -21,17 +21,24 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
 
 from gesturesesh.main import MainApp
+from gesturesesh.session.constants import is_hidden_file
 
 class TestableMainApp:
     """Lightweight testable version of MainApp for testing scan_directories"""
     def __init__(self):
         self.valid_file_types = {".bmp", ".jpg", ".jpeg", ".png"}
         self.selection = {"files": [], "folders": []}
-    
+
     def check_files(self, files):
-        """Checks if files are supported file types and are accessible."""
+        """Checks if files are supported file types and are accessible.
+
+        Mirrors ``MainAppSelectionMixin.check_files``: hidden dotfiles and macOS
+        AppleDouble sidecars (._name.ext) are skipped silently.
+        """
         res = {"valid_files": [], "invalid_files": []}
         for file in files:
+            if is_hidden_file(file):
+                continue
             ext = os.path.splitext(file)[1].lower()
             if ext not in self.valid_file_types:
                 res["invalid_files"].append(file)
@@ -216,6 +223,24 @@ class TestScanDirectories(unittest.TestCase):
         self.assertIsInstance(valid, int)
         self.assertIsInstance(invalid, int)
         
+    def test_appledouble_sidecars_are_skipped(self):
+        """macOS AppleDouble sidecars (._name.jpg) in a scanned folder must not
+        be added to the selection or counted as invalid."""
+        # These appear alongside real files on FAT/exFAT/SMB/USB volumes.
+        for name in ("._image1.jpg", "._sub_image1.jpeg", ".DS_Store"):
+            Path(os.path.join(self.test_dir, name)).touch()
+        Path(os.path.join(self.sub_dir, "._sub_image2.png")).touch()
+
+        self.app.selection = {"files": [], "folders": []}
+        valid, invalid = self.app.scan_directories([self.test_dir])
+
+        # Same totals as the clean tree: 5 valid, 2 invalid (txt + mp4).
+        self.assertEqual(valid, 5)
+        self.assertEqual(invalid, 2)
+        selected_basenames = [os.path.basename(f) for f in self.app.selection["files"]]
+        self.assertNotIn("._image1.jpg", selected_basenames)
+        self.assertFalse(any(name.startswith("._") for name in selected_basenames))
+
     def test_case_insensitive_extensions(self):
         """Test that file extensions are handled case-insensitively"""
         # Create files with uppercase extensions
