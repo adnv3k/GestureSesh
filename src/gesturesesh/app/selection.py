@@ -190,17 +190,14 @@ class MainAppSelectionMixin:
             self.session_schedule = []
 
         random_preview = bool(self.randomize_selection.isChecked())
-        files = effective_selection_order(
-            self.selection["files"], randomize=random_preview
-        )
         # Surface the active preset's saved-but-missing entries as MISSING rows
         # the user can see and act on (Remove Missing), instead of dropping them
-        # silently. De-dupe against what is already loaded.
-        seen_files = set(files)
-        files += [f for f in unavailable["files"] if f not in seen_files]
+        # silently. Reinsert them at their stored positions (not appended) so an
+        # unchanged Apply preserves saved order; randomize then shuffles all.
+        files = self._merge_missing_into_order(self.selection["files"])
+        files = effective_selection_order(files, randomize=random_preview)
         folders = list(self.selection["folders"])
-        seen_folders = set(folders)
-        folders += [d for d in unavailable["folders"] if d not in seen_folders]
+        folders += [d for d in unavailable["folders"] if d not in set(folders)]
 
         result = run_selection_order_dialog(
             parent=self,
@@ -227,7 +224,9 @@ class MainAppSelectionMixin:
             },
             authoritative=True,
         )
-        self.selection["files"] = [f for f in result["files"] if os.path.isfile(f)]
+        # Revalidate (not just isfile): drop unsupported or hidden paths such as
+        # AppleDouble sidecars so the next session never tries to decode them.
+        self.selection["files"] = self.check_files(result["files"])["valid_files"]
         self.selection["folders"] = [d for d in result["folders"] if os.path.isdir(d)]
         if result.get("random_preview"):
             self.randomize_selection.setChecked(False)

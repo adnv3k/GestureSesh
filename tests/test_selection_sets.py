@@ -354,7 +354,7 @@ class TestSelectionSets(unittest.TestCase):
         self.app.presets = {"A": {"schedule": {}, "selection_id": "set1"}}
         self.app.selection_sets = {"set1": {"files": list(set_files), "folders": []}}
         self.app._active_set_preset = "A"
-        loadable = [f for f in set_files if os.path.isfile(f)]
+        loadable = self.app.check_files(set_files)["valid_files"]
         self.app.selection = {"files": loadable, "folders": []}
         self.app.session_schedule = []
         self.app.grab_schedule = types.MethodType(lambda s: None, self.app)
@@ -414,6 +414,58 @@ class TestSelectionSets(unittest.TestCase):
             {"files": [present, offline], "folders": []},
         )
         # ...but excluded from the live, loadable-only selection.
+        self.assertEqual(self.app.selection["files"], [present])
+
+    def test_viewer_preserves_stored_order_on_unchanged_apply(self):
+        # Regression: missing entries must keep their stored position so an
+        # unchanged Apply does not reorder the set (Codex P2).
+        present = self._touch("present.png")
+        missing = "/mnt/usb/missing.png"  # stored BEFORE the present file
+        self._prime_viewer_app([missing, present])
+
+        def echo(*a, **k):
+            # Dialog echoes back exactly what it was shown (Apply, no edits).
+            return {
+                "files": list(k["files"]),
+                "folders": list(k["folders"]),
+                "random_preview": False,
+            }
+
+        with patch(
+            "gesturesesh.app.selection.run_selection_order_dialog", side_effect=echo
+        ) as mock_dialog:
+            self.app.open_selection_order_viewer()
+
+        # Missing item is reinserted at its stored position, not appended.
+        self.assertEqual(mock_dialog.call_args.kwargs["files"], [missing, present])
+        # Round trip preserves saved order instead of [present, missing].
+        self.assertEqual(self.app.selection_sets["set1"]["files"], [missing, present])
+
+    def test_viewer_keeps_invalid_existing_file_out_of_live(self):
+        # Regression: an existing but unsupported saved path (e.g. an AppleDouble
+        # sidecar) must not re-enter the live selection (Codex P2).
+        present = self._touch("present.png")
+        sidecar = self._touch("note.txt")  # exists, but unsupported extension
+
+        self._prime_viewer_app([present, sidecar])
+
+        def echo(*a, **k):
+            return {
+                "files": list(k["files"]),
+                "folders": list(k["folders"]),
+                "random_preview": False,
+            }
+
+        with patch(
+            "gesturesesh.app.selection.run_selection_order_dialog", side_effect=echo
+        ):
+            self.app.open_selection_order_viewer()
+
+        # Stored set keeps the user's full curated list...
+        self.assertEqual(
+            self.app.selection_sets["set1"]["files"], [present, sidecar]
+        )
+        # ...but the live selection excludes the unsupported file.
         self.assertEqual(self.app.selection["files"], [present])
 
     # -- switch handler --------------------------------------------------------

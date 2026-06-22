@@ -203,6 +203,40 @@ class MainAppSelectionSetsMixin:
             "folders": [d for d in data.get("folders", []) if not os.path.isdir(d)],
         }
 
+    def _merge_missing_into_order(self, live_files):
+        """Return *live_files* with the active preset's stored-but-unavailable
+        entries reinserted at their stored positions.
+
+        The Manage Order viewer shows the full set and its result is written
+        back authoritatively, so appending missing items at the end would let an
+        unchanged Apply reorder the saved set (e.g. ``[missingA, presentB]`` ->
+        ``[presentB, missingA]``). Reinserting each unavailable entry just before
+        the next stored entry that is still loadable keeps the saved order stable
+        for a no-op round trip, while preserving live reordering and additions.
+        """
+        result = list(live_files)
+        name = getattr(self, "_active_set_preset", None)
+        preset = self.presets.get(name) if name else None
+        set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+        data = self.selection_sets.get(set_id) if set_id else None
+        if not data:
+            return result
+        stored = list(data.get("files", []))
+        loadable = set(self.check_files(stored)["valid_files"])
+        live_set = set(live_files)
+        for index, path in enumerate(stored):
+            if path in loadable or path in result:
+                continue  # available (already live) or already placed
+            anchor = next(
+                (stored[j] for j in range(index + 1, len(stored)) if stored[j] in live_set),
+                None,
+            )
+            if anchor in result:
+                result.insert(result.index(anchor), path)
+            else:
+                result.append(path)
+        return result
+
     def write_back_active_set(self, snapshot=None, *, authoritative=False) -> None:
         """Boundary write: persist the live selection to the active preset's set.
 
