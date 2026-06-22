@@ -302,8 +302,26 @@ class MainAppPresetsMixin:
         finally:
             self._loading = False
         if self._active_set_preset == preset_name:
+            # The active preset was deleted and the combo has fallen to an
+            # adjacent entry (already loaded by the index-change -> load
+            # wiring). The live selection still belongs to the deleted preset,
+            # so it must not reach the fallback's set on the next boundary
+            # write.
             current = self.preset_loader_box.currentText()
-            self._active_set_preset = current if current in self.presets else None
+            fallback = current if current in self.presets else None
+            preset = self.presets.get(fallback) if fallback else None
+            set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+            if set_id:
+                # Treat this as a switch-in to the fallback: adopt it and apply
+                # its saved set so the live selection matches it.
+                self._active_set_preset = fallback
+                self.apply_selection_set(set_id)
+            else:
+                # Nothing to switch to: drop the active link so a later boundary
+                # write is a no-op instead of overwriting the fallback's set
+                # with the deleted preset's stale selection. A deliberate switch
+                # re-establishes tracking.
+                self._active_set_preset = None
 
     def load(self):
         preset_name = self.preset_loader_box.currentText()

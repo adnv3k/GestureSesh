@@ -511,6 +511,126 @@ class TestSelectionSets(unittest.TestCase):
         self.assertEqual(self.app.selection["files"], ["/keep.png"])
         self.assertEqual(self.app._active_set_preset, "B")
 
+    def test_on_preset_switch_ignores_unsaved_typed_name(self):
+        # Save As: committing a brand-new (unsaved) name must NOT write the
+        # current selection — intended for the new preset — back onto the
+        # previously active preset (Codex P2). on_preset_switch is a no-op for
+        # names that are not saved presets; save() adopts the name instead.
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "setA"}}
+        self.app.selection_sets = {"setA": {"files": ["/a.png"], "folders": []}}
+        self.app._active_set_preset = "A"
+        # Selection diverged from A's set, intended for the new preset.
+        self.app.selection = {"files": ["/new.png"], "folders": []}
+        self.app.preset_loader_box.currentText = lambda: "BrandNew"
+
+        self.app.on_preset_switch()
+
+        # A's set is untouched and it stays active (save() will retarget it).
+        self.assertEqual(
+            self.app.selection_sets["setA"], {"files": ["/a.png"], "folders": []}
+        )
+        self.assertEqual(self.app._active_set_preset, "A")
+
+    # -- deleting the active preset --------------------------------------------
+
+    def test_delete_active_preset_applies_fallback_set(self):
+        # Deleting the active preset must not leave its stale selection live to
+        # be written onto the fallback preset's set (Codex P1). When the
+        # fallback has a set, switch the live selection to it.
+        b1 = self._touch("b1.png")
+        self.app.presets = {
+            "A": {"schedule": {}, "selection_id": "setA"},
+            "B": {"schedule": {}, "selection_id": "setB"},
+        }
+        self.app.selection_sets = {
+            "setA": {"files": ["/old-a.png"], "folders": []},
+            "setB": {"files": [b1], "folders": []},
+        }
+        self.app._active_set_preset = "A"
+        # Live selection still belongs to the about-to-be-deleted preset A.
+        self.app.selection = {"files": ["/old-a.png"], "folders": []}
+        self.app.preset_loader_box.currentText = MagicMock(side_effect=["A", "B"])
+        self.app.preset_loader_box.currentIndex = MagicMock(return_value=0)
+
+        self.app.delete()
+
+        # Falls to B: active follows and B's set is applied to the selection.
+        self.assertEqual(self.app._active_set_preset, "B")
+        self.assertEqual(self.app.selection["files"], [b1])
+        # A boundary write now stores B's own files, not A's stale ones.
+        self.app.write_back_active_set()
+        self.assertEqual(
+            self.app.selection_sets["setB"], {"files": [b1], "folders": []}
+        )
+
+    def test_delete_active_preset_unlinked_fallback_drops_active(self):
+        # Fallback preset has no set: drop the active link so the deleted
+        # preset's stale selection can't be persisted onto it (Codex P1).
+        self.app.presets = {
+            "A": {"schedule": {}, "selection_id": "setA"},
+            "B": {"schedule": {}},  # no linked set
+        }
+        self.app.selection_sets = {"setA": {"files": ["/old-a.png"], "folders": []}}
+        self.app._active_set_preset = "A"
+        self.app.selection = {"files": ["/old-a.png"], "folders": []}
+        self.app.preset_loader_box.currentText = MagicMock(side_effect=["A", "B"])
+        self.app.preset_loader_box.currentIndex = MagicMock(return_value=0)
+
+        self.app.delete()
+
+        self.assertIsNone(self.app._active_set_preset)
+        # The next boundary write is a no-op; B never adopts A's selection.
+        self.app.write_back_active_set()
+        self.assertNotIn("selection_id", self.app.presets["B"])
+        self.assertEqual(self.app.selection_sets, {})
+
+    def test_delete_only_preset_clears_active(self):
+        # Deleting the last preset empties the combo -> no active preset.
+        self.app.presets = {"A": {"schedule": {}, "selection_id": "setA"}}
+        self.app.selection_sets = {"setA": {"files": ["/a.png"], "folders": []}}
+        self.app._active_set_preset = "A"
+        self.app.selection = {"files": ["/a.png"], "folders": []}
+        self.app.preset_loader_box.currentText = MagicMock(side_effect=["A", ""])
+        self.app.preset_loader_box.currentIndex = MagicMock(return_value=0)
+
+        self.app.delete()
+
+        self.assertIsNone(self.app._active_set_preset)
+
+    # -- editable preset switch (committed typed name) -------------------------
+
+    def test_committing_typed_existing_preset_switches_set(self):
+        # Regression: typing an existing preset name and committing it (Enter /
+        # focus-out) must run the switch-in read via the real signal wiring, not
+        # just load the schedule while the set stays on the old preset (Codex
+        # P2). Uses a real editable combo so the production wiring is exercised.
+        b1 = self._touch("b1.png")
+        combo = QtWidgets.QComboBox()
+        combo.setEditable(True)
+        self.app.preset_loader_box = combo
+        # load() is wired here too; stub it so it doesn't touch other widgets.
+        self.app.load = types.MethodType(lambda s: None, self.app)
+        self.app._connect_preset_loader_signals()
+
+        self.app.presets = {
+            "A": {"schedule": {}, "selection_id": "setA"},
+            "B": {"schedule": {}, "selection_id": "setB"},
+        }
+        self.app.selection_sets = {
+            "setA": {"files": ["/old.png"], "folders": []},
+            "setB": {"files": [b1], "folders": []},
+        }
+        self.app._active_set_preset = "A"
+        self.app.selection = {"files": ["/a-live.png"], "folders": []}
+        combo.addItems(["A", "B"])
+
+        # Type "B" into the line edit and commit it.
+        combo.setEditText("B")
+        combo.lineEdit().editingFinished.emit()
+
+        self.assertEqual(self.app._active_set_preset, "B")
+        self.assertEqual(self.app.selection["files"], [b1])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -166,18 +166,33 @@ class MainApp(
         self.add_entry.clicked.connect(self.append_schedule)
         self.save_preset.clicked.connect(self.save)
         self.delete_preset.clicked.connect(self.delete)
-        self.preset_loader_box.currentIndexChanged.connect(self.load)
-        self.preset_loader_box.currentTextChanged.connect(self.load)
-        # Deliberate user preset switches drive selection-set read/write.
-        # `activated` fires only on real user selection, not programmatic
-        # index changes or typing, which keeps set logic off the re-entrant
-        # currentIndexChanged/currentTextChanged path.
-        self.preset_loader_box.activated.connect(self.on_preset_switch)
+        self._connect_preset_loader_signals()
         # Buttons for table
         self.remove_entry.pressed.connect(self.remove_row)
         self.move_entry_up.clicked.connect(self.move_up)
         self.move_entry_down.clicked.connect(self.move_down)
         self.reset_table.clicked.connect(self.remove_rows)
+
+    def _connect_preset_loader_signals(self):
+        """Wire the preset combo's signals.
+
+        Schedule loading follows index/text changes. The selection-set
+        read/write stays on the *deliberate-switch* triggers so it never runs on
+        the re-entrant ``currentIndexChanged``/``currentTextChanged`` path:
+
+        * ``activated`` – the user picks an entry from the dropdown.
+        * the line edit's ``editingFinished`` – the user types an existing preset
+          name and commits it (Enter / focus-out). ``activated`` does not fire
+          for typing, so without this a typed switch would load the new schedule
+          while the image set stayed on the previously active preset (and a
+          following save/start could persist the old images onto it).
+        """
+        self.preset_loader_box.currentIndexChanged.connect(self.load)
+        self.preset_loader_box.currentTextChanged.connect(self.load)
+        self.preset_loader_box.activated.connect(self.on_preset_switch)
+        line_edit = self.preset_loader_box.lineEdit()
+        if line_edit is not None:
+            line_edit.editingFinished.connect(self.on_preset_switch)
 
     def init_shortcuts(self):
         # Ctrl+Enter to start session
