@@ -662,7 +662,7 @@ jobs:
         #### Windows (PowerShell)
         ```powershell
         # Get checksum of downloaded file
-        Get-FileHash -Algorithm SHA256 GestureSesh-v0.5.4-Windows-x64.exe
+        Get-FileHash -Algorithm SHA256 GestureSesh-v0.5.6-Windows-x64.exe
         
         # Compare with official checksum from checksums.txt
         ```
@@ -670,7 +670,7 @@ jobs:
         #### macOS/Linux
         ```bash
         # Get checksum of downloaded file
-        shasum -a 256 GestureSesh-v0.5.4-macOS.dmg
+        shasum -a 256 GestureSesh-v0.5.6-macOS.dmg
         
         # Compare with official checksum from checksums.txt
         ```
