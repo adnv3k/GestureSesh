@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import math
-import platform
 import random
 import sys
 from collections import OrderedDict
-from pathlib import Path
 
 from pygame import mixer
 
@@ -30,6 +28,7 @@ from gesturesesh.session.shortcuts import SessionShortcutsMixin
 from gesturesesh.session.timer import SessionTimerMixin
 from gesturesesh.session.zoom_pan import SessionZoomPanMixin
 from gesturesesh.utils import resources_config  # noqa: F401
+from gesturesesh.utils.file_reveal import reveal_in_file_manager
 from gesturesesh.ui.dialogs import (
     run_selection_order_dialog,
     run_shortcut_map_dialog,
@@ -1255,19 +1254,7 @@ class SessionDisplay(
 
     def open_image_directory(self, event=None):
         path = self.playlist[self.playlist_position]
-        if path.startswith(":/"):
-            return
-        resolved_path = str(Path(path).resolve())
-        system = platform.system()
-        if system == "Windows":
-            QtCore.QProcess.startDetached("explorer.exe", [f"/select,", resolved_path])
-        elif system == "Darwin":  # macOS
-            QtCore.QProcess.startDetached("open", ["-R", resolved_path])
-        else:  # Linux and other systems
-            # Use xdg-open for Linux
-            parent_dir = Path(resolved_path).parent
-            QtCore.QProcess.startDetached("xdg-open", [str(parent_dir)])
-        if event:
+        if reveal_in_file_manager(path) and event:
             event.accept()
 
     # endregion

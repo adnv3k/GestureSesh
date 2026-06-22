@@ -39,6 +39,8 @@ class MainAppSessionMixin:
 
         self.save(wait_status=False)
 
+        self.write_back_active_set()
+
         ordered_files = effective_selection_order(
             self.selection["files"], randomize=self.randomize_selection.isChecked()
         )

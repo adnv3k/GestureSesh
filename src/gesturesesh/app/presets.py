@@ -24,30 +24,57 @@ class MainAppPresetsMixin:
         # with stale in-memory picks from the current app run.
         self.selection["files"] = []
         self.selection["folders"] = []
-
-        folders = recent.get("folders", [])
-        files = recent.get("files", [])
         loaded_any = False
-        if folders:
-            self.selection["folders"] = folders
-            self.scan_directories(folders)
-            loaded_any = True
-        if files:
-            checked = self.check_files(files)
-            self.selection["files"].extend(
-                file for file in checked["valid_files"] if file != BREAK_IMAGE_PATH
-            )
-            loaded_any = loaded_any or bool(checked["valid_files"])
 
-        # Preserve order while dropping accidental duplicates.
-        self.selection["files"] = list(dict.fromkeys(self.selection["files"]))
+        # Restore the recent preset first (guarded so programmatic combo changes
+        # don't trigger selection-set writes), then resolve which set the
+        # selection should come from.
+        self._loading = True
+        try:
+            if "recent_preset" in recent:
+                self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
+                loaded_any = True
+            if "randomized" in recent:
+                self.randomize_selection.setChecked(recent.get("randomized", False))
+                loaded_any = True
+            name = self.preset_loader_box.currentText()
+            self._active_set_preset = name if name in self.presets else None
+        finally:
+            self._loading = False
 
-        if "recent_preset" in recent:
-            self.preset_loader_box.setCurrentIndex(recent.get("recent_preset", 0))
+        # The linked image set wins as the source of truth for the selection.
+        preset = (
+            self.presets.get(self._active_set_preset)
+            if self._active_set_preset
+            else None
+        )
+        set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+
+        if set_id and set_id in self.selection_sets:
+            self.apply_selection_set(set_id)
             loaded_any = True
-        if "randomized" in recent:
-            self.randomize_selection.setChecked(recent.get("randomized", False))
-            loaded_any = True
+        else:
+            # No linked set: fall back to the recent file/folder list, then
+            # migrate it into a set for the active preset (one-time upgrade for
+            # pre-existing configs).
+            folders = recent.get("folders", [])
+            files = recent.get("files", [])
+            if folders:
+                self.selection["folders"] = folders
+                self.scan_directories(folders)
+                loaded_any = True
+            if files:
+                checked = self.check_files(files)
+                self.selection["files"].extend(
+                    file
+                    for file in checked["valid_files"]
+                    if file != BREAK_IMAGE_PATH
+                )
+                loaded_any = loaded_any or bool(checked["valid_files"])
+            # Preserve order while dropping accidental duplicates.
+            self.selection["files"] = list(dict.fromkeys(self.selection["files"]))
+            if self._active_set_preset:
+                self.write_back_active_set()
 
         self.remove_breaks()
         self.display_status()
@@ -239,11 +266,22 @@ class MainAppPresetsMixin:
             self.presets[preset_name] = {"schedule": schedule}
         self.config["presets"] = self.presets
         if preset_name not in self.preset_names:
-            self.update_presets()
-            self.preset_loader_box.setCurrentIndex(self.preset_loader_box.count() - 1)
+            self._loading = True
+            try:
+                self.update_presets()
+                self.preset_loader_box.setCurrentIndex(
+                    self.preset_loader_box.count() - 1
+                )
+            finally:
+                self._loading = False
         if wait_status:
             self.show_temporary_status(f"{preset_name} saved!", 3000)
         save_config(self.config_path, self.config)
+        # Associate the live selection with the saved preset: new presets adopt
+        # the current selection; re-saves refresh the link (copy-on-write if the
+        # set is shared). No-op when the selection matches the existing set.
+        self._active_set_preset = preset_name
+        self.write_back_active_set()
 
     def delete(self):
         preset_name = self.preset_loader_box.currentText()
@@ -253,9 +291,37 @@ class MainAppPresetsMixin:
         if preset_name in self.presets:
             del self.presets[preset_name]
             self.config["presets"] = self.presets
+            # Cull any image set the deleted preset was the last to reference.
+            self._gc_selection_sets()
+            self.config["selection_sets"] = self.selection_sets
             save_config(self.config_path, self.config)
         self.show_temporary_status(f"{preset_name} deleted!", 2000)
-        self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
+        self._loading = True
+        try:
+            self.preset_loader_box.removeItem(self.preset_loader_box.currentIndex())
+        finally:
+            self._loading = False
+        if self._active_set_preset == preset_name:
+            # The active preset was deleted and the combo has fallen to an
+            # adjacent entry (already loaded by the index-change -> load
+            # wiring). The live selection still belongs to the deleted preset,
+            # so it must not reach the fallback's set on the next boundary
+            # write.
+            current = self.preset_loader_box.currentText()
+            fallback = current if current in self.presets else None
+            preset = self.presets.get(fallback) if fallback else None
+            set_id = preset.get("selection_id") if isinstance(preset, dict) else None
+            if set_id:
+                # Treat this as a switch-in to the fallback: adopt it and apply
+                # its saved set so the live selection matches it.
+                self._active_set_preset = fallback
+                self.apply_selection_set(set_id)
+            else:
+                # Nothing to switch to: drop the active link so a later boundary
+                # write is a no-op instead of overwriting the fallback's set
+                # with the deleted preset's stale selection. A deliberate switch
+                # re-establishes tracking.
+                self._active_set_preset = None
 
     def load(self):
         preset_name = self.preset_loader_box.currentText()

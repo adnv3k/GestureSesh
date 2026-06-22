@@ -5,6 +5,7 @@ Lives in its own module so submodules (timer, etc.) and the parent
 """
 
 import contextlib
+import os
 from importlib import resources
 from pathlib import Path
 
@@ -23,6 +24,20 @@ SUPPORTED_IMAGE_TYPES = {
 }
 
 SUPPORTED_ANIMATED_TYPES = {".avif", ".gif", ".jxl", ".webp"}
+
+
+def is_hidden_file(path) -> bool:
+    """Return True for hidden/sidecar files that should not be treated as images.
+
+    Matches any dotfile (basename starting with ``.``). The important case is the
+    macOS AppleDouble sidecar ``._name.ext``: it mirrors a real file's extension
+    (so an extension check alone accepts it) but holds resource-fork metadata
+    rather than image data. These are generated when files are copied to
+    FAT/exFAT/SMB/USB volumes and, if added to the playlist, fail to decode at
+    display time. Other dotfiles (``.DS_Store``, ``.thumbnails``, etc.) are OS
+    noise too, so we skip the whole class.
+    """
+    return os.path.basename(str(path)).startswith(".")
 
 
 def sound_file(name: str):

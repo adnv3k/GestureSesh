@@ -5,6 +5,32 @@ All notable changes to GestureSesh will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.5.6 - 2026-06-21
+
+### Fixed
+
+- Photos carrying an EXIF orientation tag (most phone and camera images) once again display upright during sessions. The image-loading refactor in v0.5.4 routed every format through `cv2.imdecode(..., IMREAD_UNCHANGED)`, which ignores EXIF orientation, so images that auto-rotated under v0.5.1's `IMREAD_COLOR` path began appearing rotated 90°. The orientation tag is now read and re-applied after decoding, preserving the alpha channel and bit depth.
+- macOS AppleDouble sidecar files (`._name.ext`) and other hidden dotfiles are no longer added to selections. They mirror a real image's extension but contain only metadata, so they were being queued and then failing to decode mid-session. They are now skipped silently when adding files or scanning folders.
+
+### Added
+
+- **Presets remember their images** — switching to a preset now restores the
+  image selection (files and folders) you last used with it, so your reference
+  set comes back automatically instead of carrying over from the previous
+  preset. Presets that share the same selection stay linked until you change
+  one, and a set is never dropped while a preset still uses it.
+- **Manage Order** can now reveal the highlighted image directly in your file
+  browser (Windows/macOS select the file; Linux opens its folder), and a new
+  **Show Missing** filter isolates files that are missing from disk.
+
+### Changed
+
+- Switching to a preset with missing/moved images now points you to Manage
+  Order, where the missing files are listed as removable **MISSING** rows
+  instead of just reporting a count. Removing them there sticks, while files on
+  a temporarily disconnected drive stay saved in the preset and return when the
+  drive is back.
+  
 ## v0.5.5 - 2026-05-25
 
 ### Fixed

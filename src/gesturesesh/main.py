@@ -20,20 +20,22 @@ if str(src_dir) not in sys.path:
 
 from gesturesesh.app.presets import MainAppPresetsMixin
 from gesturesesh.app.selection import MainAppSelectionMixin
+from gesturesesh.app.selection_sets import MainAppSelectionSetsMixin
 from gesturesesh.app.session import MainAppSessionMixin
 from gesturesesh.app.status import MainAppStatusMixin
 from gesturesesh.session.constants import SUPPORTED_IMAGE_TYPES
 from gesturesesh.ui.main_window import Ui_MainWindow
 from gesturesesh.utils import resources_config  # noqa: F401
-from gesturesesh.utils.config import load_config
+from gesturesesh.utils.config import get_config_dir, load_config
 from gesturesesh.utils.update_checker import UpdateChecker
 
 
-__version__ = "0.5.5"
+__version__ = "0.5.6"
 
 
 class MainApp(
     MainAppSelectionMixin,
+    MainAppSelectionSetsMixin,
     MainAppStatusMixin,
     MainAppPresetsMixin,
     MainAppSessionMixin,
@@ -45,10 +47,16 @@ class MainApp(
         self.setupUi(self)
         self.setWindowTitle("Reference Practice")
         self.config = load_config(self)
+        # Resolve the config path up front so saves don't depend on
+        # check_version() (which sets it later) having run first.
+        self.config_path = get_config_dir() / "config.json"
         self.session_schedule = []
         self.has_break = False
         self.valid_file_types = set(SUPPORTED_IMAGE_TYPES)
         self.selection = {"files": [], "folders": []}
+        # Re-entrancy guard for programmatic preset/selection changes so they
+        # don't trigger selection-set writes (see selection_sets.py).
+        self._loading = False
 
         self.status_timer = QtCore.QTimer()
         self.status_timer.setSingleShot(True)
@@ -69,6 +77,7 @@ class MainApp(
         self.init_buttons()
         self.init_shortcuts()
         self.init_preset()
+        self.init_selection_sets()
         self.load_recent()
         self.check_version()
         self.entry_table.itemChanged.connect(self.update_total)
@@ -78,6 +87,14 @@ class MainApp(
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.update_dynamic_fonts()
+
+    def closeEvent(self, event):
+        # Boundary write: persist the active preset's image set on app close.
+        try:
+            self.write_back_active_set()
+        except Exception:
+            pass
+        super().closeEvent(event)
 
     def update_dynamic_fonts(self):
         """Dynamically update font sizes based on window height."""
@@ -149,13 +166,33 @@ class MainApp(
         self.add_entry.clicked.connect(self.append_schedule)
         self.save_preset.clicked.connect(self.save)
         self.delete_preset.clicked.connect(self.delete)
-        self.preset_loader_box.currentIndexChanged.connect(self.load)
-        self.preset_loader_box.currentTextChanged.connect(self.load)
+        self._connect_preset_loader_signals()
         # Buttons for table
         self.remove_entry.pressed.connect(self.remove_row)
         self.move_entry_up.clicked.connect(self.move_up)
         self.move_entry_down.clicked.connect(self.move_down)
         self.reset_table.clicked.connect(self.remove_rows)
+
+    def _connect_preset_loader_signals(self):
+        """Wire the preset combo's signals.
+
+        Schedule loading follows index/text changes. The selection-set
+        read/write stays on the *deliberate-switch* triggers so it never runs on
+        the re-entrant ``currentIndexChanged``/``currentTextChanged`` path:
+
+        * ``activated`` – the user picks an entry from the dropdown.
+        * the line edit's ``editingFinished`` – the user types an existing preset
+          name and commits it (Enter / focus-out). ``activated`` does not fire
+          for typing, so without this a typed switch would load the new schedule
+          while the image set stayed on the previously active preset (and a
+          following save/start could persist the old images onto it).
+        """
+        self.preset_loader_box.currentIndexChanged.connect(self.load)
+        self.preset_loader_box.currentTextChanged.connect(self.load)
+        self.preset_loader_box.activated.connect(self.on_preset_switch)
+        line_edit = self.preset_loader_box.lineEdit()
+        if line_edit is not None:
+            line_edit.editingFinished.connect(self.on_preset_switch)
 
     def init_shortcuts(self):
         # Ctrl+Enter to start session

@@ -24,6 +24,8 @@ from gesturesesh.app.selection_order import (
     duplicate_indices,
     selection_stats,
 )
+from gesturesesh.session.constants import is_hidden_file
+from gesturesesh.utils.file_reveal import reveal_in_file_manager
 
 
 class OrderListWidget(QtWidgets.QListWidget):
@@ -54,6 +56,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
         validate_files=None,
         title="Selection Order",
         random_preview=False,
+        focus_missing=False,
     ):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
@@ -70,6 +73,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
         self._current_index = current_index
         self._validate_files = validate_files
         self.random_preview = bool(random_preview)
+        self._focus_missing = bool(focus_missing)
         self.working_files = list(files)
         self.working_folders = list(folders or [])
         self._thumbnail_cache = {}
@@ -153,6 +157,13 @@ class ImageManagerDialog(QtWidgets.QDialog):
         self.add_folder_btn = QtWidgets.QPushButton("Add Folder", self)
         self.remove_selected_btn = QtWidgets.QPushButton("Remove Selected", self)
         self.remove_missing_btn = QtWidgets.QPushButton("Remove Missing", self)
+        self.show_missing_btn = QtWidgets.QPushButton("Show Missing", self)
+        self.show_missing_btn.setCheckable(True)
+        self.show_missing_btn.setToolTip("Show only files that are missing from disk.")
+        if self._focus_missing:
+            # Opened to review missing files: start filtered to just those.
+            self.show_missing_btn.setChecked(True)
+            self.show_missing_btn.setText("Show All")
         self.show_duplicates_btn = QtWidgets.QPushButton("Show Duplicates", self)
         self.show_duplicates_btn.setCheckable(True)
         self.move_up_btn = QtWidgets.QPushButton("Move Up", self)
@@ -163,6 +174,9 @@ class ImageManagerDialog(QtWidgets.QDialog):
         self.sort_name_btn = QtWidgets.QPushButton("Sort Name", self)
         self.sort_path_btn = QtWidgets.QPushButton("Sort Path", self)
         self.open_folder_btn = QtWidgets.QPushButton("Open Folder", self)
+        self.open_folder_btn.setToolTip(
+            "Reveal the highlighted image in your file browser, selecting it."
+        )
         self.clear_all_btn = QtWidgets.QPushButton("Clear All", self)
 
         for widget in (
@@ -170,6 +184,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
             self.add_folder_btn,
             self.remove_selected_btn,
             self.remove_missing_btn,
+            self.show_missing_btn,
             self.show_duplicates_btn,
             self.move_up_btn,
             self.move_down_btn,
@@ -196,6 +211,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
         self.add_folder_btn.clicked.connect(self._add_folder)
         self.remove_selected_btn.clicked.connect(self._remove_selected)
         self.remove_missing_btn.clicked.connect(self._remove_missing)
+        self.show_missing_btn.toggled.connect(self._toggle_show_missing)
         self.show_duplicates_btn.toggled.connect(self._toggle_show_duplicates)
         self.move_up_btn.clicked.connect(lambda: self._move_selected(-1))
         self.move_down_btn.clicked.connect(lambda: self._move_selected(1))
@@ -407,13 +423,14 @@ class ImageManagerDialog(QtWidgets.QDialog):
         self._pending_thumbnail_keys = set()
         self._thumbnail_generation += 1
         query = self.search_input.text().strip().lower()
+        show_missing_only = self.show_missing_btn.isChecked()
         self.images_list.clear()
         has_locked_rows = any(
             self._is_locked_index(index) for index in range(len(self.working_files))
         )
         self.images_list.setDragDropMode(
             QtWidgets.QAbstractItemView.NoDragDrop
-            if query or has_locked_rows
+            if query or has_locked_rows or show_missing_only
             else QtWidgets.QAbstractItemView.InternalMove
         )
         visible = 0
@@ -432,11 +449,14 @@ class ImageManagerDialog(QtWidgets.QDialog):
                 continue
 
             is_break = file_path == BREAK_IMAGE_PATH
+            if not is_break:
+                real_seen += 1
+            is_missing = not is_break and not os.path.exists(file_path)
+            if show_missing_only and not is_missing:
+                continue
             is_duplicate = index in duplicate_indices
             is_locked = self._is_locked_index(index)
             is_current = self._current_index == index
-            if not is_break:
-                real_seen += 1
 
             markers = []
             if is_break:
@@ -449,7 +469,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
                 markers.append("LOCKED")
             if show_duplicates and is_duplicate:
                 markers.append("DUPLICATE")
-            if file_path != BREAK_IMAGE_PATH and not os.path.exists(file_path):
+            if is_missing:
                 markers.append("MISSING")
 
             display_name = "Break" if is_break else os.path.basename(file_path)
@@ -462,7 +482,7 @@ class ImageManagerDialog(QtWidgets.QDialog):
 
             if is_locked:
                 item.setForeground(QtGui.QBrush(QtGui.QColor("#b8c4cc")))
-            if file_path != BREAK_IMAGE_PATH and not os.path.exists(file_path):
+            if is_missing:
                 item.setForeground(QtGui.QBrush(QtGui.QColor("#ff7f7f")))
             elif show_duplicates and is_duplicate:
                 item.setBackground(QtGui.QBrush(QtGui.QColor("#40361e")))
@@ -543,6 +563,10 @@ class ImageManagerDialog(QtWidgets.QDialog):
     def _check_files(self, files):
         valid = []
         for file_path in files:
+            # Skip hidden dotfiles / macOS AppleDouble sidecars (._name.ext);
+            # they share a real image's extension but aren't decodable images.
+            if is_hidden_file(file_path):
+                continue
             ext = os.path.splitext(file_path)[1].lower()
             if self._valid_file_types and ext not in self._valid_file_types:
                 continue
@@ -584,7 +608,15 @@ class ImageManagerDialog(QtWidgets.QDialog):
             for index, path in enumerate(self.working_files)
             if self._is_locked_index(index) or path == BREAK_IMAGE_PATH or os.path.exists(path)
         ]
-        self._refresh_list()
+        # If we were filtered to missing-only and nothing missing remains, drop
+        # the filter so the user isn't left looking at an empty list.
+        still_missing = any(
+            p != BREAK_IMAGE_PATH and not os.path.exists(p) for p in self.working_files
+        )
+        if self.show_missing_btn.isChecked() and not still_missing:
+            self.show_missing_btn.setChecked(False)  # triggers refresh via toggled
+        else:
+            self._refresh_list()
 
     def _move_selected(self, direction):
         indices = self._selected_indices()
@@ -663,16 +695,19 @@ class ImageManagerDialog(QtWidgets.QDialog):
             return
 
         target = self.working_files[indices[0]]
-        folder = os.path.dirname(target)
-        if folder and os.path.isdir(folder):
-            QtGui.QDesktopServices.openUrl(
-                QtCore.QUrl.fromLocalFile(os.path.abspath(folder))
-            )
+        if target and target != BREAK_IMAGE_PATH:
+            # Reveal-and-select the highlighted image so it's easy to spot,
+            # mirroring the session window's "open folder" behavior.
+            reveal_in_file_manager(target)
 
     def _clear_all(self):
         self.working_files = [
             path for index, path in enumerate(self.working_files) if self._is_locked_index(index)
         ]
+        self._refresh_list()
+
+    def _toggle_show_missing(self, checked):
+        self.show_missing_btn.setText("Show All" if checked else "Show Missing")
         self._refresh_list()
 
     def _toggle_show_duplicates(self, checked):

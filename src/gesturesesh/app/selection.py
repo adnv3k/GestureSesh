@@ -11,6 +11,7 @@ from gesturesesh.app.selection_order import (
     duplicate_indices,
     effective_selection_order,
 )
+from gesturesesh.session.constants import is_hidden_file
 from gesturesesh.ui.dialogs import run_selection_order_dialog
 
 
@@ -122,6 +123,11 @@ class MainAppSelectionMixin:
         """Checks if files are supported file types and are accessible."""
         res = {"valid_files": [], "invalid_files": []}
         for file in files:
+            # Hidden dotfiles and macOS AppleDouble sidecars (._name.ext) are OS
+            # noise, not user images; skip them silently so they are neither
+            # added nor counted as unsupported files.
+            if is_hidden_file(file):
+                continue
             ext = os.path.splitext(file)[1].lower()
             if ext not in self.valid_file_types:
                 res["invalid_files"].append(file)
@@ -171,7 +177,10 @@ class MainAppSelectionMixin:
 
     def open_selection_order_viewer(self):
         """Open the selection viewer/order editor from the main window."""
-        if not self.selection["files"]:
+        unavailable = self._active_set_unavailable()
+        if not self.selection["files"] and not (
+            unavailable["files"] or unavailable["folders"]
+        ):
             self.show_error_status("No images selected to manage.", 2500)
             return
 
@@ -181,24 +190,44 @@ class MainAppSelectionMixin:
             self.session_schedule = []
 
         random_preview = bool(self.randomize_selection.isChecked())
-        files = effective_selection_order(
-            self.selection["files"], randomize=random_preview
-        )
+        # Surface the active preset's saved-but-missing entries as MISSING rows
+        # the user can see and act on (Remove Missing), instead of dropping them
+        # silently. Reinsert them at their stored positions (not appended) so an
+        # unchanged Apply preserves saved order; randomize then shuffles all.
+        files = self._merge_missing_into_order(self.selection["files"])
+        files = effective_selection_order(files, randomize=random_preview)
+        folders = list(self.selection["folders"])
+        folders += [d for d in unavailable["folders"] if d not in set(folders)]
+
         result = run_selection_order_dialog(
             parent=self,
             files=files,
-            folders=self.selection["folders"],
+            folders=folders,
             schedule=self.session_schedule,
             valid_file_types=self.valid_file_types,
             duplicate_indices_fn=duplicate_indices,
             title="Selection Order",
             random_preview=random_preview,
+            focus_missing=bool(unavailable["files"] or unavailable["folders"]),
         )
         if result is None:
             return
 
-        self.selection["files"] = result["files"]
-        self.selection["folders"] = result["folders"]
+        # The viewer showed every entry (including missing ones), so its result
+        # is the authoritative set for this preset: persist it directly so that
+        # "Remove Missing" sticks even for offline-drive files. The live
+        # selection then keeps only what is currently loadable.
+        self.write_back_active_set(
+            snapshot={
+                "files": list(result["files"]),
+                "folders": list(result["folders"]),
+            },
+            authoritative=True,
+        )
+        # Revalidate (not just isfile): drop unsupported or hidden paths such as
+        # AppleDouble sidecars so the next session never tries to decode them.
+        self.selection["files"] = self.check_files(result["files"])["valid_files"]
+        self.selection["folders"] = [d for d in result["folders"] if os.path.isdir(d)]
         if result.get("random_preview"):
             self.randomize_selection.setChecked(False)
             self.show_temporary_status(
