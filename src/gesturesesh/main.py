@@ -30,7 +30,7 @@ from gesturesesh.utils.config import get_config_dir, load_config
 from gesturesesh.utils.update_checker import UpdateChecker
 
 
-__version__ = "0.5.5"
+__version__ = "0.5.6"
 
 
 class MainApp(
